@@ -2,14 +2,16 @@
 main.py – Loan Management API
 FastAPI application entry point.
 Includes:
-  • Existing /recommend + /contacts endpoints (unchanged)
-  • NEW /auth/*   – user registration & login
-  • NEW /loans/*  – user: apply for loan, view own applications
-  • NEW /admin/*  – admin: view all applications, approve / reject, stats
+  • /loans/*      – Loan Schemes, Requirements, Multi-Eligibility Evaluation, Applications, Document Uploads
+  • /auth/*       – User Registration, Login & Profile
+  • /admin/*      – Underwriting Decisions, Document Verification, Document Downloads, Portfolio Analytics
+  • /recommend    – Backward compatible recommendation engine
+  • /contacts     – Backward compatible contact submissions
 """
-
+import os
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
@@ -21,22 +23,31 @@ from routers.auth_router import router as auth_router
 from routers.user_router import router as user_router
 from routers.admin_router import router as admin_router
 
+# Ensure upload directory exists
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 # ── App setup ─────────────────────────────────────────────────
 app = FastAPI(
-    title="Loan Management API",
+    title="Loan Management & Underwriting System API",
     description=(
-        "Backend for a loan management system with user auth, "
-        "loan applications, and admin approval workflow."
+        "Comprehensive Lending & Underwriting Platform built for Cognizant Hackathon 2026. "
+        "Supports 6 loan categories (Personal, Home, Vehicle, Education, Business/MSME, Gold), "
+        "document upload & verification, hard eligibility filtering, personalized ranking, and administrative approval workflows."
     ),
-    version="2.0.0",
+    version="2.5.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten before production
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Mount static files for document storage ───────────────────
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # ── Register routers ──────────────────────────────────────────
 app.include_router(auth_router)
@@ -44,7 +55,7 @@ app.include_router(user_router)
 app.include_router(admin_router)
 
 
-# ── Startup: init DB + seed default admin ─────────────────────
+# ── Startup: init DB + seed default admin & schemes ──────────
 ADMIN_EMAIL = "admin@loanapp.com"
 ADMIN_PASSWORD = "Admin@123"
 
@@ -79,7 +90,7 @@ def _seed_admin():
 # ── Health check ──────────────────────────────────────────────
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "ok", "version": "2.0.0"}
+    return {"status": "ok", "version": "2.5.0"}
 
 
 # ─────────────────────────────────────────────────────────────

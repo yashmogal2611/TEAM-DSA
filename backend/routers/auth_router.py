@@ -54,7 +54,14 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
             detail="Your account has been disabled. Contact support.",
         )
     token = create_access_token({"sub": str(user.id)})
-    return Token(access_token=token, token_type="bearer", is_admin=user.is_admin)
+    return Token(
+        access_token=token,
+        token_type="bearer",
+        is_admin=user.is_admin,
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+    )
 
 
 # ── GET /auth/me ──────────────────────────────────────────────
