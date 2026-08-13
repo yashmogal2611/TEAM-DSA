@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan Portal — Credit & Loan Management System</title>
+  
+  <!-- Modern Typography (Plus Jakarta Sans & Inter) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Top Application Header & Navigation Bar -->
+  <header class="app-header">
+    <div class="brand" onclick="app.navigate('#/')">
+      <div class="brand-icon">⚡</div>
+      <span>ApexLoans</span>
+      <span class="brand-badge user-badge" id="roleBadge">PORTAL</span>
+    </div>
+
+    <div class="header-controls">
+      <!-- API Mode & Server Health Pill Switcher -->
+      <button class="api-status-pill" id="apiStatusPill" onclick="app.toggleMockMode()" title="Click to toggle between Live Backend and Mock Mode">
+        <span class="status-dot online" id="statusDot"></span>
+        <span id="statusText">Live API Mode</span>
+      </button>
+
+      <!-- Authenticated User Controls -->
+      <div class="user-profile-menu" id="navUserControls" style="display: none;">
+        <!-- Navigation Links -->
+        <a href="#/user-dashboard" class="btn btn-secondary btn-sm" id="userDashNavLink" style="display: none;">My Applications</a>
+        <a href="#/admin-dashboard" class="btn btn-secondary btn-sm" id="adminDashNavLink" style="display: none;">Admin Board</a>
+        <a href="#/admin-users" class="btn btn-secondary btn-sm" id="adminUsersNavLink" style="display: none;">User Directory</a>
+        <button class="btn btn-primary btn-sm" id="applyLoanNavBtn" onclick="app.showModal('applyLoanModal')" style="display: none;">
+          + New Application
+        </button>
+
+        <div class="avatar" id="headerAvatar">U</div>
+        <div class="user-info">
+          <span class="user-name" id="headerUserName">User Name</span>
+          <span class="user-email" id="headerUserEmail">user@example.com</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="app.logout()" title="Log out session">Exit</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+
+    <!-- 1. LOGIN VIEW (#/login) -->
+    <section class="view-section" id="viewLogin">
+      <div class="auth-wrapper">
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1>Welcome Back</h1>
+            <p>Sign in to manage loan applications & credit accounts</p>
+          </div>
+
+          <!-- Quick Demo Credentials Fill -->
+          <div class="demo-credentials-box">
+            <h4>💡 Quick Demo Credentials</h4>
+            <div>Select a role to auto-fill test credentials:</div>
+            <div class="demo-btns">
+              <button type="button" class="btn-demo-fill" onclick="app.fillDemoUser()">👤 Regular User</button>
+              <button type="button" class="btn-demo-fill" onclick="app.fillDemoAdmin()">🛡️ System Admin</button>
+            </div>
+          </div>
+
+          <form id="loginForm" onsubmit="app.handleLogin(event)">
+            <div class="form-group">
+              <label class="form-label" for="loginEmail">Email Address</label>
+              <input type="email" id="loginEmail" class="input-control" placeholder="name@example.com" required value="ravi@example.com">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="loginPassword">Password</label>
+              <input type="password" id="loginPassword" class="input-control" placeholder="••••••••" required value="MyPass@123">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem;">
+              Sign In
+            </button>
+          </form>
+
+          <div class="auth-switch-link">
+            Don't have an account? <a href="#/register">Register here</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. REGISTER VIEW (#/register) -->
+    <section class="view-section" id="viewRegister">
+      <div class="auth-wrapper">
+        <div class="auth-card">
+          <div class="auth-header">
+            <h1>Create Account</h1>
+            <p>Apply for home, personal, auto or education loans in minutes</p>
+          </div>
+
+          <form id="registerForm" onsubmit="app.handleRegister(event)">
+            <div class="form-group">
+              <label class="form-label" for="regFullName">Full Name</label>
+              <input type="text" id="regFullName" class="input-control" placeholder="Ravi Kumar" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="regEmail">Email Address</label>
+              <input type="email" id="regEmail" class="input-control" placeholder="ravi@example.com" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="regPhone">Phone Number</label>
+              <input type="tel" id="regPhone" class="input-control" placeholder="9876543210" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="regPassword">Password</label>
+              <input type="password" id="regPassword" class="input-control" placeholder="MyPass@123" required minlength="6">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem;">
+              Create Account
+            </button>
+          </form>
+
+          <div class="auth-switch-link">
+            Already registered? <a href="#/login">Sign in here</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. USER DASHBOARD VIEW (#/user-dashboard) -->
+    <section class="view-section" id="viewUserDashboard">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <h1>My Loan Dashboard</h1>
+          <p>Track your submitted applications, review decisions, and request new credit lines.</p>
+        </div>
+        <button class="btn btn-primary" onclick="app.showModal('applyLoanModal')">
+          + Submit New Loan Application
+        </button>
+      </div>
+
+      <!-- User KPI Summary -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon blue">💰</div>
+          <div class="kpi-details">
+            <span class="kpi-value" id="userTotalApplied">₹0</span>
+            <span class="kpi-label">Total Amount Requested</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon amber">⏳</div>
+          <div class="kpi-details">
+            <span class="kpi-value" id="userPendingCount">0</span>
+            <span class="kpi-label">Under Review</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon emerald">✅</div>
+          <div class="kpi-details">
+            <span class="kpi-value" id="userApprovedCount">0</span>
+            <span class="kpi-label">Approved Applications</span>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon blue">📋</div>
+          <div class="kpi-details">
+            <span class="kpi-value" id="userActiveCount">0</span>
+            <span class="kpi-label">Total Submissions</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loan Applications List Table -->
+      <div id="userLoansContainer"></div>
+    </section>
+
+    <!-- 4. ADMIN DASHBOARD VIEW (#/admin-dashboard) -->
+    <section class="view-section" id="viewAdminDashboard">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <h1>Admin Control Panel</h1>
+          <p>Review incoming applicant requests, inspect credit metrics, and issue approval or rejection notes.</p>
+        </div>
+        <a href="#/admin-users" class="btn btn-secondary">
+          👥 Registered Users Directory
+        </a>
+      </div>
+
+      <!-- Admin System KPIs -->
+      <div class="kpi-grid" id="adminStatsContainer"></div>
+
+      <!-- Filter Tabs by Loan Status (GET /admin/loans?status=...) -->
+      <div class="tab-filters">
+        <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Applications</button>
+        <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)">⏳ Pending Review</button>
+        <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)">✅ Approved</button>
+        <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)">❌ Rejected</button>
+      </div>
+
+      <!-- Admin Applications Table -->
+      <div id="adminLoansContainer"></div>
+    </section>
+
+    <!-- 5. ADMIN USERS DIRECTORY VIEW (#/admin-users) -->
+    <section class="view-section" id="viewAdminUsers">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <h1>User Directory</h1>
+          <p>List of all registered applicant accounts in the system (GET /admin/users).</p>
+        </div>
+        <a href="#/admin-dashboard" class="btn btn-secondary">
+          ← Back to Admin Board
+        </a>
+      </div>
+
+      <div id="adminUsersContainer"></div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: APPLY FOR LOAN (POST /loans/apply) -->
+  <div class="modal-backdrop" id="applyLoanModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>New Loan Application</h3>
+        <button class="modal-close" onclick="app.hideModal('applyLoanModal')">&times;</button>
+      </div>
+      <form id="applyLoanForm" onsubmit="app.handleApplyLoan(event)">
+        <div class="modal-body">
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="applyProductType">Product Type</label>
+              <select id="applyProductType" class="input-control" required>
+                <option value="home_loan">Home Loan</option>
+                <option value="personal_loan">Personal Loan</option>
+                <option value="auto_loan">Auto Loan</option>
+                <option value="education_loan">Education Loan</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="applyEmployment">Employment Type</label>
+              <select id="applyEmployment" class="input-control" required>
+                <option value="salaried">Salaried</option>
+                <option value="self_employed">Self Employed</option>
+                <option value="unemployed">Unemployed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="applyAmount">Requested Amount (₹)</label>
+              <input type="number" id="applyAmount" class="input-control" placeholder="500000" min="10000" step="5000" required value="500000">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="applyTenure">Tenure (Months)</label>
+              <input type="number" id="applyTenure" class="input-control" placeholder="120" min="6" max="360" required value="120">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="applyIncome">Annual Income (₹)</label>
+              <input type="number" id="applyIncome" class="input-control" placeholder="800000" required value="800000">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="applyCreditScore">Credit Score (CIBIL)</label>
+              <input type="number" id="applyCreditScore" class="input-control" placeholder="720" min="300" max="900" required value="720">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="applyPurpose">Purpose of Loan</label>
+            <textarea id="applyPurpose" class="input-control" placeholder="Buy a house in Pune" required>Buy a house in Pune</textarea>
+          </div>
+
+          <!-- Live Estimated EMI Calculator -->
+          <div class="emi-calculator-preview">
+            <div>
+              <div class="emi-val" id="emiDisplayVal">₹5,496</div>
+              <div class="emi-lbl">Est. Monthly EMI (@ 10.5%)</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="app.hideModal('applyLoanModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Submit Application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADMIN REVIEW & APPROVAL / REJECTION (PATCH /admin/loans/{id}/approve or /reject) -->
+  <div class="modal-backdrop" id="reviewLoanModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="modalLoanIdTitle">Review Loan Application</h3>
+          <div style="font-size:0.85rem; color:var(--text-muted);" id="modalApplicantDesc">Applicant Info</div>
+        </div>
+        <button class="modal-close" onclick="app.hideModal('reviewLoanModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="adminNoteInput">Admin Decision Notes / Remarks</label>
+          <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved!' or 'Insufficient income proof.')"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" id="reviewModalFooter">
+        <button type="button" class="btn btn-secondary" onclick="app.hideModal('reviewLoanModal')">Close</button>
+        <button type="button" class="btn btn-danger" onclick="app.handleRejectLoan()">❌ Reject Application</button>
+        <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve Application</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Toast Notifications Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/mockData.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
