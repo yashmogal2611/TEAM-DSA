@@ -1,0 +1,147 @@
+# ============================================================
+# Personal Loan Recommendation System — Central Configuration
+# ============================================================
+
+# ── Application ─────────────────────────────────────────────
+app:
+  name: "Personal Loan Recommendation System"
+  version: "1.0.0"
+  environment: "development"          # development | staging | production
+  debug: true
+  top_n_recommendations: 3
+
+# ── API ─────────────────────────────────────────────────────
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
+  workers: 1
+
+# ── Database ─────────────────────────────────────────────────
+database:
+  url: "postgresql://postgres:password@localhost:5432/loan_recommendation"
+  pool_size: 5
+  max_overflow: 10
+
+# ── Redis (optional caching) ─────────────────────────────────
+redis:
+  url: "redis://localhost:6379/0"
+  cache_ttl_seconds: 300
+
+# ── Paths ────────────────────────────────────────────────────
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  data_features: "data/features"
+  models: "models"
+  risk_model: "models/risk_model/risk_model.joblib"
+  risk_preprocessor: "models/risk_model/preprocessor.joblib"
+  ranking_model: "models/ranking_model/ranking_model.joblib"
+  loan_products: "data/raw/loan_products.json"
+
+# ── Validation Rules ─────────────────────────────────────────
+validation:
+  age:
+    min: 18
+    max: 70
+  monthly_income:
+    min: 1000           # ₹ minimum
+    max: 10_000_000     # ₹1 crore — flag above this for review
+  credit_score:
+    min: 300
+    max: 900
+  requested_loan_amount:
+    min: 10_000
+    max: 50_000_000
+  existing_monthly_emi:
+    min: 0
+  preferred_tenure_months:
+    min: 6
+    max: 84
+  total_work_experience:
+    min: 0
+    max: 50
+  current_employment_duration:
+    min: 0
+    max: 50
+
+# ── Eligibility Policy ───────────────────────────────────────
+eligibility:
+  min_age: 21
+  max_age: 65
+  min_monthly_income: 20_000          # ₹20,000
+  min_credit_score: 600
+  min_employment_duration_months: 6   # 6 months in current job
+  max_existing_emi_ratio: 0.65        # existing EMIs must not exceed 65% of income
+  max_active_loans: 5
+
+# ── Affordability Policy ─────────────────────────────────────
+affordability:
+  max_foir: 0.50          # Fixed Obligation to Income Ratio — 50%
+  min_foir: 0.0
+  # maximum_affordable_emi = (monthly_income * max_foir) - existing_monthly_emi
+
+# ── Pricing / Interest Rate ───────────────────────────────────
+pricing:
+  risk_band_thresholds:
+    low: 0.05             # PD < 5%  → LOW
+    medium: 0.15          # PD < 15% → MEDIUM
+    high: 1.0             # PD >= 15% → HIGH
+  rate_adjustments:
+    LOW: 0.0              # No markup
+    MEDIUM: 2.0           # +2% above base rate
+    HIGH: 4.0             # +4% above base rate
+  # Final rate = product.base_interest_rate + risk_band_adjustment
+
+# ── Recommendation Scoring Weights ───────────────────────────
+recommendation:
+  scoring_weights:
+    need_match: 0.30          # How well offer amount matches requested amount
+    affordability: 0.25       # EMI headroom relative to affordable limit
+    risk_fit: 0.20            # Inverse of probability of default
+    cost_score: 0.15          # Lower total interest cost → higher score
+    tenure_preference: 0.10   # How close tenure is to preferred tenure
+  top_n: 3
+
+# ── Feature Engineering ───────────────────────────────────────
+features:
+  annual_income_multiplier: 12
+  income_segments:
+    low:    [0, 30_000]
+    medium: [30_000, 80_000]
+    high:   [80_000, 200_000]
+    premium: [200_000, 999_999_999]
+
+# ── Risk Model ────────────────────────────────────────────────
+risk_model:
+  type: "xgboost"               # logistic_regression | xgboost | lightgbm
+  calibration: true             # Apply Platt scaling / isotonic regression
+  probability_threshold: 0.50   # For binary classification (not used in recommendation flow)
+  categorical_features:
+    - employment_type
+    - income_type
+    - loan_purpose
+  numerical_features:
+    - age
+    - monthly_income
+    - existing_monthly_emi
+    - existing_emi_ratio
+    - loan_to_annual_income
+    - credit_score
+    - number_of_active_loans
+    - credit_card_outstanding
+    - total_work_experience
+    - current_employment_duration
+
+# ── Explainability ────────────────────────────────────────────
+explainability:
+  use_shap: true
+  shap_max_display_features: 5
+  positive_reasons_limit: 5
+  comparative_reasons_limit: 3
+
+# ── Logging ───────────────────────────────────────────────────
+logging:
+  level: "INFO"             # DEBUG | INFO | WARNING | ERROR
+  format: "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+  file: "logs/app.log"
