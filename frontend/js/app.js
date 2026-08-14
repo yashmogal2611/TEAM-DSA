@@ -17,7 +17,7 @@ class ApplicationController {
       this.navigate('/login');
     });
 
-    this.updateStatusPill();
+    this.initTheme();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
 
@@ -25,47 +25,61 @@ class ApplicationController {
     this.setupEmiCalculator();
 
     document.addEventListener('click', (e) => {
-      const wrapper = document.getElementById('navDropdownWrapper');
-      if (wrapper && !wrapper.contains(e.target)) {
-        wrapper.classList.remove('open');
+      if (!e.target.closest('.nav-item-dropdown') && !e.target.closest('.user-profile-menu')) {
+        this.closeAllNavMenus();
       }
     });
   }
 
-  toggleNavDropdown(event) {
-    if (event) event.stopPropagation();
-    const wrapper = document.getElementById('navDropdownWrapper');
-    if (wrapper) wrapper.classList.toggle('open');
+  /* ---------------- THEME TOGGLER (LIGHT & DARK MODE) ---------------- */
+
+  initTheme() {
+    const savedTheme = localStorage.getItem('apex_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    this.updateThemeButton(savedTheme);
   }
 
-  closeNavDropdown() {
-    const wrapper = document.getElementById('navDropdownWrapper');
-    if (wrapper) wrapper.classList.remove('open');
+  toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('apex_theme', newTheme);
+    this.updateThemeButton(newTheme);
+    Components.showToast('Theme Updated', `Switched to ${newTheme === 'dark' ? 'Dark Mode 🌙' : 'Light Mode ☀️'}`, 'info');
   }
 
-  updateStatusPill() {
-    const isMock = CONFIG.getMockMode();
-    const statusPill = document.getElementById('apiStatusPill');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-
-    if (!statusPill) return;
-
-    if (isMock) {
-      statusDot.className = 'status-dot mock';
-      statusText.textContent = 'Mock Mode (Offline Test)';
-    } else {
-      api.checkHealth()
-        .then(res => {
-          statusDot.className = 'status-dot online';
-          statusText.textContent = `Live Backend v${res.version || '2.0.0'}`;
-        })
-        .catch(() => {
-          statusDot.className = 'status-dot mock';
-          statusText.textContent = 'Mock Mode (Auto-Fallback)';
-          CONFIG.setMockMode(true);
-        });
+  updateThemeButton(theme) {
+    const iconElem = document.querySelector('#themeToggleBtn .theme-icon');
+    const labelElem = document.getElementById('themeLabel');
+    if (iconElem && labelElem) {
+      if (theme === 'dark') {
+        iconElem.textContent = '☀️';
+        labelElem.textContent = 'Light';
+      } else {
+        iconElem.textContent = '🌙';
+        labelElem.textContent = 'Dark';
+      }
     }
+  }
+
+  /* ---------------- NAVBAR DROPDOWNS ---------------- */
+
+  toggleNavMenu(menuId, event) {
+    if (event) event.stopPropagation();
+    const target = document.getElementById(menuId);
+    if (!target) return;
+    
+    const wasOpen = target.classList.contains('open');
+    this.closeAllNavMenus();
+    if (!wasOpen) {
+      target.classList.add('open');
+    }
+  }
+
+  closeAllNavMenus() {
+    document.querySelectorAll('.nav-item-dropdown.open, .user-profile-menu.open').forEach(el => {
+      el.classList.remove('open');
+    });
   }
 
   toggleMockMode() {
@@ -77,11 +91,19 @@ class ApplicationController {
   }
 
   navigate(path) {
-    window.location.hash = path;
+    if (window.location.hash === path) {
+      this.handleRoute();
+    } else {
+      window.location.hash = path;
+    }
   }
 
   async handleRoute() {
-    const hash = window.location.hash || '#/';
+    let hash = window.location.hash || '#/schemes';
+    if (hash === '#/' || hash === '' || hash === '#') {
+      hash = store.token ? (store.user?.is_admin ? '#/admin-dashboard' : '#/user-dashboard') : '#/schemes';
+    }
+
     const token = store.token;
     const user = store.user;
 
@@ -95,7 +117,7 @@ class ApplicationController {
       return;
     }
 
-    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/')) {
+    if (token && (hash === '#/login' || hash === '#/register')) {
       if (user?.is_admin) {
         this.navigate('#/admin-dashboard');
       } else {
@@ -106,11 +128,11 @@ class ApplicationController {
 
     switch (hash) {
       case '#/login':
-        document.getElementById('viewLogin').classList.add('active');
+        document.getElementById('viewLogin')?.classList.add('active');
         break;
 
       case '#/register':
-        document.getElementById('viewRegister').classList.add('active');
+        document.getElementById('viewRegister')?.classList.add('active');
         break;
 
       case '#/schemes':
@@ -155,25 +177,32 @@ class ApplicationController {
   renderHeader() {
     const user = store.user;
     const navUser = document.getElementById('navUserControls');
+    const navLoggedOut = document.getElementById('navLoggedOutActions');
     const dropdownAuth = document.getElementById('dropdownAuthItems');
 
     if (user && store.token) {
-      navUser.style.display = 'flex';
-      document.getElementById('headerAvatar').textContent = user.full_name.charAt(0).toUpperCase();
-      document.getElementById('headerUserName').textContent = user.full_name;
-      document.getElementById('headerUserEmail').textContent = user.email;
+      if (navUser) navUser.style.display = 'flex';
+      if (navLoggedOut) navLoggedOut.style.display = 'none';
+
+      const avatarElem = document.getElementById('headerAvatar');
+      const nameElem = document.getElementById('headerUserName');
+      const emailElem = document.getElementById('headerUserEmail');
+
+      if (avatarElem) avatarElem.textContent = user.full_name.charAt(0).toUpperCase();
+      if (nameElem) nameElem.textContent = user.full_name;
+      if (emailElem) emailElem.textContent = user.email;
 
       if (user.is_admin) {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
-            <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeAllNavMenus()">
               <span class="dropdown-icon">🛡️</span>
               <div>
                 <div class="item-title">Admin Control Board</div>
                 <div class="item-sub">Underwrite & sanction loans</div>
               </div>
             </a>
-            <a href="#/admin-users" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <a href="#/admin-users" class="dropdown-item" onclick="app.closeAllNavMenus()">
               <span class="dropdown-icon">👥</span>
               <div>
                 <div class="item-title">User Directory</div>
@@ -185,38 +214,40 @@ class ApplicationController {
       } else {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
-            <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeAllNavMenus()">
               <span class="dropdown-icon">📋</span>
               <div>
-                <div class="item-title">My Applications</div>
+                <div class="item-title">My Loan Applications</div>
                 <div class="item-sub">Track active submissions</div>
               </div>
             </a>
-            <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeNavDropdown(); app.showModal('applyLoanModal');">
+            <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeAllNavMenus(); app.showModal('applyLoanModal');">
               <span class="dropdown-icon">➕</span>
               <div>
                 <div class="item-title">+ New Application</div>
-                <div class="item-sub">Apply for home, personal, gold loan</div>
+                <div class="item-sub">Personal, Home, Auto, Education, Gold</div>
               </div>
             </a>
           `;
         }
       }
     } else {
-      navUser.style.display = 'none';
+      if (navUser) navUser.style.display = 'none';
+      if (navLoggedOut) navLoggedOut.style.display = 'flex';
+
       if (dropdownAuth) {
         dropdownAuth.innerHTML = `
-          <a href="#/login" class="dropdown-item" onclick="app.closeNavDropdown()">
+          <a href="#/login" class="dropdown-item" onclick="app.closeAllNavMenus()">
             <span class="dropdown-icon">🔐</span>
             <div>
               <div class="item-title">Sign In</div>
               <div class="item-sub">Log in to your account</div>
             </div>
           </a>
-          <a href="#/register" class="dropdown-item" onclick="app.closeNavDropdown()">
+          <a href="#/register" class="dropdown-item" onclick="app.closeAllNavMenus()">
             <span class="dropdown-icon">✍️</span>
             <div>
-              <div class="item-title">Create Account</div>
+              <div class="item-title">Open Account</div>
               <div class="item-sub">Register as new borrower</div>
             </div>
           </a>
@@ -408,8 +439,141 @@ class ApplicationController {
     }
   }
 
+  handleDocFileSelected(input, slotType) {
+    const statusElem = document.getElementById(`statusDoc${slotType.charAt(0).toUpperCase() + slotType.slice(1)}`);
+    if (!statusElem) return;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      statusElem.innerHTML = `<span style="color:var(--emerald); font-weight:700;">✅ ${file.name}</span> (${sizeMb} MB ready)`;
+    } else {
+      statusElem.innerHTML = `No file chosen (PDF, JPG, PNG up to 10MB)`;
+    }
+  }
+
+  handleDocCategoryChange(category) {
+    const select = document.getElementById('docTypeSelect');
+    if (!select) return;
+
+    const optionsMap = {
+      kyc: [
+        { val: 'pan_card', label: 'PAN Card' },
+        { val: 'aadhaar', label: 'Aadhaar Card' },
+        { val: 'passport', label: 'Passport / Voter ID' }
+      ],
+      income: [
+        { val: 'salary_slip', label: 'Salary Slip (Last 3 Months)' },
+        { val: 'form_16', label: 'Form 16 / Tax Certificate' },
+        { val: 'income_tax_return', label: 'ITR with Financial Computation' }
+      ],
+      bank: [
+        { val: 'bank_statement', label: 'Bank Statement (6-12 Months)' },
+        { val: 'cancelled_cheque', label: 'Cancelled Cheque' }
+      ],
+      loan_specific: [
+        { val: 'admission_letter', label: 'Admission Offer Letter' },
+        { val: 'fee_schedule', label: 'Fee Schedule / Structure' },
+        { val: 'vehicle_invoice', label: 'Vehicle Proforma Invoice' },
+        { val: 'gst_certificate', label: 'GST & MSME Registration' },
+        { val: 'gold_declaration', label: 'Gold Ornaments List & Declaration' },
+        { val: 'sale_deed', label: 'Sale Deed / Agreement' }
+      ],
+      collateral: [
+        { val: 'property_title_deed', label: 'Property Title Deed' },
+        { val: 'valuation_report', label: 'Valuation & Search Report' },
+        { val: 'gold_deposit_receipt', label: 'Gold Purity Assay & Deposit Receipt' },
+        { val: 'hypothecation_deed', label: 'Vehicle Hypothecation Deed' }
+      ]
+    };
+
+    const list = optionsMap[category] || [{ val: 'other', label: 'Other Document' }];
+    select.innerHTML = list.map(opt => `<option value="${opt.val}">${opt.label}</option>`).join('');
+  }
+
   handleSchemeCategoryChange(loanType) {
     const fieldsContainer = document.getElementById('dynamicCategoryFields');
+    const checklistItems = document.getElementById('applyDocChecklistItems');
+    const checklistTitle = document.getElementById('applyDocChecklistTitle');
+    const lblSpecific = document.getElementById('lblDocSpecific');
+    const docBadge = document.getElementById('applyDocBadge');
+
+    // Document checklists by scheme
+    const schemeChecklists = {
+      personal_loan: {
+        title: '📋 Personal Loan Document Checklist:',
+        badge: 'Instant KYC + Income',
+        items: [
+          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card / Voter ID / Passport',
+          '✓ <strong>Income Proof:</strong> Last 3 months Salary Slips / Form 16 / ITR',
+          '✓ <strong>Bank Statement:</strong> 6 Months Bank Statement with salary/income credits',
+          '✓ <strong>Purpose Document:</strong> Personal finance / Debt consolidation self-declaration'
+        ],
+        specificLabel: '📑 4. Purpose Declaration / Employment ID'
+      },
+      home_loan: {
+        title: '📋 Home Loan Document Checklist:',
+        badge: 'Property + KYC + 12M Bank',
+        items: [
+          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card, Passport-size photographs',
+          '✓ <strong>Income Proof:</strong> Salary Slips (3 mos), Form 16, ITR for 2 years',
+          '✓ <strong>Bank Statement:</strong> 12 Months Bank Account Statement',
+          '✓ <strong>Property Documents:</strong> Sale Deed, Approved Building Plan, Builder NOC',
+          '✓ <strong>Collateral:</strong> Property Valuation & Title Search Report'
+        ],
+        specificLabel: '🏠 4. Property Sale Deed / Approved Building Plan'
+      },
+      vehicle_loan: {
+        title: '📋 Vehicle / Auto Loan Document Checklist:',
+        badge: 'Dealer Invoice + KYC + 6M Bank',
+        items: [
+          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card, Valid Driving License',
+          '✓ <strong>Income Proof:</strong> Latest 3 months Salary Slips / ITR Returns',
+          '✓ <strong>Bank Statement:</strong> 6 Months Bank Statement',
+          '✓ <strong>Vehicle Quotation:</strong> Proforma Invoice / Booking receipt from authorized dealer'
+        ],
+        specificLabel: '🚗 4. Vehicle Proforma Invoice / Booking Receipt'
+      },
+      education_loan: {
+        title: '📋 Education Loan Document Checklist:',
+        badge: 'Admission Letter + Academic Records',
+        items: [
+          '✓ <strong>KYC:</strong> Student & Co-Applicant PAN & Aadhaar Cards',
+          '✓ <strong>Income Proof:</strong> Co-Applicant Salary Slips / Form 16 / 2 Years ITR',
+          '✓ <strong>Bank Statement:</strong> 6 Months Co-Applicant Bank Statement',
+          '✓ <strong>Academic & Admission:</strong> Confirmed Admission Letter, Fee Schedule & Marksheets'
+        ],
+        specificLabel: '🎓 4. Admission Offer Letter & Fee Schedule'
+      },
+      business_loan: {
+        title: '📋 Business / MSME Loan Document Checklist:',
+        badge: 'GST + 12M Current A/c + Audited P&L',
+        items: [
+          '✓ <strong>KYC:</strong> Business PAN, Promoter/Director PAN & Aadhaar Cards',
+          '✓ <strong>Income Proof:</strong> Audited Balance Sheet & P&L (2 yrs), Business ITR',
+          '✓ <strong>Bank Statement:</strong> 12 Months Current Account Statement',
+          '✓ <strong>Business Proof:</strong> GST Registration, Udyam MSME Certificate, Partnership/MOA'
+        ],
+        specificLabel: '🏢 4. GST Registration / MSME Certificate'
+      },
+      gold_loan: {
+        title: '📋 Gold Loan Document Checklist:',
+        badge: 'Minimal KYC + Assay Receipt',
+        items: [
+          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card / Passport / Voter ID',
+          '✓ <strong>Income Proof:</strong> Optional / Bank Statement for high ticket loans',
+          '✓ <strong>Bank Statement:</strong> Bank Passbook / Cancelled Cheque for disbursement',
+          '✓ <strong>Collateral:</strong> Gold Jewellery Ornaments List & Appraisal Certificate'
+        ],
+        specificLabel: '🥇 4. Gold Ornaments List & Purchase Invoice/Assay'
+      }
+    };
+
+    const docConfig = schemeChecklists[loanType] || schemeChecklists.personal_loan;
+    if (checklistTitle) checklistTitle.textContent = docConfig.title;
+    if (checklistItems) checklistItems.innerHTML = docConfig.items.map(it => `<li>${it}</li>`).join('');
+    if (lblSpecific) lblSpecific.innerHTML = `${docConfig.specificLabel}`;
+    if (docBadge) docBadge.textContent = docConfig.badge;
+
     if (!fieldsContainer) return;
 
     switch (loanType) {
@@ -518,7 +682,7 @@ class ApplicationController {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.textContent = 'Submitting Application...';
+    btn.textContent = 'Submitting Application & Uploading Documents...';
 
     const loanType = document.getElementById('applyProductType').value;
 
@@ -548,8 +712,85 @@ class ApplicationController {
     }
 
     try {
-      await api.applyLoan(loanData);
-      Components.showToast('Application Submitted', 'Your loan application is now Under Review (⏳ pending).', 'success');
+      // 1. Submit Loan Application
+      const newLoan = await api.applyLoan(loanData);
+      const loanId = newLoan.id;
+
+      // 2. Upload any attached supporting documents
+      const attachedDocs = [];
+      const kycFile = document.getElementById('applyDocKyc')?.files[0];
+      const incomeFile = document.getElementById('applyDocIncome')?.files[0];
+      const bankFile = document.getElementById('applyDocBank')?.files[0];
+      const specificFile = document.getElementById('applyDocSpecific')?.files[0];
+
+      if (kycFile) {
+        attachedDocs.push({
+          file: kycFile,
+          category: 'kyc',
+          type: 'pan_aadhaar',
+          note: 'Primary applicant KYC document'
+        });
+      }
+      if (incomeFile) {
+        attachedDocs.push({
+          file: incomeFile,
+          category: 'income',
+          type: 'salary_or_itr',
+          note: 'Proof of income / salary / ITR'
+        });
+      }
+      if (bankFile) {
+        attachedDocs.push({
+          file: bankFile,
+          category: 'bank',
+          type: 'bank_statement',
+          note: 'Operational bank account statement'
+        });
+      }
+      if (specificFile) {
+        attachedDocs.push({
+          file: specificFile,
+          category: 'loan_specific',
+          type: `${loanType}_document`,
+          note: `${loanType.replace('_', ' ')} scheme-specific requirement`
+        });
+      }
+
+      let uploadedCount = 0;
+      for (const item of attachedDocs) {
+        try {
+          const fd = new FormData();
+          fd.append('doc_category', item.category);
+          fd.append('doc_type', item.type);
+          fd.append('verification_note', item.note);
+          fd.append('file', item.file);
+          await api.uploadDocument(loanId, fd);
+          uploadedCount++;
+        } catch (uploadErr) {
+          console.warn(`Failed to upload ${item.category} document:`, uploadErr);
+        }
+      }
+
+      // Reset file status labels
+      ['Kyc', 'Income', 'Bank', 'Specific'].forEach(slot => {
+        const statusElem = document.getElementById(`statusDoc${slot}`);
+        if (statusElem) statusElem.textContent = 'No file chosen (PDF, JPG, PNG up to 10MB)';
+      });
+
+      if (uploadedCount > 0) {
+        Components.showToast(
+          'Application & Documents Submitted',
+          `Application #${loanId} submitted with ${uploadedCount} supporting document(s). Status: Under Review ⏳.`,
+          'success'
+        );
+      } else {
+        Components.showToast(
+          'Application Submitted',
+          `Application #${loanId} submitted! Please upload required documents from your dashboard for underwriting.`,
+          'info'
+        );
+      }
+
       this.hideModal('applyLoanModal');
       event.target.reset();
       this.navigate('#/user-dashboard');
@@ -558,7 +799,7 @@ class ApplicationController {
       Components.showToast('Submission Error', err.message, 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Submit Application';
+      btn.textContent = 'Submit Application & Documents';
     }
   }
 
@@ -596,15 +837,24 @@ class ApplicationController {
     event.preventDefault();
     if (!this.currentDocLoanId) return;
 
+    const fileInput = document.getElementById('docFileInput');
+    if (!fileInput.files || !fileInput.files[0]) {
+      Components.showToast('File Required', 'Please select a document file to upload.', 'error');
+      return;
+    }
+
     const formData = new FormData();
     formData.append('doc_category', document.getElementById('docCategorySelect').value);
-    formData.append('file', document.getElementById('docFileInput').files[0]);
+    formData.append('doc_type', document.getElementById('docTypeSelect')?.value || 'document');
+    formData.append('verification_note', 'Uploaded via portal');
+    formData.append('file', fileInput.files[0]);
 
     try {
       await api.uploadDocument(this.currentDocLoanId, formData);
       Components.showToast('Document Uploaded', 'Document uploaded successfully for review.', 'success');
       event.target.reset();
       await this.loadDocumentsList();
+      if (this.loadUserDashboard) this.loadUserDashboard();
     } catch (err) {
       Components.showToast('Upload Error', err.message, 'error');
     }

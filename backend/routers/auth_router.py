@@ -5,9 +5,14 @@ Endpoints: /auth/register, /auth/login, /auth/me
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from database import User, get_db
-from schemas import UserRegister, UserLogin, Token, UserOut
-from auth import hash_password, verify_password, create_access_token, get_current_user
+try:
+    from ..database import User, get_db
+    from ..schemas import UserRegister, UserLogin, Token, UserOut
+    from ..auth import hash_password, verify_password, create_access_token, get_current_user
+except ImportError:
+    from database import User, get_db
+    from schemas import UserRegister, UserLogin, Token, UserOut
+    from auth import hash_password, verify_password, create_access_token, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

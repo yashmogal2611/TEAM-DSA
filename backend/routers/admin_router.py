@@ -13,16 +13,28 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from database import LoanApplication, LoanDocument, User, get_db
-from schemas import (
-    LoanApplicationOut,
-    AdminLoanUpdate,
-    AdminStats,
-    UserOut,
-    DocumentOut,
-    DocumentVerifyPayload,
-)
-from auth import get_current_admin
+try:
+    from ..database import LoanApplication, LoanDocument, User, get_db
+    from ..schemas import (
+        LoanApplicationOut,
+        AdminLoanUpdate,
+        AdminStats,
+        UserOut,
+        DocumentOut,
+        DocumentVerifyPayload,
+    )
+    from ..auth import get_current_admin
+except ImportError:
+    from database import LoanApplication, LoanDocument, User, get_db
+    from schemas import (
+        LoanApplicationOut,
+        AdminLoanUpdate,
+        AdminStats,
+        UserOut,
+        DocumentOut,
+        DocumentVerifyPayload,
+    )
+    from auth import get_current_admin
 
 router = APIRouter(prefix="/admin", tags=["Admin – Underwriting & Management"])
 

@@ -12,7 +12,10 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from database import User, get_db
+try:
+    from .database import User, get_db
+except ImportError:
+    from database import User, get_db
 
 # Silence passlib's cosmetic bcrypt-version warning if passlib is loaded elsewhere
 warnings.filterwarnings("ignore", ".*error reading bcrypt version.*")

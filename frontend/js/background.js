@@ -1,6 +1,6 @@
 /**
- * Dynamic Moving Background Attractions Engine — Lively & Organic Edition
- * ApexLoans - Warm Cashmere & Gold Fluid Metaballs, Starburst Dust & Mouse Aura
+ * Dynamic Moving Background Engine — Cool Tech & Deep Navy Edition
+ * ApexLoans - Deep Navy (#071A2B), Navy Blue (#0B3154), Electric Blue (#1677FF) & Gold (#D4AF37)
  */
 
 (function () {
@@ -10,24 +10,19 @@
   let width, height;
   let orbs = [];
   let particles = [];
-  let sparkles = [];
-  let mouse = { x: null, y: null, targetX: null, targetY: null, radius: 220 };
-  let time = 0;
+  let mouse = { x: null, y: null, radius: 200 };
 
-  const ORB_COUNT = 8;
-  const PARTICLE_COUNT = 50;
-  const SPARKLE_COUNT = 30;
+  const ORB_COUNT = 6;
+  const PARTICLE_COUNT = 45;
 
-  // Soft Subtle Pastel Palette for Fluid Orbs
+  // Cool Deep Navy, Electric Blue & Subtle Gold Aesthetic
   const ORB_COLORS = [
-    { r: 242, g: 232, b: 218, a: 0.35 }, // Soft Cashmere Sand
-    { r: 232, g: 203, b: 175, a: 0.25 }, // Champagne Gold
-    { r: 248, g: 240, b: 230, a: 0.40 }, // Cream Alabaster
-    { r: 228, g: 189, b: 159, a: 0.20 }, // Brushed Amber
-    { r: 238, g: 220, b: 200, a: 0.30 }, // Radiant Oatmeal
-    { r: 250, g: 244, b: 236, a: 0.45 }, // Luminous Pearl
-    { r: 238, g: 205, b: 172, a: 0.22 }, // Warm Honey Glow
-    { r: 244, g: 230, b: 216, a: 0.32 }  // Cashmere Sandstone
+    { r: 22, g: 119, b: 255, a: 0.12 }, // Electric Blue
+    { r: 11, g: 49, b: 84, a: 0.15 },   // Navy Blue
+    { r: 7, g: 26, b: 43, a: 0.08 },    // Deep Navy
+    { r: 147, g: 197, b: 253, a: 0.10 }, // Soft Sky Blue
+    { r: 212, g: 175, b: 55, a: 0.06 },  // Subtle Gold Glow
+    { r: 16, g: 185, b: 129, a: 0.05 }   // Emerald Fintech Glow
   ];
 
   class FluidOrb {
@@ -39,40 +34,35 @@
     init() {
       this.x = Math.random() * width;
       this.y = Math.random() * height;
-      this.radius = Math.random() * 190 + 130;
+      this.radius = Math.random() * 220 + 140;
       this.color = ORB_COLORS[this.index % ORB_COLORS.length];
-      this.vx = (Math.random() - 0.5) * 0.5;
-      this.vy = (Math.random() - 0.5) * 0.5;
+      this.vx = (Math.random() - 0.5) * 0.4;
+      this.vy = (Math.random() - 0.5) * 0.4;
       this.angle = Math.random() * Math.PI * 2;
-      this.angleSpeed = 0.008 + Math.random() * 0.012;
+      this.angleSpeed = 0.006 + Math.random() * 0.008;
       this.originalRadius = this.radius;
     }
 
     update() {
       this.angle += this.angleSpeed;
-      
-      // Morphing sine wave orbital float
-      this.x += this.vx + Math.sin(this.angle * 0.8) * 0.7;
-      this.y += this.vy + Math.cos(this.angle * 0.6) * 0.7;
+      this.x += this.vx + Math.sin(this.angle * 0.7) * 0.5;
+      this.y += this.vy + Math.cos(this.angle * 0.5) * 0.5;
 
-      // Soft boundary bouncing
-      if (this.x - this.radius < -120) this.vx = Math.abs(this.vx);
-      if (this.x + this.radius > width + 120) this.vx = -Math.abs(this.vx);
-      if (this.y - this.radius < -120) this.vy = Math.abs(this.vy);
-      if (this.y + this.radius > height + 120) this.vy = -Math.abs(this.vy);
+      if (this.x - this.radius < -100) this.vx = Math.abs(this.vx);
+      if (this.x + this.radius > width + 100) this.vx = -Math.abs(this.vx);
+      if (this.y - this.radius < -100) this.vy = Math.abs(this.vy);
+      if (this.y + this.radius > height + 100) this.vy = -Math.abs(this.vy);
 
-      // Breathing pulsing scale
-      this.radius = this.originalRadius + Math.sin(this.angle * 1.2) * 30;
+      this.radius = this.originalRadius + Math.sin(this.angle * 1.1) * 25;
 
-      // Interactive mouse attraction / deflection
       if (mouse.x !== null && mouse.y !== null) {
         const dx = mouse.x - this.x;
         const dy = mouse.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < mouse.radius + this.radius) {
           const force = (mouse.radius + this.radius - dist) / (mouse.radius + this.radius);
-          this.x -= (dx / dist) * force * 1.8;
-          this.y -= (dy / dist) * force * 1.8;
+          this.x -= (dx / dist) * force * 1.5;
+          this.y -= (dy / dist) * force * 1.5;
         }
       }
     }
@@ -85,7 +75,7 @@
       );
       const c = this.color;
       gradient.addColorStop(0, `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a})`);
-      gradient.addColorStop(0.5, `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a * 0.45})`);
+      gradient.addColorStop(0.5, `rgba(${c.r}, ${c.g}, ${c.b}, ${c.a * 0.4})`);
       gradient.addColorStop(1, `rgba(${c.r}, ${c.g}, ${c.b}, 0)`);
 
       ctx.fillStyle = gradient;
@@ -96,113 +86,80 @@
     }
   }
 
-  class Sparkle {
+  class TechParticle {
     constructor() {
-      this.reset();
+      this.init();
     }
 
-    reset() {
+    init() {
       this.x = Math.random() * width;
       this.y = Math.random() * height;
-      this.size = Math.random() * 2 + 0.8;
-      this.alpha = Math.random() * 0.8 + 0.2;
-      this.twinkleSpeed = Math.random() * 0.03 + 0.01;
-      this.angle = Math.random() * Math.PI * 2;
+      this.size = Math.random() * 1.8 + 0.8;
+      this.vx = (Math.random() - 0.5) * 0.35;
+      this.vy = (Math.random() - 0.5) * 0.35;
+      this.alpha = Math.random() * 0.25 + 0.1;
     }
 
     update() {
-      this.angle += this.twinkleSpeed;
-      this.alpha = (Math.sin(this.angle) + 1) / 2 * 0.8 + 0.2;
+      this.x += this.vx;
+      this.y += this.vy;
+
+      if (this.x < 0 || this.x > width) this.vx *= -1;
+      if (this.y < 0 || this.y > height) this.vy *= -1;
     }
 
     draw() {
-      ctx.save();
-      ctx.fillStyle = `rgba(212, 163, 115, ${this.alpha})`;
-      ctx.shadowColor = 'rgba(212, 163, 115, 0.6)';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-  }
-
-  class ConnectedParticle {
-    constructor() {
-      this.reset();
-    }
-
-    reset() {
-      this.x = Math.random() * width;
-      this.y = Math.random() * height;
-      this.size = Math.random() * 2.2 + 1;
-      this.speedX = (Math.random() - 0.5) * 0.6;
-      this.speedY = (Math.random() - 0.5) * 0.6;
-      this.alpha = Math.random() * 0.5 + 0.3;
-    }
-
-    update() {
-      this.x += this.speedX;
-      this.y += this.speedY;
-
-      if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
-        this.reset();
-      }
-    }
-
-    draw() {
-      ctx.fillStyle = `rgba(198, 160, 130, ${this.alpha})`;
+      ctx.fillStyle = `rgba(11, 49, 84, ${this.alpha})`;
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  function drawMouseAura() {
-    if (mouse.x === null || mouse.y === null) return;
-    ctx.save();
-    const auraGradient = ctx.createRadialGradient(
-      mouse.x, mouse.y, 0,
-      mouse.x, mouse.y, 160
-    );
-    auraGradient.addColorStop(0, 'rgba(212, 163, 115, 0.25)');
-    auraGradient.addColorStop(0.5, 'rgba(232, 218, 198, 0.12)');
-    auraGradient.addColorStop(1, 'rgba(245, 238, 228, 0)');
-
-    ctx.fillStyle = auraGradient;
-    ctx.beginPath();
-    ctx.arc(mouse.x, mouse.y, 160, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
   }
 
-  function drawFlowingRibbon() {
-    time += 0.006;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(212, 163, 115, 0.08)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    
-    for (let x = 0; x < width; x += 30) {
-      const y = height * 0.5 + Math.sin(x * 0.003 + time) * 60 + Math.cos(x * 0.002 + time * 1.2) * 30;
-      if (x === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+  function init() {
+    canvas = document.getElementById('bgCanvas');
+    if (!canvas) return;
+    ctx = canvas.getContext('2d');
+    resize();
+
+    orbs = [];
+    for (let i = 0; i < ORB_COUNT; i++) {
+      orbs.push(new FluidOrb(i));
     }
-    ctx.stroke();
-    ctx.restore();
+
+    particles = [];
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      particles.push(new TechParticle());
+    }
+
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+    window.addEventListener('mouseleave', () => {
+      mouse.x = null;
+      mouse.y = null;
+    });
+
+    animate();
   }
 
-  function connectParticles() {
+  function drawConnections() {
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
         const dx = particles[i].x - particles[j].x;
         const dy = particles[i].y - particles[j].y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (dist < 125) {
-          const alpha = (1 - dist / 125) * 0.18;
-          ctx.strokeStyle = `rgba(210, 185, 160, ${alpha})`;
-          ctx.lineWidth = 0.9;
+        if (dist < 110) {
+          ctx.strokeStyle = `rgba(22, 119, 255, ${0.08 * (1 - dist / 110)})`;
+          ctx.lineWidth = 0.6;
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(particles[j].x, particles[j].y);
@@ -212,21 +169,8 @@
     }
   }
 
-  function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  }
-
   function animate() {
     ctx.clearRect(0, 0, width, height);
-
-    if (mouse.targetX !== null) {
-      mouse.x += (mouse.targetX - mouse.x) * 0.08;
-      mouse.y += (mouse.targetY - mouse.y) * 0.08;
-    }
-
-    drawMouseAura();
-    drawFlowingRibbon();
 
     orbs.forEach(orb => {
       orb.update();
@@ -237,49 +181,10 @@
       p.update();
       p.draw();
     });
-    connectParticles();
 
-    sparkles.forEach(s => {
-      s.update();
-      s.draw();
-    });
+    drawConnections();
 
     requestAnimationFrame(animate);
-  }
-
-  function init() {
-    canvas = document.getElementById('bgCanvas');
-    if (!canvas) return;
-    ctx = canvas.getContext('2d');
-
-    resize();
-    window.addEventListener('resize', resize);
-
-    window.addEventListener('mousemove', (e) => {
-      mouse.targetX = e.clientX;
-      mouse.targetY = e.clientY;
-    });
-
-    window.addEventListener('mouseleave', () => {
-      mouse.targetX = null;
-      mouse.targetY = null;
-      mouse.x = null;
-      mouse.y = null;
-    });
-
-    for (let i = 0; i < ORB_COUNT; i++) {
-      orbs.push(new FluidOrb(i));
-    }
-
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      particles.push(new ConnectedParticle());
-    }
-
-    for (let i = 0; i < SPARKLE_COUNT; i++) {
-      sparkles.push(new Sparkle());
-    }
-
-    animate();
   }
 
   if (document.readyState === 'loading') {

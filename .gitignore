@@ -78,3 +78,6 @@ mlruns/
 *.bak
 *.tmp
 requirements_full.txt
+backend/uploads/*
+!backend/uploads/.gitkeep
+

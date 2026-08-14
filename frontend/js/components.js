@@ -88,13 +88,28 @@ const Components = {
   renderSchemesGrid(schemes) {
     if (!schemes || schemes.length === 0) return `<div class="empty-state">No loan schemes found.</div>`;
 
+    const iconMap = {
+      personal_loan: '💳',
+      home_loan: '🏡',
+      vehicle_loan: '🚗',
+      education_loan: '🎓',
+      business_loan: '🏢',
+      gold_loan: '🥇'
+    };
+
     return `
       <div class="schemes-grid">
         ${schemes.map(s => `
           <div class="scheme-card">
             <div class="scheme-header">
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <span style="font-size:1.5rem;">${iconMap[s.loan_type] || '📜'}</span>
+                <div>
+                  <h3 style="font-size:1.2rem; font-weight:800; color:var(--navy-deep);">${s.display_name}</h3>
+                  <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">RBI Underwriting Tier-1</div>
+                </div>
+              </div>
               <div class="scheme-badge">${s.interest_rate_min}% - ${s.interest_rate_max}% p.a.</div>
-              <h3>${s.display_name}</h3>
             </div>
             <p class="scheme-desc">${s.description}</p>
             
@@ -110,18 +125,19 @@ const Components = {
             </div>
 
             <div class="scheme-checklist-box">
-              <div class="chk-header">📋 Required Documents Checklist</div>
+              <div class="chk-header">📋 Mandatory Document Checklist</div>
               <ul class="chk-list">
-                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li>✓ ${d}</li>`).join('')}
-                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li>✓ ${d}</li>`).join('')}
+                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li>✓ <strong>KYC:</strong> ${d}</li>`).join('')}
+                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li>✓ <strong>Income:</strong> ${d}</li>`).join('')}
+                ${(s.document_checklist?.loan_specific_documents || []).slice(0, 1).map(d => `<li>✓ <strong>Scheme:</strong> ${d}</li>`).join('')}
               </ul>
             </div>
 
             <div class="scheme-footer">
-              <button class="btn btn-secondary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
+              <button class="btn btn-primary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
                 Apply Under Scheme →
               </button>
-              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs ↗</a>
+              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Specs ↗</a>
             </div>
           </div>
         `).join('')}

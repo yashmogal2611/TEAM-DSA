@@ -268,7 +268,11 @@ class ApiClient {
     // 9. User: My Loans GET /loans/my
     if (endpoint === '/loans/my' && method === 'GET') {
       if (!currentUser) throw new Error('Not logged in (401)');
-      return MOCK_DB.loans.filter(l => l.user_id === currentUser.id);
+      const userLoans = MOCK_DB.loans.filter(l => l.user_id === currentUser.id);
+      return userLoans.map(l => ({
+        ...l,
+        documents: MOCK_DB.documents.filter(d => d.loan_id === l.id)
+      }));
     }
 
     // 10. Single Loan Details GET /loans/{id}
@@ -276,21 +280,29 @@ class ApiClient {
       const loanId = parseInt(endpoint.split('/')[2]);
       const loan = MOCK_DB.loans.find(l => l.id === loanId);
       if (!loan) throw new Error('Loan not found (404)');
-      return loan;
+      return {
+        ...loan,
+        documents: MOCK_DB.documents.filter(d => d.loan_id === loanId)
+      };
     }
 
     // 11. Documents: Upload POST /loans/{id}/documents
     if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'POST') {
       const loanId = parseInt(endpoint.split('/')[2]);
+      const fd = options.body instanceof FormData ? options.body : (options.formData || new FormData());
+      const fileObj = fd.get('file');
+      const fileName = fileObj?.name || 'uploaded_document.pdf';
+      const fileSize = fileObj?.size ? `${(fileObj.size / (1024 * 1024)).toFixed(1)} MB` : '1.8 MB';
+
       const doc = {
         doc_id: (MOCK_DB.documents.length + 1) * 101,
         loan_id: loanId,
-        doc_category: options.formData?.get('doc_category') || 'kyc',
-        doc_type: options.formData?.get('doc_type') || 'document',
-        file_name: options.formData?.get('file')?.name || 'uploaded_document.pdf',
-        file_size: '2.1 MB',
+        doc_category: fd.get('doc_category') || 'kyc',
+        doc_type: fd.get('doc_type') || 'document',
+        file_name: fileName,
+        file_size: fileSize,
         status: 'pending',
-        verification_note: options.formData?.get('verification_note') || 'Awaiting review',
+        verification_note: fd.get('verification_note') || 'Awaiting underwriting review',
         uploaded_at: new Date().toISOString().split('.')[0]
       };
       MOCK_DB.documents.push(doc);
@@ -317,7 +329,11 @@ class ApiClient {
     if (endpoint.startsWith('/admin/loans') && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not authorized as admin (403)');
       const statusFilter = new URL(`http://dummy${endpoint}`).searchParams.get('status');
-      return statusFilter ? MOCK_DB.loans.filter(l => l.status === statusFilter) : MOCK_DB.loans;
+      const filtered = statusFilter ? MOCK_DB.loans.filter(l => l.status === statusFilter) : MOCK_DB.loans;
+      return filtered.map(l => ({
+        ...l,
+        documents: MOCK_DB.documents.filter(d => d.loan_id === l.id)
+      }));
     }
 
     // 15. Admin: Approve Loan PATCH /admin/loans/{id}/approve

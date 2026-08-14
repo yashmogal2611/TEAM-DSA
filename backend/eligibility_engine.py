@@ -5,7 +5,11 @@ Consumer inputs → hard eligibility filtering → document mapping → eligible
 """
 from typing import Dict, List, Any, Optional
 import math
-from database import LoanSchemeRule
+
+try:
+    from .database import LoanSchemeRule
+except ImportError:
+    from database import LoanSchemeRule
 
 
 def calculate_emi(principal: float, annual_rate_pct: float, tenure_months: int) -> float:

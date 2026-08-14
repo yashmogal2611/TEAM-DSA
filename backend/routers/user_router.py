@@ -14,17 +14,30 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Query
 from sqlalchemy.orm import Session
 
-from database import LoanApplication, LoanDocument, LoanSchemeRule, User, get_db
-from schemas import (
-    LoanApplicationCreate,
-    LoanApplicationOut,
-    DocumentOut,
-    LoanSchemeRuleOut,
-    EligibilityCheckRequest,
-    EligibilityCheckResponse,
-)
-from auth import get_current_user
-from eligibility_engine import rank_and_evaluate_all_loans, evaluate_loan_eligibility
+try:
+    from ..database import LoanApplication, LoanDocument, LoanSchemeRule, User, get_db
+    from ..schemas import (
+        LoanApplicationCreate,
+        LoanApplicationOut,
+        DocumentOut,
+        LoanSchemeRuleOut,
+        EligibilityCheckRequest,
+        EligibilityCheckResponse,
+    )
+    from ..auth import get_current_user
+    from ..eligibility_engine import rank_and_evaluate_all_loans, evaluate_loan_eligibility
+except ImportError:
+    from database import LoanApplication, LoanDocument, LoanSchemeRule, User, get_db
+    from schemas import (
+        LoanApplicationCreate,
+        LoanApplicationOut,
+        DocumentOut,
+        LoanSchemeRuleOut,
+        EligibilityCheckRequest,
+        EligibilityCheckResponse,
+    )
+    from auth import get_current_user
+    from eligibility_engine import rank_and_evaluate_all_loans, evaluate_loan_eligibility
 
 router = APIRouter(prefix="/loans", tags=["Loans & Applications"])
 

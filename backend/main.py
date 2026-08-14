@@ -2,6 +2,9 @@
 main.py – Loan Management API
 FastAPI application entry point.
 Includes:
+  • /             – Serves Frontend Single Page App (index.html)
+  • /css, /js     – Frontend static assets
+  • /uploads/*    – Document file storage & download
   • /loans/*      – Loan Schemes, Requirements, Multi-Eligibility Evaluation, Applications, Document Uploads
   • /auth/*       – User Registration, Login & Profile
   • /admin/*      – Underwriting Decisions, Document Verification, Document Downloads, Portfolio Analytics
@@ -9,22 +12,35 @@ Includes:
   • /contacts     – Backward compatible contact submissions
 """
 import os
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
-from database import init_db, get_db, LoanSubmission, User
-from auth import hash_password
+try:
+    from .schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
+    from .database import init_db, get_db, LoanSubmission, User
+    from .auth import hash_password
 
-# Routers
-from routers.auth_router import router as auth_router
-from routers.user_router import router as user_router
-from routers.admin_router import router as admin_router
+    # Routers
+    from .routers.auth_router import router as auth_router
+    from .routers.user_router import router as user_router
+    from .routers.admin_router import router as admin_router
+except ImportError:
+    from schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
+    from database import init_db, get_db, LoanSubmission, User
+    from auth import hash_password
 
-# Ensure upload directory exists
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+    # Routers
+    from routers.auth_router import router as auth_router
+    from routers.user_router import router as user_router
+    from routers.admin_router import router as admin_router
+
+# Directories
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BACKEND_DIR, "uploads")
+FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ── App setup ─────────────────────────────────────────────────
@@ -48,6 +64,12 @@ app.add_middleware(
 
 # ── Mount static files for document storage ───────────────────
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+# ── Mount frontend static assets (CSS, JS) ────────────────────
+if os.path.exists(os.path.join(FRONTEND_DIR, "css")):
+    app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
+if os.path.exists(os.path.join(FRONTEND_DIR, "js")):
+    app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
 
 # ── Register routers ──────────────────────────────────────────
 app.include_router(auth_router)
@@ -179,3 +201,22 @@ def recommend(data: LoanRequest, db: Session = Depends(get_db)):
     db.commit()
 
     return result
+
+
+# ── Frontend Web App Route ────────────────────────────────────
+@app.get("/", tags=["Frontend"])
+def serve_root():
+    """Serve the frontend index.html"""
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"status": "ok", "message": "Backend API running. Use /docs for Swagger UI."}
+
+
+@app.get("/favicon.ico", tags=["Frontend"])
+def serve_favicon():
+    """Serve favicon if present"""
+    favicon_path = os.path.join(FRONTEND_DIR, "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    return Response(status_code=204)
