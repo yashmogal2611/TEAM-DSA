@@ -3,24 +3,57 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Loan Portal — Credit & Loan Management System</title>
+  <title>ApexLoans — Credit & Loan Management System</title>
   
-  <!-- Modern Typography (Plus Jakarta Sans & Inter) -->
+  <!-- Premium Subtle Typography (DM Sans & Plus Jakarta Sans) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
+  <!-- Dynamic Moving Attractions Background Canvas -->
+  <canvas id="bgCanvas"></canvas>
+
   <!-- Top Application Header & Navigation Bar -->
   <header class="app-header">
-    <div class="brand" onclick="app.navigate('#/')">
-      <div class="brand-icon">⚡</div>
-      <span>ApexLoans</span>
-      <span class="brand-badge user-badge" id="roleBadge">PORTAL</span>
+    <div class="header-left">
+      <div class="brand" onclick="app.navigate('#/')">
+        <div class="brand-icon">⚡</div>
+        <span>ApexLoans</span>
+      </div>
+
+      <!-- Top-Left Navigation Dropdown Menu -->
+      <div class="nav-dropdown-wrapper" id="navDropdownWrapper">
+        <button type="button" class="nav-dropdown-btn" onclick="app.toggleNavDropdown(event)">
+          <span>☰ Menu</span>
+          <span class="dropdown-chevron">▾</span>
+        </button>
+        <div class="nav-dropdown-menu" id="navDropdownMenu">
+          <div class="dropdown-section-title">Navigation & Tools</div>
+          <a href="#/schemes" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <span class="dropdown-icon">📜</span>
+            <div>
+              <div class="item-title">Loan Schemes</div>
+              <div class="item-sub">Interest rates & policy rules</div>
+            </div>
+          </a>
+          <a href="#/eligibility" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <span class="dropdown-icon">🧮</span>
+            <div>
+              <div class="item-title">Eligibility Checker</div>
+              <div class="item-sub">Multi-step FOIR calculator</div>
+            </div>
+          </a>
+
+          <div class="dropdown-divider"></div>
+
+          <div id="dropdownAuthItems"></div>
+        </div>
+      </div>
     </div>
 
     <div class="header-controls">
@@ -30,16 +63,8 @@
         <span id="statusText">Live API Mode</span>
       </button>
 
-      <!-- Authenticated User Controls -->
+      <!-- Authenticated User Profile Menu -->
       <div class="user-profile-menu" id="navUserControls" style="display: none;">
-        <!-- Navigation Links -->
-        <a href="#/user-dashboard" class="btn btn-secondary btn-sm" id="userDashNavLink" style="display: none;">My Applications</a>
-        <a href="#/admin-dashboard" class="btn btn-secondary btn-sm" id="adminDashNavLink" style="display: none;">Admin Board</a>
-        <a href="#/admin-users" class="btn btn-secondary btn-sm" id="adminUsersNavLink" style="display: none;">User Directory</a>
-        <button class="btn btn-primary btn-sm" id="applyLoanNavBtn" onclick="app.showModal('applyLoanModal')" style="display: none;">
-          + New Application
-        </button>
-
         <div class="avatar" id="headerAvatar">U</div>
         <div class="user-info">
           <span class="user-name" id="headerUserName">User Name</span>
@@ -101,7 +126,7 @@
         <div class="auth-card">
           <div class="auth-header">
             <h1>Create Account</h1>
-            <p>Apply for home, personal, auto or education loans in minutes</p>
+            <p>Apply for home, personal, auto, education, business or gold loans in minutes</p>
           </div>
 
           <form id="registerForm" onsubmit="app.handleRegister(event)">
@@ -137,16 +162,118 @@
       </div>
     </section>
 
-    <!-- 3. USER DASHBOARD VIEW (#/user-dashboard) -->
+    <!-- 3. SCHEMES VIEW (#/schemes) -->
+    <section class="view-section" id="viewSchemes">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <h1>Loan Schemes & Policy Guidelines</h1>
+          <p>Explore RBI-compliant credit products, interest rate slabs, and required document checklists (GET /loans/schemes).</p>
+        </div>
+        <a href="#/eligibility" class="btn btn-primary">
+          🧮 Calculate My Eligibility →
+        </a>
+      </div>
+      <div id="schemesContainer"></div>
+    </section>
+
+    <!-- 4. ELIGIBILITY CALCULATOR VIEW (#/eligibility) -->
+    <section class="view-section" id="viewEligibility">
+      <div class="dashboard-header">
+        <div class="dashboard-title">
+          <h1>Smart Eligibility & FOIR Calculator</h1>
+          <p>Multi-step eligibility assessment engine with FOIR calculation and personalized loan recommendations (POST /loans/check-eligibility).</p>
+        </div>
+      </div>
+
+      <div class="eligibility-card">
+        <form id="eligibilityForm" onsubmit="app.handleCheckEligibility(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="elAge">Applicant Age</label>
+              <input type="number" id="elAge" class="input-control" value="28" min="18" max="75" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elEmployment">Employment Profile</label>
+              <select id="elEmployment" class="input-control" required>
+                <option value="salaried">Salaried</option>
+                <option value="self_employed">Self Employed</option>
+                <option value="unemployed">Unemployed</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elIncome">Annual Gross Income (₹)</label>
+              <input type="number" id="elIncome" class="input-control" value="800000" min="0" step="10000" required>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="elCreditScore">CIBIL Credit Score</label>
+              <input type="number" id="elCreditScore" class="input-control" value="740" min="300" max="900" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elExistingEmi">Current Monthly EMIs (₹)</label>
+              <input type="number" id="elExistingEmi" class="input-control" value="5000" min="0" step="1000" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elRequestedAmount">Target Loan Amount (₹)</label>
+              <input type="number" id="elRequestedAmount" class="input-control" value="500000" min="10000" step="10000" required>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="elTenure">Preferred Tenure (Months)</label>
+              <input type="number" id="elTenure" class="input-control" value="36" min="6" max="360" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elGoldWeight">Gold Ornaments Weight (Grams - Optional)</label>
+              <input type="number" id="elGoldWeight" class="input-control" value="0" min="0">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elGoldPurity">Gold Purity (Karats - Optional)</label>
+              <input type="number" id="elGoldPurity" class="input-control" value="0" min="0" max="24">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" style="margin-top:0.5rem;">
+            🔍 Check Eligibility & Compare Schemes
+          </button>
+        </form>
+      </div>
+
+      <div id="eligibilityResultsContainer" style="margin-top: 2rem;"></div>
+    </section>
+
+    <!-- 5. USER DASHBOARD VIEW (#/user-dashboard) -->
     <section class="view-section" id="viewUserDashboard">
       <div class="dashboard-header">
         <div class="dashboard-title">
           <h1>My Loan Dashboard</h1>
-          <p>Track your submitted applications, review decisions, and request new credit lines.</p>
+          <p>Track your submitted applications, upload verification documents, and review sanction notes.</p>
         </div>
         <button class="btn btn-primary" onclick="app.showModal('applyLoanModal')">
-          + Submit New Loan Application
+          + Submit New Application
         </button>
+      </div>
+
+      <!-- Quick Action Banner -->
+      <div class="user-quick-banner">
+        <div class="banner-txt">
+          <h2>Apply for Personal, Home, Vehicle or Gold Credit</h2>
+          <p>Explore interest rate schemes, calculate your FOIR ratio, or submit a new application.</p>
+        </div>
+        <div class="banner-actions">
+          <a href="#/schemes" class="btn btn-secondary btn-sm">📜 Schemes</a>
+          <a href="#/eligibility" class="btn btn-secondary btn-sm">🧮 Calculator</a>
+          <button class="btn btn-primary btn-sm" onclick="app.showModal('applyLoanModal')">+ Apply Now</button>
+        </div>
       </div>
 
       <!-- User KPI Summary -->
@@ -185,12 +312,12 @@
       <div id="userLoansContainer"></div>
     </section>
 
-    <!-- 4. ADMIN DASHBOARD VIEW (#/admin-dashboard) -->
+    <!-- 6. ADMIN DASHBOARD VIEW (#/admin-dashboard) -->
     <section class="view-section" id="viewAdminDashboard">
       <div class="dashboard-header">
         <div class="dashboard-title">
           <h1>Admin Control Panel</h1>
-          <p>Review incoming applicant requests, inspect credit metrics, and issue approval or rejection notes.</p>
+          <p>Review incoming applicant requests, verify documents, set interest rates, and issue sanction letters.</p>
         </div>
         <a href="#/admin-users" class="btn btn-secondary">
           👥 Registered Users Directory
@@ -200,19 +327,24 @@
       <!-- Admin System KPIs -->
       <div class="kpi-grid" id="adminStatsContainer"></div>
 
-      <!-- Filter Tabs by Loan Status (GET /admin/loans?status=...) -->
-      <div class="tab-filters">
-        <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Applications</button>
-        <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)">⏳ Pending Review</button>
-        <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)">✅ Approved</button>
-        <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)">❌ Rejected</button>
+      <!-- Admin Search & Filter Toolbar -->
+      <div class="admin-toolbar">
+        <div class="tab-filters">
+          <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Applications</button>
+          <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)">⏳ Pending Review</button>
+          <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)">✅ Approved</button>
+          <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)">❌ Rejected</button>
+        </div>
+        <div class="search-box">
+          <input type="text" id="adminSearchInput" class="input-control" placeholder="Search applicant name, email..." oninput="app.handleAdminSearch(this.value)">
+        </div>
       </div>
 
       <!-- Admin Applications Table -->
       <div id="adminLoansContainer"></div>
     </section>
 
-    <!-- 5. ADMIN USERS DIRECTORY VIEW (#/admin-users) -->
+    <!-- 7. ADMIN USERS DIRECTORY VIEW (#/admin-users) -->
     <section class="view-section" id="viewAdminUsers">
       <div class="dashboard-header">
         <div class="dashboard-title">
@@ -229,7 +361,7 @@
 
   </main>
 
-  <!-- MODAL 1: APPLY FOR LOAN (POST /loans/apply) -->
+  <!-- MODAL 1: CATEGORY-DYNAMIC APPLY FOR LOAN (POST /loans/apply) -->
   <div class="modal-backdrop" id="applyLoanModal">
     <div class="modal-card">
       <div class="modal-header">
@@ -241,12 +373,14 @@
           
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="applyProductType">Product Type</label>
-              <select id="applyProductType" class="input-control" required>
-                <option value="home_loan">Home Loan</option>
+              <label class="form-label" for="applyProductType">Loan Scheme Category</label>
+              <select id="applyProductType" class="input-control" onchange="app.handleSchemeCategoryChange(this.value)" required>
                 <option value="personal_loan">Personal Loan</option>
-                <option value="auto_loan">Auto Loan</option>
+                <option value="home_loan">Home Loan</option>
+                <option value="vehicle_loan">Vehicle Loan</option>
                 <option value="education_loan">Education Loan</option>
+                <option value="business_loan">Business Loan</option>
+                <option value="gold_loan">Gold Loan</option>
               </select>
             </div>
 
@@ -263,12 +397,12 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="applyAmount">Requested Amount (₹)</label>
-              <input type="number" id="applyAmount" class="input-control" placeholder="500000" min="10000" step="5000" required value="500000">
+              <input type="number" id="applyAmount" class="input-control" placeholder="500000" min="10000" step="5000" required value="500000" oninput="app.recalculateEmiPreview()">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="applyTenure">Tenure (Months)</label>
-              <input type="number" id="applyTenure" class="input-control" placeholder="120" min="6" max="360" required value="120">
+              <input type="number" id="applyTenure" class="input-control" placeholder="36" min="6" max="360" required value="36" oninput="app.recalculateEmiPreview()">
             </div>
           </div>
 
@@ -280,20 +414,23 @@
 
             <div class="form-group">
               <label class="form-label" for="applyCreditScore">Credit Score (CIBIL)</label>
-              <input type="number" id="applyCreditScore" class="input-control" placeholder="720" min="300" max="900" required value="720">
+              <input type="number" id="applyCreditScore" class="input-control" placeholder="740" min="300" max="900" required value="740">
             </div>
           </div>
 
-          <div class="form-group">
+          <!-- Dynamic Category Fieldset Container -->
+          <div id="dynamicCategoryFields"></div>
+
+          <div class="form-group" style="margin-top: 1rem;">
             <label class="form-label" for="applyPurpose">Purpose of Loan</label>
-            <textarea id="applyPurpose" class="input-control" placeholder="Buy a house in Pune" required>Buy a house in Pune</textarea>
+            <textarea id="applyPurpose" class="input-control" placeholder="Enter loan usage details..." required>Business expansion / Personal use</textarea>
           </div>
 
           <!-- Live Estimated EMI Calculator -->
           <div class="emi-calculator-preview">
             <div>
-              <div class="emi-val" id="emiDisplayVal">₹5,496</div>
-              <div class="emi-lbl">Est. Monthly EMI (@ 10.5%)</div>
+              <div class="emi-val" id="emiDisplayVal">₹16,250</div>
+              <div class="emi-lbl">Est. Monthly EMI (@ 10.49%)</div>
             </div>
           </div>
 
@@ -306,27 +443,83 @@
     </div>
   </div>
 
-  <!-- MODAL 2: ADMIN REVIEW & APPROVAL / REJECTION (PATCH /admin/loans/{id}/approve or /reject) -->
+  <!-- MODAL 2: DOCUMENT UPLOAD & MANAGER (/loans/{id}/documents) -->
+  <div class="modal-backdrop" id="documentModal">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <div>
+          <h3 id="docModalTitle">Application Documents</h3>
+          <div style="font-size:0.85rem; color:var(--text-muted);" id="docModalSubtitle">Upload & Verify Checklist</div>
+        </div>
+        <button class="modal-close" onclick="app.hideModal('documentModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Upload Form -->
+        <form id="docUploadForm" onsubmit="app.handleUploadDocument(event)" style="margin-bottom: 1.5rem;" class="doc-upload-box">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="docCategorySelect">Document Category</label>
+              <select id="docCategorySelect" class="input-control" required>
+                <option value="kyc">KYC Document (PAN/Aadhaar)</option>
+                <option value="income">Income Document (Salary Slip/ITR)</option>
+                <option value="bank">Bank Document (Statement/Passbook)</option>
+                <option value="loan_specific">Loan Specific Document</option>
+                <option value="collateral">Collateral / Property Deed</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="docFileInput">Choose Document File (PDF / PNG / JPG)</label>
+              <input type="file" id="docFileInput" class="input-control" required accept=".pdf,.png,.jpg,.jpeg">
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">
+            📤 Upload Document
+          </button>
+        </form>
+
+        <div id="documentsContainer"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="app.hideModal('documentModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: ADMIN UNDERWRITING & SANCTIONING -->
   <div class="modal-backdrop" id="reviewLoanModal">
     <div class="modal-card">
       <div class="modal-header">
         <div>
-          <h3 id="modalLoanIdTitle">Review Loan Application</h3>
+          <h3 id="modalLoanIdTitle">Review & Underwrite Loan</h3>
           <div style="font-size:0.85rem; color:var(--text-muted);" id="modalApplicantDesc">Applicant Info</div>
         </div>
         <button class="modal-close" onclick="app.hideModal('reviewLoanModal')">&times;</button>
       </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label" for="adminNoteInput">Admin Decision Notes / Remarks</label>
-          <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved!' or 'Insufficient income proof.')"></textarea>
+      <form id="reviewLoanForm" onsubmit="event.preventDefault();">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="adminSanctionAmount">Sanctioned Amount (₹)</label>
+              <input type="number" id="adminSanctionAmount" class="input-control" placeholder="500000" min="10000" step="5000">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="adminInterestRate">Offered Interest Rate (% p.a.)</label>
+              <input type="number" id="adminInterestRate" class="input-control" placeholder="10.5" step="0.05" min="5" max="30">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="adminNoteInput">Admin Decision Notes / Underwriter Remarks</label>
+            <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved with 10.5% interest rate.')"></textarea>
+          </div>
         </div>
-      </div>
-      <div class="modal-footer" id="reviewModalFooter">
-        <button type="button" class="btn btn-secondary" onclick="app.hideModal('reviewLoanModal')">Close</button>
-        <button type="button" class="btn btn-danger" onclick="app.handleRejectLoan()">❌ Reject Application</button>
-        <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve Application</button>
-      </div>
+        <div class="modal-footer" id="reviewModalFooter">
+          <button type="button" class="btn btn-secondary" onclick="app.hideModal('reviewLoanModal')">Close</button>
+          <button type="button" class="btn btn-danger" onclick="app.handleRejectLoan()">❌ Reject Application</button>
+          <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve & Issue Sanction</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -334,6 +527,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Application Scripts -->
+  <script src="js/background.js"></script>
   <script src="js/config.js"></script>
   <script src="js/mockData.js"></script>
   <script src="js/api.js"></script>
