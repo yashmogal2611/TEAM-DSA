@@ -17,15 +17,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-import yaml
-
+from src.data.loader import load_config
 from src.pricing.pricing_engine import PricedOffer
 
 logger = logging.getLogger(__name__)
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _W = _CFG["recommendation"]["weights"]
 
 

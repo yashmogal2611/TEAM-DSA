@@ -9,15 +9,12 @@ from __future__ import annotations
 
 import logging
 
-import yaml
-
+from src.data.loader import load_config
 from src.recommendation.scoring import ScoredOffer
 
 logger = logging.getLogger(__name__)
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 TOP_N: int = _CFG["recommendation"]["top_n"]
 
 # Maps primary_preference → sort key for tie-breaking

@@ -12,16 +12,13 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-import yaml
-
+from src.data.loader import load_config
 from src.data.preprocessing import DataPreprocessor
 from src.features.feature_engineering import FeatureEngineer
 
 logger = logging.getLogger(__name__)
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _RISK = _CFG["risk_model"]
 NUMERICAL_FEATURES: list[str] = _RISK["numerical_features"]
 CATEGORICAL_FEATURES: list[str] = _RISK["categorical_features"]

@@ -12,13 +12,11 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-import yaml
+from src.data.loader import load_config
 
 logger = logging.getLogger(__name__)
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _EXP = _CFG["explainability"]
 USE_SHAP: bool = _EXP.get("use_shap", True)
 MAX_SHAP_FEATURES: int = _EXP.get("shap_max_display_features", 5)

@@ -15,13 +15,11 @@ import logging
 import math
 from dataclasses import dataclass
 
-import yaml
+from src.data.loader import load_config
 
 logger = logging.getLogger(__name__)
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _RATE_ADJ: dict[str, float] = _CFG["pricing"]["risk_premium"]
 
 

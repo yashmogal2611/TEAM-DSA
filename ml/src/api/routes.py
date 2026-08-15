@@ -31,6 +31,7 @@ from src.api.schemas import (
     ScoreBreakdown,
 )
 from src.data.loader import (
+    load_config,
     load_loan_products,
     load_ranking_model,
     load_risk_model,
@@ -50,9 +51,7 @@ from src.risk.predict import FallbackRiskPredictor, RiskPredictor
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["Loan Recommendation"])
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _APP_VERSION = _CFG["app"]["version"]
 
 

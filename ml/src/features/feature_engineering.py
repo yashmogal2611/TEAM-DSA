@@ -14,13 +14,11 @@ from __future__ import annotations
 
 import logging
 
-import yaml
+from src.data.loader import load_config
 
 logger = logging.getLogger(__name__)
 
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _FEAT = _CFG["features"]
 _SEGS = _FEAT["income_segments"]
 

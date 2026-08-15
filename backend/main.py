@@ -76,6 +76,20 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(admin_router)
 
+# ── Mount ML Recommendation Engine Router ─────────────────────
+import sys
+ML_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "ml"))
+if ML_DIR not in sys.path:
+    sys.path.insert(0, ML_DIR)
+
+try:
+    from src.api.routes import router as ml_router
+    app.include_router(ml_router)
+    print("[OK] ML Recommendation router mounted at /api/v1")
+except Exception as e:
+    print(f"[WARN] Could not mount ML router: {e}")
+
+
 
 # ── Startup: init DB + seed default admin & schemes ──────────
 ADMIN_EMAIL = "admin@loanapp.com"

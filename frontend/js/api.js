@@ -492,6 +492,52 @@ class ApiClient {
   checkHealth() {
     return this.request('/health', { auth: false });
   }
+
+  /**
+   * ML Recommendation Engine — XGBoost + Pricing + Multi-Lender Ranking
+   * POST /api/v1/recommend
+   */
+  getPersonalizedMlRecommendation(payload) {
+    return this.request('/api/v1/recommend', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      auth: false
+    });
+  }
 }
 
+// Allowed Enums for ML Recommendation according to ML Engineering Spec
+const ML_ENUMS = {
+  primary_preference: [
+    { value: 'LOWEST_EMI', label: 'Lowest Monthly EMI' },
+    { value: 'LOWEST_TOTAL_COST', label: 'Lowest Total Cost' },
+    { value: 'SHORTEST_TENURE', label: 'Shortest Tenure' },
+    { value: 'REQUIRED_AMOUNT', label: 'Get Full Amount' }
+  ],
+  employment_type: [
+    { value: 'SALARIED', label: 'Salaried' },
+    { value: 'SELF_EMPLOYED', label: 'Self Employed' },
+    { value: 'BUSINESS_OWNER', label: 'Business Owner' }
+  ],
+  income_type: [
+    { value: 'FIXED', label: 'Fixed Income' },
+    { value: 'VARIABLE', label: 'Variable Income' },
+    { value: 'MIXED', label: 'Mixed Income' }
+  ],
+  loan_purpose: [
+    { value: 'HOME_RENOVATION', label: 'Home Renovation' },
+    { value: 'HOME_PURCHASE', label: 'Buy a Home' },
+    { value: 'HOME_CONSTRUCTION', label: 'Build a Home' },
+    { value: 'MEDICAL', label: 'Medical Emergency' },
+    { value: 'EDUCATION', label: 'Education' },
+    { value: 'TRAVEL', label: 'Travel' },
+    { value: 'WEDDING', label: 'Wedding' },
+    { value: 'VEHICLE_PURCHASE', label: 'Buy a Vehicle' },
+    { value: 'BUSINESS', label: 'Business' },
+    { value: 'DEBT_CONSOLIDATION', label: 'Debt Consolidation' },
+    { value: 'OTHER', label: 'Other' }
+  ]
+};
+
 const api = new ApiClient();
+

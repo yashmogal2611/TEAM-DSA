@@ -11,10 +11,20 @@ import joblib
 log = logging.getLogger(__name__)
 
 PROJECT_ROOT      = Path(__file__).resolve().parents[2]
+CONFIG_PATH       = PROJECT_ROOT / "config.yaml"
 MODEL_PATH        = PROJECT_ROOT / "models" / "risk_model"  / "risk_model.joblib"
 PREPROCESSOR_PATH = PROJECT_ROOT / "models" / "risk_model"  / "preprocessor.joblib"
 RANKING_PATH      = PROJECT_ROOT / "models" / "ranking_model" / "ranking_model.joblib"
 PRODUCTS_PATH     = PROJECT_ROOT / "data"   / "raw"          / "loan_products.json"
+
+
+@lru_cache(maxsize=1)
+def load_config() -> dict:
+    import yaml
+    if not CONFIG_PATH.exists():
+        raise FileNotFoundError(f"Config file not found: {CONFIG_PATH}")
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
 
 
 @lru_cache(maxsize=1)

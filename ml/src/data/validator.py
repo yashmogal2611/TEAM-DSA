@@ -18,14 +18,12 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-import yaml
+from src.data.loader import load_config
 
 logger = logging.getLogger(__name__)
 
 # ── Load config ──────────────────────────────────────────────────────────────
-with open("config.yaml", "r") as _f:
-    _CFG = yaml.safe_load(_f)
-
+_CFG = load_config()
 _VAL = _CFG["validation"]
 _ELIG = _CFG["eligibility"]
 
