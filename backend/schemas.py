@@ -411,7 +411,7 @@ class LoanApplicationOut(BaseModel):
 # Admin Actions & Stats
 # ──────────────────────────────────────────────────────────────
 class AdminLoanUpdate(BaseModel):
-    status: str = Field(..., pattern="^(approved|rejected|under_review|pending)$")
+    status: Optional[str] = Field("approved", pattern="^(approved|rejected|under_review|pending)$")
     admin_note: Optional[str] = None
     sanctioned_amount: Optional[float] = None
     interest_rate_offered: Optional[float] = None

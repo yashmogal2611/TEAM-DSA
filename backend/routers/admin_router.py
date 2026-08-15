@@ -138,6 +138,7 @@ def update_loan_status(
     return _to_loan_out(loan)
 
 
+@router.post("/loans/{loan_id}/approve", response_model=LoanApplicationOut)
 @router.patch("/loans/{loan_id}/approve", response_model=LoanApplicationOut)
 def approve_loan(
     loan_id: int,
@@ -160,6 +161,7 @@ def approve_loan(
     return _to_loan_out(loan)
 
 
+@router.post("/loans/{loan_id}/reject", response_model=LoanApplicationOut)
 @router.patch("/loans/{loan_id}/reject", response_model=LoanApplicationOut)
 def reject_loan(
     loan_id: int,
@@ -194,6 +196,7 @@ def list_application_documents(
     return [_to_doc_out(d) for d in docs]
 
 
+@router.post("/loans/{loan_id}/documents/{doc_id}/verify", response_model=DocumentOut)
 @router.patch("/loans/{loan_id}/documents/{doc_id}/verify", response_model=DocumentOut)
 def verify_loan_document(
     loan_id: int,
