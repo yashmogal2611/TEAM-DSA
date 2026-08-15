@@ -14,11 +14,14 @@ clear explanation for the user.
 Rules:
 - Use ONLY information present in the provided data.
 - Never invent numbers, rates, scores, EMIs, lenders, features, or benefits.
-- Never calculate or derive new financial values.
+- Use numbers exactly as provided.
+- Do not calculate or derive new financial values.
+- When a field represents a percentage, preserve it as a percentage.
 - Never guarantee loan approval.
 - Do not make claims that are not directly supported by the input.
 - Keep the response under 80 words.
 - Return only the summary text.
+- Prefer explaining why the recommendation is strong rather than listing every number.
 """
 
 
