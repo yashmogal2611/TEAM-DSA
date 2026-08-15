@@ -88,28 +88,13 @@ const Components = {
   renderSchemesGrid(schemes) {
     if (!schemes || schemes.length === 0) return `<div class="empty-state">No loan schemes found.</div>`;
 
-    const iconMap = {
-      personal_loan: '💳',
-      home_loan: '🏡',
-      vehicle_loan: '🚗',
-      education_loan: '🎓',
-      business_loan: '🏢',
-      gold_loan: '🥇'
-    };
-
     return `
       <div class="schemes-grid">
         ${schemes.map(s => `
           <div class="scheme-card">
             <div class="scheme-header">
-              <div style="display:flex; align-items:center; gap:0.6rem;">
-                <span style="font-size:1.5rem;">${iconMap[s.loan_type] || '📜'}</span>
-                <div>
-                  <h3 style="font-size:1.2rem; font-weight:800; color:var(--navy-deep);">${s.display_name}</h3>
-                  <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">RBI Underwriting Tier-1</div>
-                </div>
-              </div>
               <div class="scheme-badge">${s.interest_rate_min}% - ${s.interest_rate_max}% p.a.</div>
+              <h3>${s.display_name}</h3>
             </div>
             <p class="scheme-desc">${s.description}</p>
             
@@ -125,19 +110,18 @@ const Components = {
             </div>
 
             <div class="scheme-checklist-box">
-              <div class="chk-header">📋 Mandatory Document Checklist</div>
+              <div class="chk-header">📋 Required Documents Checklist</div>
               <ul class="chk-list">
-                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li>✓ <strong>KYC:</strong> ${d}</li>`).join('')}
-                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li>✓ <strong>Income:</strong> ${d}</li>`).join('')}
-                ${(s.document_checklist?.loan_specific_documents || []).slice(0, 1).map(d => `<li>✓ <strong>Scheme:</strong> ${d}</li>`).join('')}
+                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li>✓ ${d}</li>`).join('')}
+                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li>✓ ${d}</li>`).join('')}
               </ul>
             </div>
 
             <div class="scheme-footer">
-              <button class="btn btn-primary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
+              <button class="btn btn-secondary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
                 Apply Under Scheme →
               </button>
-              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Specs ↗</a>
+              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs ↗</a>
             </div>
           </div>
         `).join('')}
@@ -147,102 +131,224 @@ const Components = {
 
   renderEligibilityResults(data) {
     if (!data) return '';
-    const summary = data.consumer_summary || {};
-    const eligible = data.ranked_eligible_loans || [];
-    const ineligible = data.ineligible_loans || [];
 
-    return `
-      <div class="eligibility-results-wrapper">
-        <div class="foir-summary-card">
-          <div class="foir-details">
-            <div class="foir-title">Your Credit & FOIR Assessment Summary</div>
-            <div class="foir-metrics-row">
-              <div>
-                <span class="foir-val">${this.formatCurrency(summary.monthly_income)}</span>
-                <span class="foir-lbl">Est. Monthly Net Income</span>
-              </div>
-              <div>
-                <span class="foir-val">${this.formatCurrency(summary.existing_emi)}</span>
-                <span class="foir-lbl">Existing EMI Commitments</span>
-              </div>
-              <div>
-                <span class="foir-val score-high">${summary.credit_score}</span>
-                <span class="foir-lbl">CIBIL Score</span>
-              </div>
+    const isRejected = (data.status === 'REJECTED');
+    const isApproved = (data.status === 'APPROVED');
+    const explanation = data.explanation || {};
+    const requestId = data.request_id || 'N/A';
+
+    // 1. REJECTED STATUS VIEW
+    if (isRejected) {
+      return `
+        <div class="eligibility-results-wrapper">
+          <div class="result-status-card rejected-card">
+            <div class="status-header">
+              <span class="status-badge rejected">❌ REJECTED</span>
+              <span class="request-id-tag">Req ID: #${requestId}</span>
+            </div>
+            <h2>Application Criteria Assessment Required</h2>
+            <p class="rejection-message">${data.message || 'Criteria not met for loan recommendation.'}</p>
+            
+            <div class="explanation-box" style="margin-top: 1.5rem;">
+              <h4>📋 Policy Criteria Failure Reasons</h4>
+              <ul class="reasons-list">
+                ${(explanation.eligibility_reasons || []).map(r => `<li>${r}</li>`).join('')}
+              </ul>
+            </div>
+
+            <div class="advice-box" style="margin-top:1.5rem;">
+              <h4>💡 How to improve your eligibility:</h4>
+              <ul>
+                <li>• Maintain a CIBIL credit score above 600 (preferably 750+ for prime rates).</li>
+                <li>• Pay off existing credit cards to lower your monthly EMI obligations.</li>
+                <li>• Ensure active loan count is within the maximum threshold of 5.</li>
+              </ul>
             </div>
           </div>
         </div>
+      `;
+    }
 
-        <h2 style="font-size:1.4rem; font-weight:800; margin:1.75rem 0 1rem; color:var(--text-primary);">
-          ✨ Ranked Eligible Loan Schemes (${eligible.length})
+    // 2. APPROVED STATUS VIEW
+    const risk = data.risk_summary || {};
+    const afford = data.affordability_summary || {};
+    const recommendations = data.recommendations || [];
+
+    return `
+      <div class="eligibility-results-wrapper">
+        
+        <!-- Status & System Summary Header -->
+        <div class="result-status-card approved-card">
+          <div class="status-header">
+            <span class="status-badge approved">✅ APPROVED</span>
+            <span class="request-id-tag">Req ID: #${requestId}</span>
+          </div>
+          <h2>${data.message || 'Personalised loan offers generated successfully.'}</h2>
+        </div>
+
+        <!-- Metrics Overview Grid: Risk Summary & Affordability Summary -->
+        <div class="ml-summary-grid">
+          
+          <!-- Risk Summary Card -->
+          <div class="ml-summary-card risk-card">
+            <div class="card-title">🛡️ Underwriting Risk Assessment</div>
+            <div class="risk-badge-row">
+              <span class="risk-band-pill ${risk.risk_band === 'LOW' ? 'low-risk' : risk.risk_band === 'MEDIUM' ? 'med-risk' : 'high-risk'}">
+                Risk Band: ${risk.risk_band || 'LOW'}
+              </span>
+            </div>
+            <div class="metrics-grid">
+              <div class="metric-block">
+                <span class="m-val">${((risk.risk_score || 0) * 100).toFixed(1)}%</span>
+                <span class="m-lbl">Risk Fit Score</span>
+              </div>
+              <div class="metric-block">
+                <span class="m-val">${((risk.probability_of_default || 0) * 100).toFixed(2)}%</span>
+                <span class="m-lbl">Default Probability</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Affordability Summary Card -->
+          <div class="ml-summary-card afford-card">
+            <div class="card-title">💳 Affordability & FOIR Summary</div>
+            <div class="metrics-grid">
+              <div class="metric-block">
+                <span class="m-val">${this.formatCurrency(afford.monthly_income)}</span>
+                <span class="m-lbl">Monthly Income</span>
+              </div>
+              <div class="metric-block">
+                <span class="m-val">${this.formatCurrency(afford.existing_monthly_emi)}</span>
+                <span class="m-lbl">Existing EMIs</span>
+              </div>
+              <div class="metric-block">
+                <span class="m-val">${this.formatCurrency(afford.max_total_emi)}</span>
+                <span class="m-lbl">Max EMI Limit (65%)</span>
+              </div>
+              <div class="metric-block">
+                <span class="m-val highlight">${this.formatCurrency(afford.max_affordable_new_emi)}</span>
+                <span class="m-lbl">Max Affordable EMI</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Recommendations Grid (Rule #6: Rank 1 highlighted as best) -->
+        <h2 class="section-title" style="margin-top:2rem;">
+          🏆 Recommended Loan Offers (${recommendations.length})
         </h2>
 
-        ${eligible.length === 0 ? `
-          <div class="empty-state">
-            <h3>No schemes matched your current input parameters</h3>
-            <p>Try adjusting requested amount, tenure, or lowering existing EMIs.</p>
-          </div>
-        ` : `
-          <div class="eligible-loans-grid">
-            ${eligible.map(item => `
-              <div class="eligible-loan-card">
-                <div class="match-score-pill">🔥 ${item.match_score}% Match</div>
-                <h3>${item.display_name}</h3>
-                
-                <div class="eligible-stats-row">
-                  <div>
-                    <div class="stat-big">${item.estimated_interest_rate}%</div>
-                    <div class="stat-lbl">Estimated Rate</div>
+        <div class="ml-recommendations-grid">
+          ${recommendations.map(rec => {
+            const isRank1 = (rec.rank === 1);
+            return `
+              <div class="recommendation-card ${isRank1 ? 'rank-1-card' : ''}">
+                ${isRank1 ? `
+                  <div class="rank-badge-highlight">
+                    ⭐ RANK #1 — BEST MATCH RECOMMENDATION
                   </div>
-                  <div>
-                    <div class="stat-big">${this.formatCurrency(item.estimated_monthly_emi)}</div>
-                    <div class="stat-lbl">Monthly EMI</div>
-                  </div>
-                  <div>
-                    <div class="stat-big">${this.formatCurrency(item.max_eligible_amount)}</div>
-                    <div class="stat-lbl">Max Eligibility</div>
+                ` : `
+                  <div class="rank-badge-standard">Rank #${rec.rank}</div>
+                `}
+
+                <div class="rec-header">
+                  <div class="lender-tag">${rec.lender_name}</div>
+                  <h3>${rec.product_name}</h3>
+                </div>
+
+                <div class="financial-hero-box">
+                  <div class="hero-amount">${this.formatCurrency(rec.offer_amount)}</div>
+                  <div class="hero-sub font-mono">Offer Amount for ${rec.tenure_months} Months</div>
+                  
+                  <div class="hero-emi-row">
+                    <div>
+                      <div class="emi-large">${this.formatCurrency(rec.monthly_emi)}</div>
+                      <div class="emi-lbl">Monthly EMI</div>
+                    </div>
+                    <div>
+                      <div class="rate-large">${rec.personalised_rate}% <span class="base-rate-strikethrough">(${rec.base_interest_rate}%)</span></div>
+                      <div class="emi-lbl">Personalised Rate (p.a.)</div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="foir-gauge-box">
-                  <div class="foir-gauge-bar">
-                    <div class="foir-fill" style="width: ${Math.min(100, item.foir_percentage)}%;"></div>
+                <!-- Financial Breakdown -->
+                <div class="cost-breakdown-box">
+                  <div class="cost-row">
+                    <span>Total Interest Payable:</span>
+                    <strong>${this.formatCurrency(rec.total_interest)}</strong>
                   </div>
-                  <div class="foir-gauge-txt">FOIR Ratio: <strong>${item.foir_percentage}%</strong> (Healthy)</div>
+                  <div class="cost-row">
+                    <span>Processing Fee (${rec.processing_fee_pct}%):</span>
+                    <strong>${this.formatCurrency(rec.processing_fee_amount)}</strong>
+                  </div>
+                  <div class="cost-row total">
+                    <span>Total Repayment Amount:</span>
+                    <strong>${this.formatCurrency(rec.total_repayment)}</strong>
+                  </div>
                 </div>
 
-                <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${item.loan_type}', ${item.estimated_monthly_emi})">
-                  Apply for ${item.display_name} Now
-                </button>
-              </div>
-            `).join('')}
-          </div>
-        `}
+                <!-- Score Breakdown Grid -->
+                ${rec.scores ? `
+                  <div class="scores-grid">
+                    <div class="score-chip">Match: <strong>${(rec.scores.need_match * 100).toFixed(0)}%</strong></div>
+                    <div class="score-chip">Affordability: <strong>${(rec.scores.affordability * 100).toFixed(0)}%</strong></div>
+                    <div class="score-chip">Risk Fit: <strong>${(rec.scores.risk_fit * 100).toFixed(0)}%</strong></div>
+                    <div class="score-chip">Composite: <strong>${(rec.scores.composite * 100).toFixed(0)}%</strong></div>
+                  </div>
+                ` : ''}
 
-        ${ineligible.length > 0 ? `
-          <h3 style="font-size:1.15rem; font-weight:700; margin:2rem 0 1rem; color:var(--text-secondary);">
-            ⚠️ Ineligible Schemes (${ineligible.length})
-          </h3>
-          <div class="ineligible-list">
-            ${ineligible.map(item => `
-              <div class="ineligible-card">
-                <strong>${item.display_name}</strong>
-                <ul class="missing-reasons">
-                  ${(item.missing_criteria || []).map(r => `<li>❌ ${r}</li>`).join('')}
-                </ul>
+                <div class="rec-footer">
+                  <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${rec.product_id}', ${rec.monthly_emi})">
+                    Apply for ${rec.lender_name} Offer Now →
+                  </button>
+                </div>
               </div>
-            `).join('')}
-          </div>
-        ` : ''}
+            `;
+          }).join('')}
+        </div>
 
-        ${(data.personalized_advice || []).length > 0 ? `
-          <div class="advice-box" style="margin-top:1.5rem;">
-            <h4>💡 Personalized Financial Advice</h4>
-            <ul>
-              ${data.personalized_advice.map(adv => `<li>• ${adv}</li>`).join('')}
-            </ul>
-          </div>
-        ` : ''}
+        <!-- Explanation & AI Offer Reasons -->
+        <div class="ml-explanation-section" style="margin-top:2rem;">
+          
+          ${(explanation.offer_reasons || []).length > 0 ? `
+            <div class="explanation-box offer-reasons-box">
+              <h4>✨ Key Offer Highlights</h4>
+              <ul class="reasons-list">
+                ${explanation.offer_reasons.map(reason => `<li>${reason}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          ${(explanation.risk_drivers || []).length > 0 ? `
+            <div class="explanation-box risk-drivers-box" style="margin-top:1rem;">
+              <h4>📊 Risk Drivers Analysis</h4>
+              <div class="risk-drivers-list">
+                ${explanation.risk_drivers.map(rd => `
+                  <div class="risk-driver-item">
+                    <div class="rd-header">
+                      <span class="rd-feature">${rd.feature}</span>
+                      <span class="rd-direction ${rd.direction}">${rd.direction.replace('_', ' ')} (impact: ${rd.impact})</span>
+                    </div>
+                    <div class="rd-note">${rd.note}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          ${(explanation.comparative_reasons || []).length > 0 ? `
+            <div class="explanation-box comparative-box" style="margin-top:1rem;">
+              <h4>⚖️ Comparative Analysis</h4>
+              <ul class="reasons-list">
+                ${explanation.comparative_reasons.map(cr => `<li>• ${cr}</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+        </div>
+
       </div>
     `;
   },
@@ -431,18 +537,10 @@ const Components = {
   },
 
   renderDocumentsList(documents, isAdmin = false, loanId) {
-    return this.renderDocumentsTable(documents, loanId, isAdmin);
-  },
-
-  renderDocumentsTable(documents, loanId, isAdmin = false) {
     if (!documents || documents.length === 0) {
       return `
-        <div class="empty-state" style="padding: 2rem 1rem;">
-          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📂</div>
-          <div style="font-weight: 600; color: var(--text-color);">No documents uploaded yet</div>
-          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
-            Upload mandatory KYC, income statements, and category-specific proofs.
-          </div>
+        <div class="empty-state" style="padding:1.5rem;">
+          <p>No documents uploaded yet for this application.</p>
         </div>
       `;
     }
@@ -460,52 +558,38 @@ const Components = {
             </tr>
           </thead>
           <tbody>
-            ${documents.map(doc => {
-              const docId = doc.id || doc.doc_id;
-              const fileName = doc.original_filename || doc.file_name || 'Document';
-              const fileSize = doc.file_size || (doc.file_size_bytes ? (doc.file_size_bytes / 1024).toFixed(1) + ' KB' : '—');
-              const status = doc.verification_status || doc.status || 'pending';
-              const note = doc.verification_note || '—';
-              const category = (doc.doc_category || 'other').toUpperCase();
-              const type = doc.doc_type || '';
-
-              return `
+            ${documents.map(doc => `
               <tr>
                 <td>
-                  <span class="product-tag" style="text-transform:uppercase;">${category}</span>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">${type}</div>
+                  <span class="product-tag" style="text-transform:uppercase;">${doc.doc_category}</span>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">${doc.doc_type}</div>
                 </td>
-                <td><strong>${fileName}</strong> (${fileSize})</td>
-                <td>${this.renderStatusBadge(status)}</td>
-                <td>${note}</td>
+                <td><strong>${doc.file_name}</strong> (${doc.file_size})</td>
+                <td>${this.renderStatusBadge(doc.status)}</td>
+                <td>${doc.verification_note || '—'}</td>
                 <td>
-                  <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
-                    <button class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')" title="Inspect / View Document">
-                      👁️ View
-                    </button>
-                    ${isAdmin ? `
-                      <button class="btn btn-sm btn-success" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document">✓ Verify</button>
-                      <button class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document">✕ Reject</button>
-                    ` : `
-                      <button class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.deleteDocumentAction(${loanId}, ${docId})">Delete</button>
-                    `}
-                  </div>
+                  ${isAdmin ? `
+                    <button class="btn btn-sm btn-success" onclick="app.verifyDocumentAction(${loanId}, ${doc.doc_id}, 'verified')">✓ Verify</button>
+                    <button class="btn btn-sm btn-danger" onclick="app.verifyDocumentAction(${loanId}, ${doc.doc_id}, 'rejected')">✕ Reject</button>
+                  ` : `
+                    <button class="btn btn-sm btn-danger" onclick="app.deleteDocumentAction(${loanId}, ${doc.doc_id})">Delete</button>
+                  `}
                 </td>
               </tr>
-            `;}).join('')}
+            `).join('')}
           </tbody>
         </table>
       </div>
     `;
   },
 
-  renderAdminUsersTable(users) {
+  renderAdminUsersTable(users, loans = []) {
     if (!users || users.length === 0) return `<div class="empty-state">No registered borrowers found.</div>`;
 
     return `
       <div class="table-card">
         <div class="table-responsive">
-          <table class="data-table">
+          <table class="data-table users-data-table">
             <thead>
               <tr>
                 <th>User ID</th>
@@ -514,23 +598,125 @@ const Components = {
                 <th>Phone Number</th>
                 <th>Account Role</th>
                 <th>Joined Date</th>
+                <th>Loans Portfolio</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${users.map(u => `
-                <tr>
-                  <td><strong>#${u.id}</strong></td>
-                  <td><strong>${u.full_name}</strong></td>
-                  <td>${u.email}</td>
-                  <td>${u.phone || 'N/A'}</td>
-                  <td>
-                    <span class="status-badge ${u.is_admin ? 'approved' : 'pending'}">
-                      ${u.is_admin ? '🛡️ Administrator' : '👤 Borrower'}
-                    </span>
-                  </td>
-                  <td>${this.formatDate(u.created_at)}</td>
-                </tr>
-              `).join('')}
+              ${users.map(u => {
+                const userLoans = loans.filter(l => l.user_id === u.id || (l.applicant_email && l.applicant_email.toLowerCase() === u.email.toLowerCase()));
+                const approvedCount = userLoans.filter(l => l.status === 'approved').length;
+
+                return `
+                  <tr class="user-row" id="user-row-${u.id}">
+                    <td><strong>#${u.id}</strong></td>
+                    <td><strong>${u.full_name}</strong></td>
+                    <td>${u.email}</td>
+                    <td>${u.phone || 'N/A'}</td>
+                    <td>
+                      <span class="status-badge ${u.is_admin ? 'approved' : 'pending'}">
+                        ${u.is_admin ? '🛡️ Administrator' : '👤 Borrower'}
+                      </span>
+                    </td>
+                    <td>${this.formatDate(u.created_at)}</td>
+                    <td>
+                      <span class="status-badge ${approvedCount > 0 ? 'approved' : userLoans.length > 0 ? 'pending' : 'secondary'}">
+                        ${userLoans.length} Application${userLoans.length === 1 ? '' : 's'} (${approvedCount} Active)
+                      </span>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-secondary btn-sm user-expand-btn" onclick="app.toggleUserLoansDropdown(${u.id}, event)">
+                        📂 View Loans (${userLoans.length}) <span class="chevron-icon" id="user-chevron-${u.id}">▼</span>
+                      </button>
+                    </td>
+                  </tr>
+
+                  <!-- Collapsible Loan Details Dropdown Bar -->
+                  <tr class="user-loans-dropdown-row" id="user-loans-dropdown-${u.id}" style="display: none;">
+                    <td colspan="8" class="dropdown-td-wrapper">
+                      <div class="user-loans-dropdown-container">
+                        <div class="user-loans-dropdown-header">
+                          <div class="dropdown-header-title">
+                            💳 Loan Facilities & Applications for <strong>${u.full_name}</strong> (#${u.id})
+                          </div>
+                          <div class="dropdown-header-subtitle">
+                            Total Applications: ${userLoans.length} | Approved & Active: ${approvedCount}
+                          </div>
+                        </div>
+
+                        ${userLoans.length === 0 ? `
+                          <div class="no-loans-alert">
+                            ℹ️ No loan applications or credit facilities acquired by this borrower yet.
+                          </div>
+                        ` : `
+                          <div class="user-loans-cards-grid">
+                            ${userLoans.map(loan => `
+                              <div class="user-loan-card ${loan.status}">
+                                <div class="user-loan-card-header">
+                                  <div class="loan-type-tag">
+                                    <span class="loan-id-badge">Loan #${loan.id}</span>
+                                    <strong>${this.formatProductType(loan.product_type)}</strong>
+                                  </div>
+                                  ${this.renderStatusBadge(loan.status)}
+                                </div>
+
+                                <div class="user-loan-category-desc">
+                                  ${this.formatCategoryDetails(loan)}
+                                </div>
+
+                                <div class="user-loan-metrics-grid">
+                                  <div class="u-metric">
+                                    <span class="u-lbl">Requested Amount</span>
+                                    <span class="u-val">${this.formatCurrency(loan.requested_amount)}</span>
+                                  </div>
+                                  <div class="u-metric">
+                                    <span class="u-lbl">Sanctioned Amount</span>
+                                    <span class="u-val highlight">${loan.sanctioned_amount ? this.formatCurrency(loan.sanctioned_amount) : 'Pending Sanction'}</span>
+                                  </div>
+                                  <div class="u-metric">
+                                    <span class="u-lbl">Offered Interest Rate</span>
+                                    <span class="u-val">${loan.interest_rate_offered ? loan.interest_rate_offered + '% p.a.' : 'Standard Slabs'}</span>
+                                  </div>
+                                  <div class="u-metric">
+                                    <span class="u-lbl">Preferred Tenure</span>
+                                    <span class="u-val">${loan.tenure_months || loan.requested_tenure_months || 36} Months</span>
+                                  </div>
+                                </div>
+
+                                ${loan.admin_note ? `
+                                  <div class="user-loan-admin-note">
+                                    <strong>📝 Underwriter Remarks:</strong> ${loan.admin_note}
+                                  </div>
+                                ` : ''}
+
+                                ${loan.documents && loan.documents.length > 0 ? `
+                                  <div class="user-loan-docs-section">
+                                    <div class="docs-title">📎 Attached Supporting Documents (${loan.documents.length}):</div>
+                                    <div class="docs-chip-list">
+                                      ${loan.documents.map(d => `
+                                        <a href="${api.getDocumentViewUrl(loan.id, d.doc_id || d.id)}" target="_blank" class="doc-view-chip ${d.status || d.verification_status}">
+                                          📄 ${d.file_name || d.original_filename || d.doc_type} (${d.status || d.verification_status || 'uploaded'})
+                                        </a>
+                                      `).join('')}
+                                    </div>
+                                  </div>
+                                ` : ''}
+
+                                <div class="user-loan-card-footer">
+                                  <span class="applied-date">Submitted: ${this.formatDate(loan.applied_at)}</span>
+                                  <button type="button" class="btn btn-secondary btn-xs" onclick="app.reviewLoan(${loan.id})">
+                                    Review Application →
+                                  </button>
+                                </div>
+                              </div>
+                            `).join('')}
+                          </div>
+                        `}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>

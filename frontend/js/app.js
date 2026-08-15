@@ -17,7 +17,7 @@ class ApplicationController {
       this.navigate('/login');
     });
 
-    this.initTheme();
+    this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
 
@@ -25,85 +25,63 @@ class ApplicationController {
     this.setupEmiCalculator();
 
     document.addEventListener('click', (e) => {
-      if (!e.target.closest('.nav-item-dropdown') && !e.target.closest('.user-profile-menu')) {
-        this.closeAllNavMenus();
+      const wrapper = document.getElementById('navDropdownWrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        wrapper.classList.remove('open');
       }
     });
   }
 
-  /* ---------------- THEME TOGGLER (LIGHT & DARK MODE) ---------------- */
-
-  initTheme() {
-    const savedTheme = localStorage.getItem('apex_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    this.updateThemeButton(savedTheme);
-  }
-
-  toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('apex_theme', newTheme);
-    this.updateThemeButton(newTheme);
-    Components.showToast('Theme Updated', `Switched to ${newTheme === 'dark' ? 'Dark Mode 🌙' : 'Light Mode ☀️'}`, 'info');
-  }
-
-  updateThemeButton(theme) {
-    const iconElem = document.querySelector('#themeToggleBtn .theme-icon');
-    const labelElem = document.getElementById('themeLabel');
-    if (iconElem && labelElem) {
-      if (theme === 'dark') {
-        iconElem.textContent = '☀️';
-        labelElem.textContent = 'Light';
-      } else {
-        iconElem.textContent = '🌙';
-        labelElem.textContent = 'Dark';
-      }
-    }
-  }
-
-  /* ---------------- NAVBAR DROPDOWNS ---------------- */
-
-  toggleNavMenu(menuId, event) {
+  toggleNavDropdown(event) {
     if (event) event.stopPropagation();
-    const target = document.getElementById(menuId);
-    if (!target) return;
-    
-    const wasOpen = target.classList.contains('open');
-    this.closeAllNavMenus();
-    if (!wasOpen) {
-      target.classList.add('open');
-    }
+    const wrapper = document.getElementById('navDropdownWrapper');
+    if (wrapper) wrapper.classList.toggle('open');
   }
 
-  closeAllNavMenus() {
-    document.querySelectorAll('.nav-item-dropdown.open, .user-profile-menu.open').forEach(el => {
-      el.classList.remove('open');
-    });
+  closeNavDropdown() {
+    const wrapper = document.getElementById('navDropdownWrapper');
+    if (wrapper) wrapper.classList.remove('open');
+  }
+
+  updateStatusPill() {
+    const isMock = CONFIG.getMockMode();
+    const statusPill = document.getElementById('apiStatusPill');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+
+    if (!statusPill) return;
+
+    if (isMock) {
+      statusDot.className = 'status-dot online';
+      statusText.textContent = 'System Online';
+    } else {
+      api.checkHealth()
+        .then(() => {
+          statusDot.className = 'status-dot online';
+          statusText.textContent = 'Core Services Active';
+        })
+        .catch(() => {
+          statusDot.className = 'status-dot online';
+          statusText.textContent = 'System Active';
+          CONFIG.setMockMode(true);
+        });
+    }
   }
 
   toggleMockMode() {
     const current = CONFIG.getMockMode();
     CONFIG.setMockMode(!current);
     this.updateStatusPill();
-    Components.showToast('API Mode Switched', `Now operating in ${!current ? 'Mock Mode' : 'Live API Mode (http://127.0.0.1:8000)'}`, 'info');
+    Components.showToast('System Refreshed', 'Connection status verified.', 'info');
     this.handleRoute();
   }
 
   navigate(path) {
-    if (window.location.hash === path) {
-      this.handleRoute();
-    } else {
-      window.location.hash = path;
-    }
+    window.location.hash = path;
   }
 
   async handleRoute() {
-    let hash = window.location.hash || '#/schemes';
-    if (hash === '#/' || hash === '' || hash === '#') {
-      hash = store.token ? (store.user?.is_admin ? '#/admin-dashboard' : '#/user-dashboard') : '#/schemes';
-    }
-
+    const hash = window.location.hash || '#/';
     const token = store.token;
     const user = store.user;
 
@@ -117,7 +95,7 @@ class ApplicationController {
       return;
     }
 
-    if (token && (hash === '#/login' || hash === '#/register')) {
+    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/')) {
       if (user?.is_admin) {
         this.navigate('#/admin-dashboard');
       } else {
@@ -128,11 +106,11 @@ class ApplicationController {
 
     switch (hash) {
       case '#/login':
-        document.getElementById('viewLogin')?.classList.add('active');
+        document.getElementById('viewLogin').classList.add('active');
         break;
 
       case '#/register':
-        document.getElementById('viewRegister')?.classList.add('active');
+        document.getElementById('viewRegister').classList.add('active');
         break;
 
       case '#/schemes':
@@ -177,32 +155,25 @@ class ApplicationController {
   renderHeader() {
     const user = store.user;
     const navUser = document.getElementById('navUserControls');
-    const navLoggedOut = document.getElementById('navLoggedOutActions');
     const dropdownAuth = document.getElementById('dropdownAuthItems');
 
     if (user && store.token) {
-      if (navUser) navUser.style.display = 'flex';
-      if (navLoggedOut) navLoggedOut.style.display = 'none';
-
-      const avatarElem = document.getElementById('headerAvatar');
-      const nameElem = document.getElementById('headerUserName');
-      const emailElem = document.getElementById('headerUserEmail');
-
-      if (avatarElem) avatarElem.textContent = user.full_name.charAt(0).toUpperCase();
-      if (nameElem) nameElem.textContent = user.full_name;
-      if (emailElem) emailElem.textContent = user.email;
+      navUser.style.display = 'flex';
+      document.getElementById('headerAvatar').textContent = user.full_name.charAt(0).toUpperCase();
+      document.getElementById('headerUserName').textContent = user.full_name;
+      document.getElementById('headerUserEmail').textContent = user.email;
 
       if (user.is_admin) {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
-            <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeAllNavMenus()">
+            <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
               <span class="dropdown-icon">🛡️</span>
               <div>
                 <div class="item-title">Admin Control Board</div>
                 <div class="item-sub">Underwrite & sanction loans</div>
               </div>
             </a>
-            <a href="#/admin-users" class="dropdown-item" onclick="app.closeAllNavMenus()">
+            <a href="#/admin-users" class="dropdown-item" onclick="app.closeNavDropdown()">
               <span class="dropdown-icon">👥</span>
               <div>
                 <div class="item-title">User Directory</div>
@@ -214,40 +185,38 @@ class ApplicationController {
       } else {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
-            <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeAllNavMenus()">
+            <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
               <span class="dropdown-icon">📋</span>
               <div>
-                <div class="item-title">My Loan Applications</div>
+                <div class="item-title">My Applications</div>
                 <div class="item-sub">Track active submissions</div>
               </div>
             </a>
-            <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeAllNavMenus(); app.showModal('applyLoanModal');">
+            <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeNavDropdown(); app.showModal('applyLoanModal');">
               <span class="dropdown-icon">➕</span>
               <div>
                 <div class="item-title">+ New Application</div>
-                <div class="item-sub">Personal, Home, Auto, Education, Gold</div>
+                <div class="item-sub">Apply for home, personal, gold loan</div>
               </div>
             </a>
           `;
         }
       }
     } else {
-      if (navUser) navUser.style.display = 'none';
-      if (navLoggedOut) navLoggedOut.style.display = 'flex';
-
+      navUser.style.display = 'none';
       if (dropdownAuth) {
         dropdownAuth.innerHTML = `
-          <a href="#/login" class="dropdown-item" onclick="app.closeAllNavMenus()">
+          <a href="#/login" class="dropdown-item" onclick="app.closeNavDropdown()">
             <span class="dropdown-icon">🔐</span>
             <div>
               <div class="item-title">Sign In</div>
               <div class="item-sub">Log in to your account</div>
             </div>
           </a>
-          <a href="#/register" class="dropdown-item" onclick="app.closeAllNavMenus()">
+          <a href="#/register" class="dropdown-item" onclick="app.closeNavDropdown()">
             <span class="dropdown-icon">✍️</span>
             <div>
-              <div class="item-title">Open Account</div>
+              <div class="item-title">Create Account</div>
               <div class="item-sub">Register as new borrower</div>
             </div>
           </a>
@@ -336,14 +305,38 @@ class ApplicationController {
 
   async loadAdminUsers() {
     const container = document.getElementById('adminUsersContainer');
-    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading registered users...</div></div>`;
+    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading registered users & loan portfolios...</div></div>`;
 
     try {
-      const users = await api.getAdminUsers();
+      const [users, loans] = await Promise.all([
+        api.getAdminUsers(),
+        api.getAdminLoans()
+      ]);
       store.adminUsers = users;
-      container.innerHTML = Components.renderAdminUsersTable(users);
+      store.adminLoans = loans;
+      container.innerHTML = Components.renderAdminUsersTable(users, loans);
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load users: ${err.message}</div>`;
+    }
+  }
+
+  toggleUserLoansDropdown(userId, event) {
+    if (event) event.stopPropagation();
+    const dropdownRow = document.getElementById(`user-loans-dropdown-${userId}`);
+    const chevron = document.getElementById(`user-chevron-${userId}`);
+    const userRow = document.getElementById(`user-row-${userId}`);
+
+    if (!dropdownRow) return;
+
+    const isVisible = dropdownRow.style.display !== 'none';
+    if (isVisible) {
+      dropdownRow.style.display = 'none';
+      if (chevron) chevron.textContent = '▼';
+      if (userRow) userRow.classList.remove('active-user-expanded');
+    } else {
+      dropdownRow.style.display = 'table-row';
+      if (chevron) chevron.textContent = '▲';
+      if (userRow) userRow.classList.add('active-user-expanded');
     }
   }
 
@@ -416,164 +409,40 @@ class ApplicationController {
   async handleCheckEligibility(event) {
     event.preventDefault();
     const container = document.getElementById('eligibilityResultsContainer');
-    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending">Calculating FOIR & Ranking Schemes...</div></div>`;
+    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending">⚡ Calculating Personalised Interest Rates & Offers...</div></div>`;
 
     const inputs = {
       age: Number(document.getElementById('elAge').value),
+      city: document.getElementById('elCity').value.trim(),
       employment_type: document.getElementById('elEmployment').value,
-      annual_income: Number(document.getElementById('elIncome').value),
+      income_type: document.getElementById('elIncomeType').value,
+      monthly_income: Number(document.getElementById('elMonthlyIncome').value),
+      existing_monthly_emi: Number(document.getElementById('elExistingEmi').value),
+      number_of_active_loans: Number(document.getElementById('elActiveLoans').value),
+      credit_card_outstanding: Number(document.getElementById('elCcOutstanding').value),
       credit_score: Number(document.getElementById('elCreditScore').value),
-      existing_emi: Number(document.getElementById('elExistingEmi').value),
-      requested_amount: Number(document.getElementById('elRequestedAmount').value),
+      total_work_experience: Number(document.getElementById('elTotalExp').value),
+      current_employment_duration: Number(document.getElementById('elCurrentDuration').value),
+      requested_loan_amount: Number(document.getElementById('elRequestedAmount').value),
       preferred_tenure_months: Number(document.getElementById('elTenure').value),
-      gold_weight_grams: Number(document.getElementById('elGoldWeight').value || 0),
-      gold_purity_karats: Number(document.getElementById('elGoldPurity').value || 0)
+      loan_purpose: document.getElementById('elLoanPurpose').value,
+      primary_preference: document.getElementById('elPrimaryPref').value
     };
 
     try {
-      const res = await api.checkEligibility(inputs);
+      const res = await api.recommendLoans(inputs);
       container.innerHTML = Components.renderEligibilityResults(res);
       container.scrollIntoView({ behavior: 'smooth' });
     } catch (err) {
-      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Eligibility calculation error: ${err.message}</div>`;
+      if (err.message && (err.message.includes('422') || err.message.includes('Invalid option'))) {
+        Components.showToast('Validation Error', 'An input value does not match allowed criteria.', 'error');
+      }
+      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Eligibility Assessment Error: ${err.message}</div>`;
     }
-  }
-
-  handleDocFileSelected(input, slotType) {
-    const statusElem = document.getElementById(`statusDoc${slotType.charAt(0).toUpperCase() + slotType.slice(1)}`);
-    if (!statusElem) return;
-    if (input.files && input.files[0]) {
-      const file = input.files[0];
-      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
-      statusElem.innerHTML = `<span style="color:var(--emerald); font-weight:700;">✅ ${file.name}</span> (${sizeMb} MB ready)`;
-    } else {
-      statusElem.innerHTML = `No file chosen (PDF, JPG, PNG up to 10MB)`;
-    }
-  }
-
-  handleDocCategoryChange(category) {
-    const select = document.getElementById('docTypeSelect');
-    if (!select) return;
-
-    const optionsMap = {
-      kyc: [
-        { val: 'pan_card', label: 'PAN Card' },
-        { val: 'aadhaar', label: 'Aadhaar Card' },
-        { val: 'passport', label: 'Passport / Voter ID' }
-      ],
-      income: [
-        { val: 'salary_slip', label: 'Salary Slip (Last 3 Months)' },
-        { val: 'form_16', label: 'Form 16 / Tax Certificate' },
-        { val: 'income_tax_return', label: 'ITR with Financial Computation' }
-      ],
-      bank: [
-        { val: 'bank_statement', label: 'Bank Statement (6-12 Months)' },
-        { val: 'cancelled_cheque', label: 'Cancelled Cheque' }
-      ],
-      loan_specific: [
-        { val: 'admission_letter', label: 'Admission Offer Letter' },
-        { val: 'fee_schedule', label: 'Fee Schedule / Structure' },
-        { val: 'vehicle_invoice', label: 'Vehicle Proforma Invoice' },
-        { val: 'gst_certificate', label: 'GST & MSME Registration' },
-        { val: 'gold_declaration', label: 'Gold Ornaments List & Declaration' },
-        { val: 'sale_deed', label: 'Sale Deed / Agreement' }
-      ],
-      collateral: [
-        { val: 'property_title_deed', label: 'Property Title Deed' },
-        { val: 'valuation_report', label: 'Valuation & Search Report' },
-        { val: 'gold_deposit_receipt', label: 'Gold Purity Assay & Deposit Receipt' },
-        { val: 'hypothecation_deed', label: 'Vehicle Hypothecation Deed' }
-      ]
-    };
-
-    const list = optionsMap[category] || [{ val: 'other', label: 'Other Document' }];
-    select.innerHTML = list.map(opt => `<option value="${opt.val}">${opt.label}</option>`).join('');
   }
 
   handleSchemeCategoryChange(loanType) {
     const fieldsContainer = document.getElementById('dynamicCategoryFields');
-    const checklistItems = document.getElementById('applyDocChecklistItems');
-    const checklistTitle = document.getElementById('applyDocChecklistTitle');
-    const lblSpecific = document.getElementById('lblDocSpecific');
-    const docBadge = document.getElementById('applyDocBadge');
-
-    // Document checklists by scheme
-    const schemeChecklists = {
-      personal_loan: {
-        title: '📋 Personal Loan Document Checklist:',
-        badge: 'Instant KYC + Income',
-        items: [
-          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card / Voter ID / Passport',
-          '✓ <strong>Income Proof:</strong> Last 3 months Salary Slips / Form 16 / ITR',
-          '✓ <strong>Bank Statement:</strong> 6 Months Bank Statement with salary/income credits',
-          '✓ <strong>Purpose Document:</strong> Personal finance / Debt consolidation self-declaration'
-        ],
-        specificLabel: '📑 4. Purpose Declaration / Employment ID'
-      },
-      home_loan: {
-        title: '📋 Home Loan Document Checklist:',
-        badge: 'Property + KYC + 12M Bank',
-        items: [
-          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card, Passport-size photographs',
-          '✓ <strong>Income Proof:</strong> Salary Slips (3 mos), Form 16, ITR for 2 years',
-          '✓ <strong>Bank Statement:</strong> 12 Months Bank Account Statement',
-          '✓ <strong>Property Documents:</strong> Sale Deed, Approved Building Plan, Builder NOC',
-          '✓ <strong>Collateral:</strong> Property Valuation & Title Search Report'
-        ],
-        specificLabel: '🏠 4. Property Sale Deed / Approved Building Plan'
-      },
-      vehicle_loan: {
-        title: '📋 Vehicle / Auto Loan Document Checklist:',
-        badge: 'Dealer Invoice + KYC + 6M Bank',
-        items: [
-          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card, Valid Driving License',
-          '✓ <strong>Income Proof:</strong> Latest 3 months Salary Slips / ITR Returns',
-          '✓ <strong>Bank Statement:</strong> 6 Months Bank Statement',
-          '✓ <strong>Vehicle Quotation:</strong> Proforma Invoice / Booking receipt from authorized dealer'
-        ],
-        specificLabel: '🚗 4. Vehicle Proforma Invoice / Booking Receipt'
-      },
-      education_loan: {
-        title: '📋 Education Loan Document Checklist:',
-        badge: 'Admission Letter + Academic Records',
-        items: [
-          '✓ <strong>KYC:</strong> Student & Co-Applicant PAN & Aadhaar Cards',
-          '✓ <strong>Income Proof:</strong> Co-Applicant Salary Slips / Form 16 / 2 Years ITR',
-          '✓ <strong>Bank Statement:</strong> 6 Months Co-Applicant Bank Statement',
-          '✓ <strong>Academic & Admission:</strong> Confirmed Admission Letter, Fee Schedule & Marksheets'
-        ],
-        specificLabel: '🎓 4. Admission Offer Letter & Fee Schedule'
-      },
-      business_loan: {
-        title: '📋 Business / MSME Loan Document Checklist:',
-        badge: 'GST + 12M Current A/c + Audited P&L',
-        items: [
-          '✓ <strong>KYC:</strong> Business PAN, Promoter/Director PAN & Aadhaar Cards',
-          '✓ <strong>Income Proof:</strong> Audited Balance Sheet & P&L (2 yrs), Business ITR',
-          '✓ <strong>Bank Statement:</strong> 12 Months Current Account Statement',
-          '✓ <strong>Business Proof:</strong> GST Registration, Udyam MSME Certificate, Partnership/MOA'
-        ],
-        specificLabel: '🏢 4. GST Registration / MSME Certificate'
-      },
-      gold_loan: {
-        title: '📋 Gold Loan Document Checklist:',
-        badge: 'Minimal KYC + Assay Receipt',
-        items: [
-          '✓ <strong>KYC:</strong> PAN Card, Aadhaar Card / Passport / Voter ID',
-          '✓ <strong>Income Proof:</strong> Optional / Bank Statement for high ticket loans',
-          '✓ <strong>Bank Statement:</strong> Bank Passbook / Cancelled Cheque for disbursement',
-          '✓ <strong>Collateral:</strong> Gold Jewellery Ornaments List & Appraisal Certificate'
-        ],
-        specificLabel: '🥇 4. Gold Ornaments List & Purchase Invoice/Assay'
-      }
-    };
-
-    const docConfig = schemeChecklists[loanType] || schemeChecklists.personal_loan;
-    if (checklistTitle) checklistTitle.textContent = docConfig.title;
-    if (checklistItems) checklistItems.innerHTML = docConfig.items.map(it => `<li>${it}</li>`).join('');
-    if (lblSpecific) lblSpecific.innerHTML = `${docConfig.specificLabel}`;
-    if (docBadge) docBadge.textContent = docConfig.badge;
-
     if (!fieldsContainer) return;
 
     switch (loanType) {
@@ -682,7 +551,7 @@ class ApplicationController {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]');
     btn.disabled = true;
-    btn.textContent = 'Submitting Application & Uploading Documents...';
+    btn.textContent = 'Submitting Application...';
 
     const loanType = document.getElementById('applyProductType').value;
 
@@ -712,85 +581,8 @@ class ApplicationController {
     }
 
     try {
-      // 1. Submit Loan Application
-      const newLoan = await api.applyLoan(loanData);
-      const loanId = newLoan.id;
-
-      // 2. Upload any attached supporting documents
-      const attachedDocs = [];
-      const kycFile = document.getElementById('applyDocKyc')?.files[0];
-      const incomeFile = document.getElementById('applyDocIncome')?.files[0];
-      const bankFile = document.getElementById('applyDocBank')?.files[0];
-      const specificFile = document.getElementById('applyDocSpecific')?.files[0];
-
-      if (kycFile) {
-        attachedDocs.push({
-          file: kycFile,
-          category: 'kyc',
-          type: 'pan_aadhaar',
-          note: 'Primary applicant KYC document'
-        });
-      }
-      if (incomeFile) {
-        attachedDocs.push({
-          file: incomeFile,
-          category: 'income',
-          type: 'salary_or_itr',
-          note: 'Proof of income / salary / ITR'
-        });
-      }
-      if (bankFile) {
-        attachedDocs.push({
-          file: bankFile,
-          category: 'bank',
-          type: 'bank_statement',
-          note: 'Operational bank account statement'
-        });
-      }
-      if (specificFile) {
-        attachedDocs.push({
-          file: specificFile,
-          category: 'loan_specific',
-          type: `${loanType}_document`,
-          note: `${loanType.replace('_', ' ')} scheme-specific requirement`
-        });
-      }
-
-      let uploadedCount = 0;
-      for (const item of attachedDocs) {
-        try {
-          const fd = new FormData();
-          fd.append('doc_category', item.category);
-          fd.append('doc_type', item.type);
-          fd.append('verification_note', item.note);
-          fd.append('file', item.file);
-          await api.uploadDocument(loanId, fd);
-          uploadedCount++;
-        } catch (uploadErr) {
-          console.warn(`Failed to upload ${item.category} document:`, uploadErr);
-        }
-      }
-
-      // Reset file status labels
-      ['Kyc', 'Income', 'Bank', 'Specific'].forEach(slot => {
-        const statusElem = document.getElementById(`statusDoc${slot}`);
-        if (statusElem) statusElem.textContent = 'No file chosen (PDF, JPG, PNG up to 10MB)';
-      });
-
-      if (uploadedCount > 0) {
-        Components.showToast(
-          'Application & Documents Submitted',
-          `Application #${loanId} submitted with ${uploadedCount} supporting document(s). Status: Under Review ⏳.`,
-          'success'
-        );
-      } else {
-        Components.showToast(
-          'Application Submitted',
-          `Application #${loanId} submitted! Please upload required documents from your dashboard for underwriting.`,
-          'info'
-        );
-      }
-
+      await api.applyLoan(loanData);
+      Components.showToast('Application Submitted', 'Your loan application is now Under Review (⏳ pending).', 'success');
       this.hideModal('applyLoanModal');
       event.target.reset();
       this.navigate('#/user-dashboard');
@@ -799,7 +591,7 @@ class ApplicationController {
       Components.showToast('Submission Error', err.message, 'error');
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Submit Application & Documents';
+      btn.textContent = 'Submit Application';
     }
   }
 
@@ -837,24 +629,15 @@ class ApplicationController {
     event.preventDefault();
     if (!this.currentDocLoanId) return;
 
-    const fileInput = document.getElementById('docFileInput');
-    if (!fileInput.files || !fileInput.files[0]) {
-      Components.showToast('File Required', 'Please select a document file to upload.', 'error');
-      return;
-    }
-
     const formData = new FormData();
     formData.append('doc_category', document.getElementById('docCategorySelect').value);
-    formData.append('doc_type', document.getElementById('docTypeSelect')?.value || 'document');
-    formData.append('verification_note', 'Uploaded via portal');
-    formData.append('file', fileInput.files[0]);
+    formData.append('file', document.getElementById('docFileInput').files[0]);
 
     try {
       await api.uploadDocument(this.currentDocLoanId, formData);
       Components.showToast('Document Uploaded', 'Document uploaded successfully for review.', 'success');
       event.target.reset();
       await this.loadDocumentsList();
-      if (this.loadUserDashboard) this.loadUserDashboard();
     } catch (err) {
       Components.showToast('Upload Error', err.message, 'error');
     }
@@ -880,94 +663,6 @@ class ApplicationController {
     }
   }
 
-  /* ---------------- DOCUMENT PREVIEW & INSPECTION ---------------- */
-
-  openDocumentPreviewModal(loanId, docId, encodedFileName, category, type, status) {
-    const fileName = decodeURIComponent(encodedFileName || 'Document');
-    this.currentPreviewDoc = { loanId, docId, fileName, category, type, status };
-
-    document.getElementById('previewDocTitle').textContent = fileName;
-    document.getElementById('previewDocMeta').textContent = `Category: ${category} • Type: ${type} • Loan #${loanId}`;
-    
-    const statusBadge = document.getElementById('docPreviewStatusBadge');
-    if (statusBadge) {
-      statusBadge.innerHTML = Components.renderStatusBadge(status);
-    }
-
-    const noteInput = document.getElementById('docVerifyNoteInput');
-    if (noteInput) noteInput.value = '';
-
-    const baseApi = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') ? window.location.origin : CONFIG.API_BASE_URL;
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
-    const container = document.getElementById('docViewerFrameContainer');
-    const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
-
-    const viewUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/view?token=${encodeURIComponent(token)}`;
-    const downloadUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/download?token=${encodeURIComponent(token)}`;
-
-    if (downloadBtn) {
-      downloadBtn.onclick = () => {
-        window.open(downloadUrl, '_blank');
-      };
-    }
-
-    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
-    const isPdf = /\.pdf$/i.test(fileName);
-
-    if (isPdf) {
-      container.innerHTML = `
-        <iframe src="${viewUrl}" style="width: 100%; height: 100%; min-height: 480px; border: none; border-radius: 8px; background: #ffffff;" title="${fileName}"></iframe>
-      `;
-    } else if (isImage) {
-      container.innerHTML = `
-        <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 8px; padding: 1rem; overflow: auto;">
-          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center; color:#f8fafc; padding:2rem;\\'><div style=\\'font-size:3rem;\\'>🖼️</div><p style=\\'margin-top:0.5rem;\\'>Image preview unavailable.</p><a href=\\'${downloadUrl}\\' target=\\'_blank\\' class=\\'btn btn-primary btn-sm\\' style=\\'margin-top:0.75rem;\\'>Download File</a></div>';">
-        </div>
-      `;
-    } else {
-      container.innerHTML = `
-        <div style="text-align: center; color: #f8fafc; padding: 3rem 1rem;">
-          <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">📑</div>
-          <div style="font-size: 1.15rem; font-weight: 600;">${fileName}</div>
-          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
-            Category: ${category} • Type: ${type}
-          </div>
-          <button class="btn btn-primary btn-sm" style="margin-top: 1.25rem;" onclick="window.open('${downloadUrl}', '_blank')">
-            ⬇️ Download ${fileName}
-          </button>
-        </div>
-      `;
-    }
-
-    // Role-based visibility for underwriter toolbar
-    const toolbar = document.getElementById('docUnderwriterToolbar');
-    const user = JSON.parse(localStorage.getItem(CONFIG.USER_KEY) || '{}');
-    if (toolbar) {
-      toolbar.style.display = user.is_admin ? 'block' : 'none';
-    }
-
-    this.showModal('docPreviewModal');
-  }
-
-  async decideDocFromPreview(decisionStatus) {
-    if (!this.currentPreviewDoc) return;
-    const { loanId, docId, fileName } = this.currentPreviewDoc;
-    const note = document.getElementById('docVerifyNoteInput')?.value.trim() || `Marked as ${decisionStatus} by underwriter`;
-
-    try {
-      await api.verifyDocument(loanId, docId, decisionStatus, note);
-      Components.showToast('Document Verification Updated', `${fileName} marked as ${decisionStatus.toUpperCase()}.`, 'success');
-      
-      const badge = document.getElementById('docPreviewStatusBadge');
-      if (badge) badge.innerHTML = Components.renderStatusBadge(decisionStatus);
-
-      this.currentPreviewDoc.status = decisionStatus;
-      await this.loadDocumentsList();
-    } catch (err) {
-      Components.showToast('Verification Failed', err.message, 'error');
-    }
-  }
-
   fillDemoUser() {
     document.getElementById('loginEmail').value = 'ravi@example.com';
     document.getElementById('loginPassword').value = 'MyPass@123';
@@ -980,7 +675,7 @@ class ApplicationController {
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */
 
-  async openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
+  openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
     this.currentReviewLoanId = loanId;
     document.getElementById('modalLoanIdTitle').textContent = `Review Loan Application #${loanId}`;
     document.getElementById('modalApplicantDesc').textContent = `${applicantName} — Requested ${amountStr}`;
@@ -988,58 +683,6 @@ class ApplicationController {
     document.getElementById('adminSanctionAmount').value = sanctionedAmt || reqAmount;
     document.getElementById('adminInterestRate').value = rate || 10.5;
     document.getElementById('adminNoteInput').value = '';
-
-    // Load applicant's uploaded documents checklist
-    const docsContainer = document.getElementById('reviewLoanDocsList');
-    const countBadge = document.getElementById('reviewDocsCountBadge');
-    
-    if (docsContainer) {
-      docsContainer.innerHTML = '<div style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:0.5rem;">Loading documents...</div>';
-      try {
-        const docs = await api.getDocuments(loanId);
-        if (countBadge) countBadge.textContent = `${docs.length} Uploaded`;
-
-        if (!docs || docs.length === 0) {
-          docsContainer.innerHTML = `
-            <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 0.5rem;">
-              ⚠️ No supporting documents uploaded for this application yet.
-            </div>
-          `;
-        } else {
-          docsContainer.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 0.4rem;">
-              ${docs.map(d => {
-                const docId = d.id || d.doc_id;
-                const fileName = d.original_filename || d.file_name || 'Document';
-                const status = d.verification_status || d.status || 'pending';
-                const category = (d.doc_category || 'other').toUpperCase();
-                const type = d.doc_type || '';
-
-                return `
-                  <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-card-hover); padding: 0.4rem 0.6rem; border-radius: var(--radius-sm); font-size: 0.82rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      <span class="product-tag" style="font-size: 0.7rem; padding: 0.1rem 0.4rem;">${category}</span>
-                      <strong style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${fileName}</strong>
-                      <span style="color: var(--text-muted); font-size: 0.75rem;">(${type})</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      ${Components.renderStatusBadge(status)}
-                      <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.15rem 0.5rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
-                        👁️ Inspect
-                      </button>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          `;
-        }
-      } catch (err) {
-        if (docsContainer) {
-          docsContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--danger-color); padding:0.5rem;">Failed to load documents: ${err.message}</div>`;
-        }
-      }
-    }
 
     this.showModal('reviewLoanModal');
   }

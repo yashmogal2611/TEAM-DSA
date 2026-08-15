@@ -26,136 +26,51 @@
         <span>ApexLoans</span>
       </div>
 
-      <!-- Segment Pill -->
-      <div class="nav-segment-pill">
-        <span>Personal & MSME Credit</span>
+      <!-- Top-Left Navigation Dropdown Menu -->
+      <div class="nav-dropdown-wrapper" id="navDropdownWrapper">
+        <button type="button" class="nav-dropdown-btn" onclick="app.toggleNavDropdown(event)">
+          <span>☰ Menu</span>
+          <span class="dropdown-chevron">▾</span>
+        </button>
+        <div class="nav-dropdown-menu" id="navDropdownMenu">
+          <div class="dropdown-section-title">Navigation & Tools</div>
+          <a href="#/schemes" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <span class="dropdown-icon">📜</span>
+            <div>
+              <div class="item-title">Loan Schemes</div>
+              <div class="item-sub">Interest rates & policy rules</div>
+            </div>
+          </a>
+          <a href="#/eligibility" class="dropdown-item" onclick="app.closeNavDropdown()">
+            <span class="dropdown-icon">🧮</span>
+            <div>
+              <div class="item-title">Eligibility Checker</div>
+              <div class="item-sub">Multi-step FOIR calculator</div>
+            </div>
+          </a>
+
+          <div class="dropdown-divider"></div>
+
+          <div id="dropdownAuthItems"></div>
+        </div>
       </div>
-
-      <!-- Horizontal Navigation Menu (Modern Banking Style) -->
-      <nav class="nav-main-links">
-        <!-- Discover Products Dropdown -->
-        <div class="nav-item-dropdown" id="navProductsWrapper">
-          <button type="button" class="nav-link-btn" onclick="app.toggleNavMenu('navProductsWrapper', event)">
-            <span>Discover Products</span>
-            <span class="dropdown-arrow">▾</span>
-          </button>
-          <div class="nav-dropdown-content">
-            <a href="#/schemes" onclick="app.closeAllNavMenus(); app.fillSchemeAndApply('personal_loan');" class="dropdown-product-link">
-              <span class="prod-icon">💳</span>
-              <div>
-                <strong>Personal Loan</strong>
-                <p>Instant collateral-free funding from 10.49% p.a.</p>
-              </div>
-            </a>
-            <a href="#/schemes" onclick="app.closeAllNavMenus(); app.fillSchemeAndApply('home_loan');" class="dropdown-product-link">
-              <span class="prod-icon">🏡</span>
-              <div>
-                <strong>Home Loan</strong>
-                <p>Housing & property loans up to ₹1.5 Cr from 8.50%</p>
-              </div>
-            </a>
-            <a href="#/schemes" onclick="app.closeAllNavMenus(); app.fillSchemeAndApply('vehicle_loan');" class="dropdown-product-link">
-              <span class="prod-icon">🚗</span>
-              <div>
-                <strong>Vehicle / Auto Loan</strong>
-                <p>New & pre-owned vehicle financing from 8.90%</p>
-              </div>
-            </a>
-            <a href="#/schemes" onclick="app.closeAllNavMenus(); app.fillSchemeAndApply('education_loan');" class="dropdown-product-link">
-              <span class="prod-icon">🎓</span>
-              <div>
-                <strong>Education Loan</strong>
-                <p>Domestic & international studies up to ₹75 Lakhs</p>
-              </div>
-            </a>
-            <a href="#/schemes" onclick="app.closeAllNavMenus(); app.fillSchemeAndApply('business_loan');" class="dropdown-product-link">
-              <span class="prod-icon">🏢</span>
-              <div>
-                <strong>Business / MSME Loan</strong>
-                <p>Working capital & expansion credit up to ₹1 Cr</p>
-              </div>
-            </a>
-            <a href="#/schemes" onclick="app.closeAllNavMenus(); app.fillSchemeAndApply('gold_loan');" class="dropdown-product-link">
-              <span class="prod-icon">🥇</span>
-              <div>
-                <strong>Gold Loan</strong>
-                <p>Instant jewellery pledge credit from 8.25% p.a.</p>
-              </div>
-            </a>
-          </div>
-        </div>
-
-        <!-- Calculator Link -->
-        <a href="#/eligibility" class="nav-link-item" onclick="app.closeAllNavMenus()">
-          <span>🧮 Smart Calculator</span>
-        </a>
-
-        <!-- Document Checklist Dropdown -->
-        <div class="nav-item-dropdown" id="navDocWrapper">
-          <button type="button" class="nav-link-btn" onclick="app.toggleNavMenu('navDocWrapper', event)">
-            <span>Documents Guide</span>
-            <span class="dropdown-arrow">▾</span>
-          </button>
-          <div class="nav-dropdown-content" style="min-width: 280px;">
-            <div class="doc-guide-item">
-              <strong>🪪 KYC Checklist</strong>
-              <p>PAN Card, Aadhaar Card, Passport or Voter ID</p>
-            </div>
-            <div class="doc-guide-item">
-              <strong>📄 Income Proof</strong>
-              <p>Salary Slips (3 mos), Form 16, ITR with Computation</p>
-            </div>
-            <div class="doc-guide-item">
-              <strong>🏦 Banking Records</strong>
-              <p>6-12 Months Account Statement or Cancelled Cheque</p>
-            </div>
-            <div class="doc-guide-item">
-              <strong>📑 Scheme Specific</strong>
-              <p>Admission letters, Property deeds, Quotations, GST</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- All Schemes Link -->
-        <a href="#/schemes" class="nav-link-item" onclick="app.closeAllNavMenus()">
-          <span>Explore Schemes</span>
-        </a>
-      </nav>
     </div>
 
-    <div class="header-right">
-      <!-- Light / Dark Mode Switcher -->
-      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="app.toggleTheme()" title="Toggle Light / Dark Mode">
-        <span class="theme-icon">🌙</span>
-        <span id="themeLabel">Dark</span>
+    <div class="header-controls">
+      <!-- System Health & Status Pill -->
+      <button class="api-status-pill" id="apiStatusPill" onclick="app.toggleMockMode()" title="System Operational Status">
+        <span class="status-dot online" id="statusDot"></span>
+        <span id="statusText">System Online</span>
       </button>
-
-      <!-- Quick Apply Button -->
-      <button class="btn btn-primary btn-sm" onclick="app.showModal('applyLoanModal')">
-        + Apply Now
-      </button>
-
-      <!-- Logged Out Auth Buttons -->
-      <div class="nav-auth-logged-out" id="navLoggedOutActions">
-        <a href="#/login" class="btn btn-secondary btn-sm">Sign In</a>
-        <a href="#/register" class="btn btn-dark btn-sm">Open Account</a>
-      </div>
 
       <!-- Authenticated User Profile Menu -->
-      <div class="user-profile-menu" id="navUserControls" style="display: none;" onclick="app.toggleNavMenu('navUserControls', event)">
+      <div class="user-profile-menu" id="navUserControls" style="display: none;">
         <div class="avatar" id="headerAvatar">U</div>
         <div class="user-info">
           <span class="user-name" id="headerUserName">User Name</span>
           <span class="user-email" id="headerUserEmail">user@example.com</span>
         </div>
-        <div class="user-dropdown-menu" id="userDropdownMenu">
-          <div id="dropdownAuthItems"></div>
-          <div class="dropdown-divider"></div>
-          <a href="javascript:void(0)" class="dropdown-item logout-item" onclick="app.logout()">
-            <span class="dropdown-icon">🚪</span>
-            <span>Sign Out</span>
-          </a>
-        </div>
+        <button class="btn btn-secondary btn-sm" onclick="app.logout()" title="Log out session">Exit</button>
       </div>
     </div>
   </header>
@@ -249,54 +164,14 @@
 
     <!-- 3. SCHEMES VIEW (#/schemes) -->
     <section class="view-section" id="viewSchemes">
-      <!-- Premium Hero Showcase matching Reference Images -->
-      <div class="fintech-hero">
-        <div class="hero-content">
-          <div class="hero-pill-tag">
-            <span>✨ AI-Powered Lending Engine</span>
-            <span>•</span>
-            <span>Cognizant Hackathon 2026</span>
-          </div>
-          <h1 class="hero-title">
-            Banking & credit that <br><span class="highlight">breaks down barriers</span>
-          </h1>
-          <p class="hero-subtitle">
-            Smart multi-category underwriting rules, instant FOIR eligibility evaluation, and verified document workflows across 6 lending categories.
-          </p>
-          <div class="hero-actions">
-            <button class="btn btn-hero-light" onclick="app.showModal('applyLoanModal')">
-              + Apply for Loan →
-            </button>
-            <a href="#/eligibility" class="btn btn-hero-outline">
-              🧮 Check Instant Eligibility
-            </a>
-          </div>
-
-          <div class="hero-trust-bar">
-            <div class="trust-item">
-              <span>📜</span>
-              <span><strong>6 RBI-Compliant</strong> Schemes</span>
-            </div>
-            <div class="trust-item">
-              <span>⚡</span>
-              <span><strong>Instant FOIR</strong> Scoring</span>
-            </div>
-            <div class="trust-item">
-              <span>📁</span>
-              <span><strong>End-to-End</strong> Document Verification</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="dashboard-header">
         <div class="dashboard-title">
-          <h1>Explore Loan Schemes</h1>
-          <p>Transparent interest rate slabs, flexible tenures, and mandatory document checklists for every lending product.</p>
+          <h1>Loan Schemes & Policy Guidelines</h1>
+          <p>Explore RBI-compliant credit products, interest rate slabs, and required document checklists.</p>
         </div>
-        <button class="btn btn-primary" onclick="app.showModal('applyLoanModal')">
-          + New Loan Application
-        </button>
+        <a href="#/eligibility" class="btn btn-primary">
+          🧮 Calculate My Eligibility →
+        </a>
       </div>
       <div id="schemesContainer"></div>
     </section>
@@ -305,70 +180,148 @@
     <section class="view-section" id="viewEligibility">
       <div class="dashboard-header">
         <div class="dashboard-title">
-          <h1>Smart Eligibility & FOIR Calculator</h1>
-          <p>Multi-step eligibility assessment engine with FOIR calculation and personalized loan recommendations (POST /loans/check-eligibility).</p>
+          <h1>Institutional Credit & Loan Recommendation Engine</h1>
+          <p>Instant eligibility assessment & personalized interest rate engine.</p>
+        </div>
+      </div>
+
+      <!-- Standard Eligibility Policy Rules Banner -->
+      <div class="eligibility-rules-banner">
+        <div class="rules-header">
+          <span class="rules-icon">📋</span>
+          <strong>Standard Credit Eligibility Guidelines</strong>
+        </div>
+        <div class="rules-grid">
+          <div class="rule-chip">👤 Age: <strong>21 - 65 yrs</strong></div>
+          <div class="rule-chip">📊 Min Credit Score: <strong>600 CIBIL</strong></div>
+          <div class="rule-chip">💵 Min Monthly Income: <strong>₹20,000</strong></div>
+          <div class="rule-chip">📉 Max EMI Ratio: <strong>65% of Income</strong></div>
+          <div class="rule-chip">🔢 Max Active Loans: <strong>5</strong></div>
+          <div class="rule-chip">⏱️ Min Employment: <strong>6 mos (0.5 yrs)</strong></div>
+          <div class="rule-chip">🏢 Business Loan: <strong>Self Employed / Business Owner</strong></div>
         </div>
       </div>
 
       <div class="eligibility-card">
         <form id="eligibilityForm" onsubmit="app.handleCheckEligibility(event)">
+          
+          <!-- Row 1: Personal & Location Details -->
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="elAge">Applicant Age</label>
-              <input type="number" id="elAge" class="input-control" value="28" min="18" max="75" required>
+              <label class="form-label" for="elAge">Applicant Age (years)</label>
+              <input type="number" id="elAge" class="input-control" value="35" min="18" max="70" required>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elEmployment">Employment Profile</label>
+              <label class="form-label" for="elCity">City Name</label>
+              <input type="text" id="elCity" class="input-control" value="Mumbai" placeholder="e.g. Mumbai, Delhi, Bengaluru" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elEmployment">Employment Type</label>
               <select id="elEmployment" class="input-control" required>
-                <option value="salaried">Salaried</option>
-                <option value="self_employed">Self Employed</option>
-                <option value="unemployed">Unemployed</option>
+                <option value="SALARIED">Salaried</option>
+                <option value="SELF_EMPLOYED">Self Employed</option>
+                <option value="BUSINESS_OWNER">Business Owner</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 2: Financial & Income Details -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="elIncomeType">Income Type</label>
+              <select id="elIncomeType" class="input-control" required>
+                <option value="FIXED">Fixed Income</option>
+                <option value="VARIABLE">Variable Income</option>
+                <option value="MIXED">Mixed Income</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elIncome">Annual Gross Income (₹)</label>
-              <input type="number" id="elIncome" class="input-control" value="800000" min="0" step="10000" required>
+              <label class="form-label" for="elMonthlyIncome">Monthly Income (₹)</label>
+              <input type="number" id="elMonthlyIncome" class="input-control" value="90000" min="20000" max="5000000" step="5000" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elExistingEmi">Existing Monthly EMIs (₹)</label>
+              <input type="number" id="elExistingEmi" class="input-control" value="8000" min="0" step="1000" required>
             </div>
           </div>
 
+          <!-- Row 3: Credit Profile & Liabilities -->
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" for="elCreditScore">CIBIL Credit Score</label>
-              <input type="number" id="elCreditScore" class="input-control" value="740" min="300" max="900" required>
+              <label class="form-label" for="elActiveLoans">Number of Active Loans</label>
+              <input type="number" id="elActiveLoans" class="input-control" value="1" min="0" required>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elExistingEmi">Current Monthly EMIs (₹)</label>
-              <input type="number" id="elExistingEmi" class="input-control" value="5000" min="0" step="1000" required>
+              <label class="form-label" for="elCcOutstanding">Credit Card Outstanding (₹)</label>
+              <input type="number" id="elCcOutstanding" class="input-control" value="15000" min="0" step="1000" required>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elRequestedAmount">Target Loan Amount (₹)</label>
-              <input type="number" id="elRequestedAmount" class="input-control" value="500000" min="10000" step="10000" required>
+              <label class="form-label" for="elCreditScore">CIBIL Credit Score (300-900)</label>
+              <input type="number" id="elCreditScore" class="input-control" value="780" min="300" max="900" required>
             </div>
           </div>
 
+          <!-- Row 4: Work Experience & Duration -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="elTotalExp">Total Work Experience (Years)</label>
+              <input type="number" id="elTotalExp" class="input-control" value="10.0" min="0" step="0.5" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elCurrentDuration">Current Employment Duration (Years)</label>
+              <input type="number" id="elCurrentDuration" class="input-control" value="4.0" min="0" step="0.5" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="elRequestedAmount">Requested Loan Amount (₹)</label>
+              <input type="number" id="elRequestedAmount" class="input-control" value="500000" min="10000" max="50000000" step="10000" required>
+            </div>
+          </div>
+
+          <!-- Row 5: Loan Preferences & Purpose -->
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="elTenure">Preferred Tenure (Months)</label>
-              <input type="number" id="elTenure" class="input-control" value="36" min="6" max="360" required>
+              <input type="number" id="elTenure" class="input-control" value="36" min="6" max="84" required>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elGoldWeight">Gold Ornaments Weight (Grams - Optional)</label>
-              <input type="number" id="elGoldWeight" class="input-control" value="0" min="0">
+              <label class="form-label" for="elLoanPurpose">Loan Purpose</label>
+              <select id="elLoanPurpose" class="input-control" required>
+                <option value="HOME_RENOVATION">Home Renovation (Personal Loan)</option>
+                <option value="HOME_PURCHASE">Buy a Home (Home Loan)</option>
+                <option value="HOME_CONSTRUCTION">Build a Home (Home Loan)</option>
+                <option value="MEDICAL">Medical Emergency (Medical Loan)</option>
+                <option value="EDUCATION">Education (Education Loan)</option>
+                <option value="TRAVEL">Travel (Personal Loan)</option>
+                <option value="WEDDING">Wedding (Personal Loan)</option>
+                <option value="VEHICLE_PURCHASE">Buy a Vehicle (Vehicle Loan)</option>
+                <option value="BUSINESS">Business (Business Loan)</option>
+                <option value="DEBT_CONSOLIDATION">Debt Consolidation (Debt Consolidation Loan)</option>
+                <option value="OTHER">Other (Personal Loan)</option>
+              </select>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elGoldPurity">Gold Purity (Karats - Optional)</label>
-              <input type="number" id="elGoldPurity" class="input-control" value="0" min="0" max="24">
+              <label class="form-label" for="elPrimaryPref">Primary Preference</label>
+              <select id="elPrimaryPref" class="input-control" required>
+                <option value="LOWEST_EMI">Lowest Monthly EMI</option>
+                <option value="LOWEST_TOTAL_COST">Lowest Total Cost</option>
+                <option value="SHORTEST_TENURE">Shortest Tenure</option>
+                <option value="REQUIRED_AMOUNT">Get Full Amount</option>
+              </select>
             </div>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-full" style="margin-top:0.5rem;">
-            🔍 Check Eligibility & Compare Schemes
+          <button type="submit" class="btn btn-primary btn-full" style="margin-top:1rem;">
+            ⚡ Calculate Personalised Loan Offers
           </button>
         </form>
       </div>
@@ -474,7 +427,7 @@
       <div class="dashboard-header">
         <div class="dashboard-title">
           <h1>User Directory</h1>
-          <p>List of all registered applicant accounts in the system (GET /admin/users).</p>
+          <p>List of registered borrower accounts and profile details.</p>
         </div>
         <a href="#/admin-dashboard" class="btn btn-secondary">
           ← Back to Admin Board
@@ -546,57 +499,6 @@
           <!-- Dynamic Category Fieldset Container -->
           <div id="dynamicCategoryFields"></div>
 
-          <!-- DYNAMIC DOCUMENT REQUIREMENTS & UPLOADS SECTION -->
-          <div class="apply-docs-section" style="margin-top: 1.25rem;">
-            <div class="apply-docs-header">
-              <div>
-                <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:var(--text-primary);">📁 Required Loan Documents</h4>
-                <div style="font-size:0.775rem; color:var(--text-secondary); margin-top:0.15rem;" id="applyDocGuidance">Upload supporting documents for instant verification & faster loan sanctioning.</div>
-              </div>
-              <span class="product-tag" id="applyDocBadge">Checklist Required</span>
-            </div>
-
-            <!-- Dynamic Checklist Alert -->
-            <div id="applyDocChecklistBox" class="scheme-checklist-box" style="margin: 0.85rem 0 1rem 0; padding: 0.85rem;">
-              <div class="chk-header" id="applyDocChecklistTitle">📋 Document Checklist for Selected Scheme:</div>
-              <ul class="chk-list" id="applyDocChecklistItems">
-                <li>✓ <strong>KYC:</strong> PAN Card, Aadhaar Card / Passport</li>
-                <li>✓ <strong>Income Proof:</strong> Latest 3 months Salary Slips / Form 16 / ITR</li>
-                <li>✓ <strong>Bank Statement:</strong> 6 Months Bank Statement</li>
-                <li>✓ <strong>Loan Specific:</strong> Purpose Declaration / Quotation</li>
-              </ul>
-            </div>
-
-            <!-- Document Upload Fields -->
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 0.85rem;">
-              <div class="form-group doc-upload-slot">
-                <label class="form-label" for="applyDocKyc" id="lblDocKyc">🪪 1. KYC Document (PAN / Aadhaar / Passport) <span style="color:var(--rose);">*</span></label>
-                <input type="file" id="applyDocKyc" class="input-control doc-file-input" accept=".pdf,.png,.jpg,.jpeg" onchange="app.handleDocFileSelected(this, 'kyc')">
-                <div class="doc-file-status" id="statusDocKyc">No file chosen (PDF, JPG, PNG up to 10MB)</div>
-              </div>
-
-              <div class="form-group doc-upload-slot">
-                <label class="form-label" for="applyDocIncome" id="lblDocIncome">📄 2. Income Proof (Salary Slips / ITR / Form 16) <span style="color:var(--rose);">*</span></label>
-                <input type="file" id="applyDocIncome" class="input-control doc-file-input" accept=".pdf,.png,.jpg,.jpeg" onchange="app.handleDocFileSelected(this, 'income')">
-                <div class="doc-file-status" id="statusDocIncome">No file chosen (PDF, JPG, PNG up to 10MB)</div>
-              </div>
-            </div>
-
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-top: 0.65rem;">
-              <div class="form-group doc-upload-slot">
-                <label class="form-label" for="applyDocBank" id="lblDocBank">🏦 3. Bank Statement (Last 6 Months)</label>
-                <input type="file" id="applyDocBank" class="input-control doc-file-input" accept=".pdf,.png,.jpg,.jpeg" onchange="app.handleDocFileSelected(this, 'bank')">
-                <div class="doc-file-status" id="statusDocBank">No file chosen (PDF, JPG, PNG up to 10MB)</div>
-              </div>
-
-              <div class="form-group doc-upload-slot">
-                <label class="form-label" for="applyDocSpecific" id="lblDocSpecific">📑 4. Scheme Specific Document</label>
-                <input type="file" id="applyDocSpecific" class="input-control doc-file-input" accept=".pdf,.png,.jpg,.jpeg" onchange="app.handleDocFileSelected(this, 'specific')">
-                <div class="doc-file-status" id="statusDocSpecific">No file chosen (PDF, JPG, PNG up to 10MB)</div>
-              </div>
-            </div>
-          </div>
-
           <div class="form-group" style="margin-top: 1rem;">
             <label class="form-label" for="applyPurpose">Purpose of Loan</label>
             <textarea id="applyPurpose" class="input-control" placeholder="Enter loan usage details..." required>Business expansion / Personal use</textarea>
@@ -613,7 +515,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="app.hideModal('applyLoanModal')">Cancel</button>
-          <button type="submit" class="btn btn-primary">Submit Application & Documents</button>
+          <button type="submit" class="btn btn-primary">Submit Application</button>
         </div>
       </form>
     </div>
@@ -636,7 +538,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="docCategorySelect">Document Category</label>
-              <select id="docCategorySelect" class="input-control" required onchange="app.handleDocCategoryChange(this.value)">
+              <select id="docCategorySelect" class="input-control" required>
                 <option value="kyc">KYC Document (PAN/Aadhaar)</option>
                 <option value="income">Income Document (Salary Slip/ITR)</option>
                 <option value="bank">Bank Document (Statement/Passbook)</option>
@@ -645,27 +547,11 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="docTypeSelect">Document Type</label>
-              <select id="docTypeSelect" class="input-control" required>
-                <option value="pan_card">PAN Card</option>
-                <option value="aadhaar">Aadhaar Card / Passport</option>
-                <option value="salary_slip">Salary Slip / Form 16</option>
-                <option value="bank_statement">Bank Statement (6-12 Months)</option>
-                <option value="income_tax_return">ITR with Computation</option>
-                <option value="admission_letter">Admission Offer Letter</option>
-                <option value="vehicle_invoice">Vehicle Proforma Invoice</option>
-                <option value="property_title_deed">Property Title Deed</option>
-                <option value="gold_deposit_receipt">Gold Deposit Receipt</option>
-                <option value="gst_certificate">GST Certificate</option>
-                <option value="other">Other Supporting Document</option>
-              </select>
+              <label class="form-label" for="docFileInput">Choose Document File (PDF / PNG / JPG)</label>
+              <input type="file" id="docFileInput" class="input-control" required accept=".pdf,.png,.jpg,.jpeg">
             </div>
           </div>
-          <div class="form-group" style="margin-top: 0.5rem;">
-            <label class="form-label" for="docFileInput">Choose Document File (PDF / PNG / JPG)</label>
-            <input type="file" id="docFileInput" class="input-control" required accept=".pdf,.png,.jpg,.jpeg">
-          </div>
-          <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.75rem;">
+          <button type="submit" class="btn btn-primary btn-sm">
             📤 Upload Document
           </button>
         </form>
@@ -705,17 +591,6 @@
             <label class="form-label" for="adminNoteInput">Admin Decision Notes / Underwriter Remarks</label>
             <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved with 10.5% interest rate.')"></textarea>
           </div>
-
-          <!-- Applicant Uploaded Documents for Underwriter Inspection -->
-          <div class="form-group" style="margin-top: 1rem;">
-            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
-              <span>📑 Supporting Documents Checklist</span>
-              <span id="reviewDocsCountBadge" class="status-badge" style="font-size: 0.75rem;">0 Uploaded</span>
-            </label>
-            <div id="reviewLoanDocsList" style="max-height: 180px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem;">
-              <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 0.5rem;">Loading documents...</div>
-            </div>
-          </div>
         </div>
         <div class="modal-footer" id="reviewModalFooter">
           <button type="button" class="btn btn-secondary" onclick="app.hideModal('reviewLoanModal')">Close</button>
@@ -723,43 +598,6 @@
           <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve & Issue Sanction</button>
         </div>
       </form>
-    </div>
-  </div>
-
-  <!-- MODAL 4: DOCUMENT PREVIEW & UNDERWRITER INSPECTOR -->
-  <div class="modal-backdrop" id="docPreviewModal">
-    <div class="modal-card" style="max-width: 840px; width: 95%;">
-      <div class="modal-header">
-        <div>
-          <h3 id="previewDocTitle">Document Inspection</h3>
-          <div style="font-size:0.85rem; color:var(--text-muted);" id="previewDocMeta">Category • Type • File info</div>
-        </div>
-        <button class="modal-close" onclick="app.hideModal('docPreviewModal')">&times;</button>
-      </div>
-      <div class="modal-body" style="padding: 1rem;">
-        <!-- Embedded Preview Viewer -->
-        <div id="docViewerFrameContainer" style="width: 100%; height: 420px; background: #0f172a; border-radius: var(--radius-md); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
-          <!-- Loaded dynamically: iframe / img / fallback -->
-        </div>
-
-        <!-- Underwriter Document Decision Bar -->
-        <div id="docUnderwriterToolbar" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-          <label class="form-label" for="docVerifyNoteInput" style="font-size: 0.85rem;">Underwriter Verification Note (Optional)</label>
-          <input type="text" id="docVerifyNoteInput" class="input-control" placeholder="e.g. 'PAN card verified against tax records.'" style="margin-bottom: 0.75rem;">
-          
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-            <div id="docPreviewStatusBadge"></div>
-            <div style="display: flex; gap: 0.5rem;" id="docPreviewActionButtons">
-              <button type="button" class="btn btn-secondary btn-sm" id="btnDownloadDocFromPreview">⬇️ Download File</button>
-              <button type="button" class="btn btn-danger btn-sm" id="btnRejectDocFromPreview" onclick="app.decideDocFromPreview('rejected')">✕ Reject Document</button>
-              <button type="button" class="btn btn-success btn-sm" id="btnVerifyDocFromPreview" onclick="app.decideDocFromPreview('verified')">✓ Approve & Verify</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" onclick="app.hideModal('docPreviewModal')">Close</button>
-      </div>
     </div>
   </div>
 

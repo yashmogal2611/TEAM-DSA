@@ -75,9 +75,36 @@ class ApiClient {
 
     const currentUser = MOCK_DB.users.find(u => token && token.includes(`user_${u.id}`));
 
-    // 1. Health Check GET /health
-    if (endpoint === '/health') {
-      return { status: 'ok', version: '2.0.0' };
+    // 1. Health Check GET /health & ML Health GET /api/v1/health
+    if (endpoint === '/health' || endpoint === '/api/v1/health') {
+      return {
+        status: 'ok',
+        version: '2.5.0',
+        models_loaded: {
+          risk_model: true,
+          risk_preprocessor: true,
+          ranking_model: true,
+          loan_products: true
+        }
+      };
+    }
+
+    // 1b. ML Hot-Reload POST /api/v1/reload-models
+    if (endpoint === '/api/v1/reload-models' && method === 'POST') {
+      return { status: 'ok', message: 'Model artifacts reloaded successfully.' };
+    }
+
+    // 1c. Legacy Contacts GET /contacts
+    if (endpoint === '/contacts' && method === 'GET') {
+      return MOCK_DB.loans.map(l => ({
+        id: l.id,
+        full_name: l.applicant_name || 'Applicant',
+        email: l.applicant_email || 'user@example.com',
+        phone: l.phone || '+91 9876543210',
+        product_interest: l.product_type,
+        recommended_product: l.product_type,
+        submitted_at: l.applied_at
+      }));
     }
 
     // 2. Auth: Register POST /auth/register
@@ -133,92 +160,189 @@ class ApiClient {
       return scheme;
     }
 
-    // 6. Eligibility Calculator Engine POST /loans/check-eligibility
-    if (endpoint === '/loans/check-eligibility' && method === 'POST') {
-      const monthlyIncome = (body.annual_income || 0) / 12;
-      const existingEmi = body.existing_emi || 0;
-      const requestedAmt = body.requested_amount || 100000;
-      const preferredTenure = body.preferred_tenure_months || 36;
-      const age = body.age || 25;
-      const score = body.credit_score || 700;
+    // 6. ML Model Loan Recommendation API POST /api/v1/recommend
+    if (endpoint === '/api/v1/recommend' && method === 'POST') {
+      const allowedEnums = {
+        primary_preference: ['LOWEST_EMI', 'LOWEST_TOTAL_COST', 'SHORTEST_TENURE', 'REQUIRED_AMOUNT'],
+        employment_type: ['SALARIED', 'SELF_EMPLOYED', 'BUSINESS_OWNER'],
+        income_type: ['FIXED', 'VARIABLE', 'MIXED'],
+        loan_purpose: ['HOME_RENOVATION', 'HOME_PURCHASE', 'HOME_CONSTRUCTION', 'MEDICAL', 'EDUCATION', 'TRAVEL', 'WEDDING', 'VEHICLE_PURCHASE', 'BUSINESS', 'DEBT_CONSOLIDATION', 'OTHER']
+      };
 
-      const ranked_eligible_loans = [];
-      const ineligible_loans = [];
+      // Check enum values match strictly (422 HTTP validation)
+      if (
+        (body.primary_preference && !allowedEnums.primary_preference.includes(body.primary_preference)) ||
+        (body.employment_type && !allowedEnums.employment_type.includes(body.employment_type)) ||
+        (body.income_type && !allowedEnums.income_type.includes(body.income_type)) ||
+        (body.loan_purpose && !allowedEnums.loan_purpose.includes(body.loan_purpose))
+      ) {
+        const errorMsg = 'Invalid option selected in request parameters.';
+        throw new Error(errorMsg);
+      }
 
-      MOCK_DB.schemes.forEach(scheme => {
-        const missing_criteria = [];
-        let is_eligible = true;
+      const age = Number(body.age || 35);
+      const monthlyIncome = Number(body.monthly_income || 90000);
+      const existingEmi = Number(body.existing_monthly_emi || 0);
+      const activeLoans = Number(body.number_of_active_loans || 0);
+      const creditScore = Number(body.credit_score || 750);
+      const empDuration = Number(body.current_employment_duration || 1.0);
+      const requestedAmt = Number(body.requested_loan_amount || 500000);
+      const tenure = Number(body.preferred_tenure_months || 36);
+      const purpose = body.loan_purpose || 'HOME_RENOVATION';
+      const empType = body.employment_type || 'SALARIED';
 
-        if (age < scheme.min_age || age > scheme.max_age) {
-          is_eligible = false;
-          missing_criteria.push(`Age must be between ${scheme.min_age} and ${scheme.max_age}`);
-        }
+      const requestId = Math.random().toString(36).substring(2, 10);
 
-        if (score < scheme.min_credit_score) {
-          is_eligible = false;
-          missing_criteria.push(`Credit score must be at least ${scheme.min_credit_score}`);
-        }
+      // Evaluate Eligibility Rules
+      const rejectionReasons = [];
+      let rejectionCode = '';
 
-        if (body.annual_income < scheme.min_income_annual) {
-          is_eligible = false;
-          missing_criteria.push(`Minimum annual income required is ₹${scheme.min_income_annual.toLocaleString('en-IN')}`);
-        }
+      if (age < 21) {
+        rejectionCode = 'MIN_AGE';
+        rejectionReasons.push(`Applicant age (${age}) is below minimum requirement of 21 years.`);
+      } else if (age > 65) {
+        rejectionCode = 'MAX_AGE';
+        rejectionReasons.push(`Applicant age (${age}) exceeds maximum allowed limit of 65 years.`);
+      } else if (creditScore < 600) {
+        rejectionCode = 'MIN_CREDIT_SCORE';
+        rejectionReasons.push(`Credit score must be at least 600.`);
+      } else if (monthlyIncome < 20000) {
+        rejectionCode = 'MIN_MONTHLY_INCOME';
+        rejectionReasons.push(`Monthly income (₹${monthlyIncome.toLocaleString('en-IN')}) is below minimum limit of ₹20,000.`);
+      } else if (activeLoans > 5) {
+        rejectionCode = 'MAX_ACTIVE_LOANS';
+        rejectionReasons.push(`Number of active loans (${activeLoans}) exceeds maximum limit of 5.`);
+      } else if (empDuration < 0.5) {
+        rejectionCode = 'MIN_EMPLOYMENT_DURATION';
+        rejectionReasons.push(`Current employment duration (${empDuration} yrs) is below minimum required 6 months (0.5 yrs).`);
+      } else if (purpose === 'BUSINESS' && empType === 'SALARIED') {
+        rejectionCode = 'BUSINESS_LOAN_EMPLOYMENT';
+        rejectionReasons.push(`Business loan is only available for SELF_EMPLOYED or BUSINESS_OWNER applicants.`);
+      }
 
-        // Est interest rate & EMI
-        const rate = scheme.interest_rate_min + (score >= 750 ? 0 : score >= 700 ? 0.8 : 1.8);
-        const monthlyRate = rate / 12 / 100;
-        const n = Math.min(preferredTenure, scheme.max_tenure_months);
-        const emi = (requestedAmt * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1);
+      // Check max EMI ratio (65% of monthly income)
+      const estMonthlyRate = 10.5 / 12 / 100;
+      const estNewEmi = (requestedAmt * estMonthlyRate * Math.pow(1 + estMonthlyRate, tenure)) / (Math.pow(1 + estMonthlyRate, tenure) - 1);
+      const totalObligation = existingEmi + estNewEmi;
+      const foir = monthlyIncome > 0 ? (totalObligation / monthlyIncome) : 0.9;
 
-        const totalObligation = existingEmi + emi;
-        const foir = monthlyIncome > 0 ? (totalObligation / monthlyIncome) * 100 : 99;
+      if (foir > 0.65 && rejectionReasons.length === 0) {
+        rejectionCode = 'MAX_EMI_RATIO';
+        rejectionReasons.push(`Total EMI commitments (${(foir * 100).toFixed(1)}%) exceed maximum allowed 65% of monthly income.`);
+      }
 
-        if (foir > scheme.max_foir) {
-          is_eligible = false;
-          missing_criteria.push(`FOIR (${foir.toFixed(1)}%) exceeds maximum limit of ${scheme.max_foir}%`);
-        }
-
-        const match_score = Math.max(40, Math.min(98, 100 - (missing_criteria.length * 20) + (score >= 750 ? 10 : 0)));
-
-        const item = {
-          loan_type: scheme.loan_type,
-          display_name: scheme.display_name,
-          is_eligible,
-          eligibility_status: is_eligible ? 'eligible' : 'ineligible',
-          match_score: Number(match_score.toFixed(1)),
-          estimated_interest_rate: Number(rate.toFixed(2)),
-          estimated_monthly_emi: Math.round(emi),
-          max_eligible_amount: Math.min(scheme.max_amount, Math.round(monthlyIncome * (scheme.max_foir / 100) * 40)),
-          recommended_tenure_months: n,
-          foir_percentage: Number(foir.toFixed(1)),
-          reasons: is_eligible ? ["Credit score qualifies", "FOIR is healthy within policy limits"] : [],
-          missing_criteria,
-          required_documents_checklist: scheme.document_checklist,
-          source_url: scheme.source_url,
-          last_verified: scheme.last_verified
+      // 1. REJECTED RESPONSE
+      if (rejectionReasons.length > 0) {
+        return {
+          status: "REJECTED",
+          message: rejectionReasons[0],
+          risk_summary: null,
+          affordability_summary: null,
+          recommendations: [],
+          explanation: {
+            eligibility_reasons: [
+              `❌ ${rejectionCode}`,
+              rejectionReasons[0]
+            ],
+            risk_drivers: [],
+            offer_reasons: [],
+            comparative_reasons: []
+          },
+          request_id: requestId
         };
+      }
 
-        if (is_eligible) {
-          ranked_eligible_loans.push(item);
-        } else {
-          ineligible_loans.push(item);
-        }
+      // 2. APPROVED RESPONSE
+      const maxTotalEmi = Math.round(monthlyIncome * 0.65);
+      const maxAffordableNewEmi = Math.max(0, maxTotalEmi - existingEmi);
+
+      const defaultProb = Number((Math.max(0.01, (900 - creditScore) / 4000)).toFixed(4));
+      const riskBand = creditScore >= 750 ? "LOW" : creditScore >= 670 ? "MEDIUM" : "HIGH";
+      const riskScore = Number((1 - defaultProb).toFixed(4));
+
+      // Generate Lender Product recommendations
+      const lenders = [
+        { name: "HDFC Bank", code: "HDFC", rateOffset: 0.0 },
+        { name: "ICICI Bank", code: "ICICI", rateOffset: 0.25 },
+        { name: "Axis Bank", code: "AXIS", rateOffset: 0.50 }
+      ];
+
+      const recommendations = lenders.map((lender, index) => {
+        const baseRate = 10.5 + lender.rateOffset;
+        const personalizedRate = Number((baseRate - (creditScore >= 780 ? 0.6 : creditScore >= 720 ? 0.2 : 0)).toFixed(2));
+        const r = personalizedRate / 12 / 100;
+        const monthlyEmi = Number(((requestedAmt * r * Math.pow(1 + r, tenure)) / (Math.pow(1 + r, tenure) - 1)).toFixed(2));
+        const feePct = 1.5;
+        const feeAmount = Math.round(requestedAmt * (feePct / 100));
+        const totalRepayment = Number((monthlyEmi * tenure + feeAmount).toFixed(2));
+        const totalInterest = Number((totalRepayment - requestedAmt - feeAmount).toFixed(2));
+
+        return {
+          product_id: `${lender.code}_${purpose.substring(0, 4)}_${String(index + 1).padStart(2, '0')}`,
+          product_name: `${lender.name} ${purpose.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} Loan`,
+          lender_name: lender.name,
+          offer_amount: requestedAmt,
+          tenure_months: tenure,
+          base_interest_rate: baseRate,
+          personalised_rate: personalizedRate,
+          monthly_emi: monthlyEmi,
+          total_repayment: totalRepayment,
+          total_interest: totalInterest,
+          processing_fee_pct: feePct,
+          processing_fee_amount: feeAmount,
+          scores: {
+            need_match: 1.0,
+            affordability: Number((Math.min(1.0, maxAffordableNewEmi / monthlyEmi)).toFixed(4)),
+            risk_fit: riskScore,
+            cost: Number((1.0 - (index * 0.05)).toFixed(4)),
+            tenure_preference: 1.0,
+            composite: Number((0.92 - (index * 0.04)).toFixed(4))
+          },
+          rank: index + 1
+        };
       });
 
-      ranked_eligible_loans.sort((a, b) => b.match_score - a.match_score);
-
       return {
-        consumer_summary: {
-          monthly_income: Math.round(monthlyIncome),
-          existing_emi: existingEmi,
-          credit_score: score
+        status: "APPROVED",
+        message: `Found ${recommendations.length} personalised loan offer(s) for you.`,
+        risk_summary: {
+          probability_of_default: defaultProb,
+          risk_band: riskBand,
+          risk_score: riskScore
         },
-        ranked_eligible_loans,
-        ineligible_loans,
-        personalized_advice: [
-          "Maintaining a credit score above 750 unlocks lower interest rates.",
-          "Clearing existing credit card dues reduces FOIR and increases sanction eligibility."
-        ]
+        affordability_summary: {
+          monthly_income: monthlyIncome,
+          existing_monthly_emi: existingEmi,
+          max_total_emi: maxTotalEmi,
+          max_affordable_new_emi: maxAffordableNewEmi
+        },
+        recommendations: recommendations,
+        explanation: {
+          eligibility_reasons: ["You meet all eligibility criteria."],
+          risk_drivers: [
+            {
+              feature: "credit_score",
+              impact: -0.3,
+              direction: "reduces_risk",
+              note: `Excellent credit score of ${creditScore}`
+            },
+            {
+              feature: "employment_duration",
+              impact: -0.15,
+              direction: "reduces_risk",
+              note: `Stable employment tenure of ${empDuration} years`
+            }
+          ],
+          offer_reasons: [
+            `✅ Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
+            `✅ Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
+            `✅ Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
+          ],
+          comparative_reasons: [
+            `${recommendations[0].lender_name} offers the lowest EMI among all matched lenders.`
+          ]
+        },
+        request_id: requestId
       };
     }
 
@@ -268,11 +392,7 @@ class ApiClient {
     // 9. User: My Loans GET /loans/my
     if (endpoint === '/loans/my' && method === 'GET') {
       if (!currentUser) throw new Error('Not logged in (401)');
-      const userLoans = MOCK_DB.loans.filter(l => l.user_id === currentUser.id);
-      return userLoans.map(l => ({
-        ...l,
-        documents: MOCK_DB.documents.filter(d => d.loan_id === l.id)
-      }));
+      return MOCK_DB.loans.filter(l => l.user_id === currentUser.id);
     }
 
     // 10. Single Loan Details GET /loans/{id}
@@ -280,29 +400,21 @@ class ApiClient {
       const loanId = parseInt(endpoint.split('/')[2]);
       const loan = MOCK_DB.loans.find(l => l.id === loanId);
       if (!loan) throw new Error('Loan not found (404)');
-      return {
-        ...loan,
-        documents: MOCK_DB.documents.filter(d => d.loan_id === loanId)
-      };
+      return loan;
     }
 
     // 11. Documents: Upload POST /loans/{id}/documents
     if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'POST') {
       const loanId = parseInt(endpoint.split('/')[2]);
-      const fd = options.body instanceof FormData ? options.body : (options.formData || new FormData());
-      const fileObj = fd.get('file');
-      const fileName = fileObj?.name || 'uploaded_document.pdf';
-      const fileSize = fileObj?.size ? `${(fileObj.size / (1024 * 1024)).toFixed(1)} MB` : '1.8 MB';
-
       const doc = {
         doc_id: (MOCK_DB.documents.length + 1) * 101,
         loan_id: loanId,
-        doc_category: fd.get('doc_category') || 'kyc',
-        doc_type: fd.get('doc_type') || 'document',
-        file_name: fileName,
-        file_size: fileSize,
+        doc_category: options.formData?.get('doc_category') || 'kyc',
+        doc_type: options.formData?.get('doc_type') || 'document',
+        file_name: options.formData?.get('file')?.name || 'uploaded_document.pdf',
+        file_size: '2.1 MB',
         status: 'pending',
-        verification_note: fd.get('verification_note') || 'Awaiting underwriting review',
+        verification_note: options.formData?.get('verification_note') || 'Awaiting review',
         uploaded_at: new Date().toISOString().split('.')[0]
       };
       MOCK_DB.documents.push(doc);
@@ -329,11 +441,7 @@ class ApiClient {
     if (endpoint.startsWith('/admin/loans') && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not authorized as admin (403)');
       const statusFilter = new URL(`http://dummy${endpoint}`).searchParams.get('status');
-      const filtered = statusFilter ? MOCK_DB.loans.filter(l => l.status === statusFilter) : MOCK_DB.loans;
-      return filtered.map(l => ({
-        ...l,
-        documents: MOCK_DB.documents.filter(d => d.loan_id === l.id)
-      }));
+      return statusFilter ? MOCK_DB.loans.filter(l => l.status === statusFilter) : MOCK_DB.loans;
     }
 
     // 15. Admin: Approve Loan PATCH /admin/loans/{id}/approve
@@ -422,8 +530,12 @@ class ApiClient {
     return this.request(`/loans/schemes/${loanType}`, { auth: false });
   }
 
+  recommendLoans(inputs) {
+    return this.request('/api/v1/recommend', { method: 'POST', body: JSON.stringify(inputs), auth: false });
+  }
+
   checkEligibility(inputs) {
-    return this.request('/loans/check-eligibility', { method: 'POST', body: JSON.stringify(inputs), auth: false });
+    return this.recommendLoans(inputs);
   }
 
   applyLoan(loanData) {
@@ -493,51 +605,31 @@ class ApiClient {
     return this.request('/health', { auth: false });
   }
 
-  /**
-   * ML Recommendation Engine — XGBoost + Pricing + Multi-Lender Ranking
-   * POST /api/v1/recommend
-   */
-  getPersonalizedMlRecommendation(payload) {
-    return this.request('/api/v1/recommend', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      auth: false
-    });
+  getMlHealth() {
+    return this.request('/api/v1/health', { auth: false });
+  }
+
+  reloadMlModels() {
+    return this.request('/api/v1/reload-models', { method: 'POST' });
+  }
+
+  getContacts() {
+    return this.request('/contacts');
+  }
+
+  legacyRecommend(payload) {
+    return this.request('/recommend', { method: 'POST', body: JSON.stringify(payload), auth: false });
+  }
+
+  getDocumentViewUrl(loanId, docId) {
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
+    return `${this.baseUrl}/admin/loans/${loanId}/documents/${docId}/view?token=${encodeURIComponent(token)}`;
+  }
+
+  getDocumentDownloadUrl(loanId, docId) {
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
+    return `${this.baseUrl}/admin/loans/${loanId}/documents/${docId}/download?token=${encodeURIComponent(token)}`;
   }
 }
 
-// Allowed Enums for ML Recommendation according to ML Engineering Spec
-const ML_ENUMS = {
-  primary_preference: [
-    { value: 'LOWEST_EMI', label: 'Lowest Monthly EMI' },
-    { value: 'LOWEST_TOTAL_COST', label: 'Lowest Total Cost' },
-    { value: 'SHORTEST_TENURE', label: 'Shortest Tenure' },
-    { value: 'REQUIRED_AMOUNT', label: 'Get Full Amount' }
-  ],
-  employment_type: [
-    { value: 'SALARIED', label: 'Salaried' },
-    { value: 'SELF_EMPLOYED', label: 'Self Employed' },
-    { value: 'BUSINESS_OWNER', label: 'Business Owner' }
-  ],
-  income_type: [
-    { value: 'FIXED', label: 'Fixed Income' },
-    { value: 'VARIABLE', label: 'Variable Income' },
-    { value: 'MIXED', label: 'Mixed Income' }
-  ],
-  loan_purpose: [
-    { value: 'HOME_RENOVATION', label: 'Home Renovation' },
-    { value: 'HOME_PURCHASE', label: 'Buy a Home' },
-    { value: 'HOME_CONSTRUCTION', label: 'Build a Home' },
-    { value: 'MEDICAL', label: 'Medical Emergency' },
-    { value: 'EDUCATION', label: 'Education' },
-    { value: 'TRAVEL', label: 'Travel' },
-    { value: 'WEDDING', label: 'Wedding' },
-    { value: 'VEHICLE_PURCHASE', label: 'Buy a Vehicle' },
-    { value: 'BUSINESS', label: 'Business' },
-    { value: 'DEBT_CONSOLIDATION', label: 'Debt Consolidation' },
-    { value: 'OTHER', label: 'Other' }
-  ]
-};
-
 const api = new ApiClient();
-
