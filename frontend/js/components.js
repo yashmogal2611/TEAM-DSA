@@ -558,25 +558,39 @@ const Components = {
             </tr>
           </thead>
           <tbody>
-            ${documents.map(doc => `
+            ${documents.map(doc => {
+              const docId = doc.id || doc.doc_id;
+              const fileName = doc.original_filename || doc.file_name || 'Document';
+              const fileSize = doc.file_size || (doc.file_size_bytes ? (doc.file_size_bytes / 1024).toFixed(1) + ' KB' : '—');
+              const status = doc.verification_status || doc.status || 'pending';
+              const category = (doc.doc_category || 'other').toUpperCase();
+              const type = doc.doc_type || 'document';
+              const note = doc.verification_note || '—';
+
+              return `
               <tr>
                 <td>
-                  <span class="product-tag" style="text-transform:uppercase;">${doc.doc_category}</span>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">${doc.doc_type}</div>
+                  <span class="product-tag" style="text-transform:uppercase;">${category}</span>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">${type}</div>
                 </td>
-                <td><strong>${doc.file_name}</strong> (${doc.file_size})</td>
-                <td>${this.renderStatusBadge(doc.status)}</td>
-                <td>${doc.verification_note || '—'}</td>
+                <td><strong>${fileName}</strong> (${fileSize})</td>
+                <td>${this.renderStatusBadge(status)}</td>
+                <td>${note}</td>
                 <td>
-                  ${isAdmin ? `
-                    <button class="btn btn-sm btn-success" onclick="app.verifyDocumentAction(${loanId}, ${doc.doc_id}, 'verified')">✓ Verify</button>
-                    <button class="btn btn-sm btn-danger" onclick="app.verifyDocumentAction(${loanId}, ${doc.doc_id}, 'rejected')">✕ Reject</button>
-                  ` : `
-                    <button class="btn btn-sm btn-danger" onclick="app.deleteDocumentAction(${loanId}, ${doc.doc_id})">Delete</button>
-                  `}
+                  <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')" title="Inspect / View Document">
+                      👁️ View
+                    </button>
+                    ${isAdmin ? `
+                      <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document">✓ Verify</button>
+                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document">✕ Reject</button>
+                    ` : `
+                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.deleteDocumentAction(${loanId}, ${docId})">Delete</button>
+                    `}
+                  </div>
                 </td>
               </tr>
-            `).join('')}
+            `;}).join('')}
           </tbody>
         </table>
       </div>
