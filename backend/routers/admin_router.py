@@ -225,10 +225,20 @@ def verify_loan_document(
 def download_loan_document(
     loan_id: int,
     doc_id: int,
+    token: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin),
 ):
-    """Download an uploaded supporting document."""
+    """Download an uploaded supporting document (supports query token for browser downloads)."""
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if not user or not user.is_active or not user.is_admin:
+                raise HTTPException(status_code=403, detail="Admin authorization required.")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid authorization token.")
+
     doc = db.query(LoanDocument).filter(
         LoanDocument.id == doc_id,
         LoanDocument.loan_application_id == loan_id

@@ -897,63 +897,46 @@ class ApplicationController {
     const noteInput = document.getElementById('docVerifyNoteInput');
     if (noteInput) noteInput.value = '';
 
-    const isMock = CONFIG.getMockMode();
-    const container = document.getElementById('docViewerFrameContainer');
+    const baseApi = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') ? window.location.origin : CONFIG.API_BASE_URL;
     const token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
+    const container = document.getElementById('docViewerFrameContainer');
     const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
 
-    const viewUrl = `${CONFIG.API_BASE_URL}/admin/loans/${loanId}/documents/${docId}/view?token=${encodeURIComponent(token)}`;
-    const downloadUrl = `${CONFIG.API_BASE_URL}/admin/loans/${loanId}/documents/${docId}/download?token=${encodeURIComponent(token)}`;
+    const viewUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/view?token=${encodeURIComponent(token)}`;
+    const downloadUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/download?token=${encodeURIComponent(token)}`;
 
     if (downloadBtn) {
       downloadBtn.onclick = () => {
-        if (!isMock) {
-          window.open(downloadUrl, '_blank');
-        } else {
-          Components.showToast('Download Simulated', `Downloading ${fileName} (Mock Mode)`, 'info');
-        }
+        window.open(downloadUrl, '_blank');
       };
     }
 
-    const isImage = /\.(png|jpe?g|webp|gif)$/i.test(fileName);
+    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
     const isPdf = /\.pdf$/i.test(fileName);
 
-    if (isMock) {
+    if (isPdf) {
       container.innerHTML = `
-        <div style="text-align: center; color: #f8fafc; padding: 2rem;">
-          <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">${isPdf ? '📄' : isImage ? '🖼️' : '📑'}</div>
-          <div style="font-size: 1.1rem; font-weight: 600;">${fileName}</div>
-          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.25rem;">
-            [Verified Authentic Document Preview — Category: ${category}, Type: ${type}]
-          </div>
-          <div style="margin-top: 1.5rem; display: inline-block; padding: 0.5rem 1rem; border: 1px dashed #38bdf8; border-radius: 6px; color: #38bdf8; font-size: 0.85rem;">
-            ✓ Digital Signature & KYC Verified
-          </div>
+        <iframe src="${viewUrl}" style="width: 100%; height: 100%; min-height: 480px; border: none; border-radius: 8px; background: #ffffff;" title="${fileName}"></iframe>
+      `;
+    } else if (isImage) {
+      container.innerHTML = `
+        <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 8px; padding: 1rem; overflow: auto;">
+          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center; color:#f8fafc; padding:2rem;\\'><div style=\\'font-size:3rem;\\'>🖼️</div><p style=\\'margin-top:0.5rem;\\'>Image preview unavailable.</p><a href=\\'${downloadUrl}\\' target=\\'_blank\\' class=\\'btn btn-primary btn-sm\\' style=\\'margin-top:0.75rem;\\'>Download File</a></div>';">
         </div>
       `;
     } else {
-      if (isPdf) {
-        container.innerHTML = `
-          <iframe src="${viewUrl}" style="width: 100%; height: 100%; border: none;" title="${fileName}"></iframe>
-        `;
-      } else if (isImage) {
-        container.innerHTML = `
-          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 100%; object-fit: contain; padding: 0.5rem;">
-        `;
-      } else {
-        container.innerHTML = `
-          <div style="text-align: center; color: #f8fafc; padding: 2rem;">
-            <div style="font-size: 3rem; margin-bottom: 0.75rem;">📑</div>
-            <div style="font-size: 1.1rem; font-weight: 600;">${fileName}</div>
-            <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
-              Preview not supported directly in browser for this file type.
-            </div>
-            <button class="btn btn-primary btn-sm" style="margin-top: 1rem;" onclick="window.open('${downloadUrl}', '_blank')">
-              ⬇️ Download to Inspect
-            </button>
+      container.innerHTML = `
+        <div style="text-align: center; color: #f8fafc; padding: 3rem 1rem;">
+          <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">📑</div>
+          <div style="font-size: 1.15rem; font-weight: 600;">${fileName}</div>
+          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
+            Category: ${category} • Type: ${type}
           </div>
-        `;
-      }
+          <button class="btn btn-primary btn-sm" style="margin-top: 1.25rem;" onclick="window.open('${downloadUrl}', '_blank')">
+            ⬇️ Download ${fileName}
+          </button>
+        </div>
+      `;
     }
 
     // Role-based visibility for underwriter toolbar
