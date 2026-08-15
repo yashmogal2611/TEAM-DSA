@@ -4,7 +4,11 @@
  */
 class ApiClient {
   constructor() {
-    this.baseUrl = CONFIG.API_BASE_URL;
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') {
+      this.baseUrl = window.location.origin;
+    } else {
+      this.baseUrl = CONFIG.API_BASE_URL;
+    }
   }
 
   getHeaders(authRequired = true) {
