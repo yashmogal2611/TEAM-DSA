@@ -20,6 +20,7 @@ from auth import hash_password
 from routers.auth_router import router as auth_router
 from routers.user_router import router as user_router
 from routers.admin_router import router as admin_router
+from routers.summarize import router as summarize_router #genai
 
 # ── App setup ─────────────────────────────────────────────────
 app = FastAPI(
@@ -42,6 +43,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(admin_router)
+app.include_router(summarize_router) #genai
 
 
 # ── Startup: init DB + seed default admin ─────────────────────

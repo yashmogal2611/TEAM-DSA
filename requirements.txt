@@ -10,6 +10,9 @@ bcrypt==4.3.0
 python-multipart==0.0.32
 passlib==1.7.4
 
+#genai packages 
+google-genai
+
 # ML (add your packages here)
 # scikit-learn==1.5.0
 # pandas==2.2.0
