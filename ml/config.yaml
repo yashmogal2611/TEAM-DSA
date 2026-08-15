@@ -1,0 +1,87 @@
+app:
+  version: "1.0.0"
+  name: "Personal Loan Recommendation System"
+
+paths:
+  risk_model: "models/risk_model/risk_model.joblib"
+  risk_preprocessor: "models/risk_model/preprocessor.joblib"
+  ranking_model: "models/ranking_model/ranking_model.joblib"
+  loan_products: "data/raw/loan_products.json"
+
+validation:
+  age:
+    min: 18
+    max: 70
+  monthly_income:
+    min: 20000
+    max: 500000
+  credit_score:
+    min: 300
+    max: 900
+  requested_loan_amount:
+    min: 10000
+    max: 50000000
+  preferred_tenure_months:
+    min: 6
+    max: 84
+
+eligibility:
+  min_age: 21
+  max_age: 65
+  min_monthly_income: 20000
+  min_credit_score: 600
+  min_employment_duration_months: 6
+  max_existing_emi_ratio: 0.65
+  max_active_loans: 5
+
+features:
+  annual_income_multiplier: 12
+  income_segments:
+    low: [0, 30000]
+    medium: [30001, 75000]
+    high: [75001, 200000]
+    premium: [200001, 9999999]
+
+risk_model:
+  numerical_features:
+    - age
+    - monthly_income
+    - existing_monthly_emi
+    - existing_emi_ratio
+    - loan_to_annual_income
+    - credit_score
+    - number_of_active_loans
+    - credit_card_outstanding
+    - total_work_experience
+    - current_employment_duration
+  categorical_features:
+    - employment_type
+    - income_type
+    - loan_purpose
+  thresholds:
+    low: 0.05
+    medium: 0.15
+
+pricing:
+  risk_premium:
+    LOW: 0.0
+    MEDIUM: 2.0
+    HIGH: 4.0
+
+affordability:
+  max_foir: 0.50
+
+recommendation:
+  top_n: 3
+  weights:
+    need_match: 0.25
+    affordability: 0.25
+    risk_fit: 0.20
+    cost: 0.20
+    tenure_preference: 0.10
+
+explainability:
+  use_shap: false
+  shap_max_display_features: 5
+  positive_reasons_limit: 5
+  comparative_reasons_limit: 3
