@@ -1,4 +1,7 @@
-import os 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Number of risk drivers we expose to the user.
