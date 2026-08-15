@@ -587,9 +587,19 @@
             </div>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" style="margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <label class="form-label" style="margin-bottom: 0;">Applicant Uploaded Documents</label>
+              <span class="status-badge" id="reviewDocsCountBadge" style="font-size:0.75rem;">0 Attached</span>
+            </div>
+            <div id="reviewLoanDocsList" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; max-height: 200px; overflow-y: auto;">
+              <div style="font-size:0.85rem; color:var(--text-muted); text-align:center;">No documents uploaded yet.</div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 1rem;">
             <label class="form-label" for="adminNoteInput">Admin Decision Notes / Underwriter Remarks</label>
-            <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved with 10.5% interest rate.')"></textarea>
+            <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Verified KYC and income proofs. Approved with 10.5% interest rate.')"></textarea>
           </div>
         </div>
         <div class="modal-footer" id="reviewModalFooter">
@@ -598,6 +608,45 @@
           <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve & Issue Sanction</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: DOCUMENT INLINE INSPECTION & PREVIEW -->
+  <div class="modal-backdrop" id="docPreviewModal" style="z-index: 1200;">
+    <div class="modal-card" style="max-width: 900px; width: 95vw; height: 90vh; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <div>
+            <h3 id="previewDocTitle" style="margin-bottom: 0.2rem; font-size: 1.15rem;">Document Preview</h3>
+            <div style="font-size:0.8rem; color:var(--text-muted);" id="previewDocMeta">Category • Type • Loan #</div>
+          </div>
+          <span id="docPreviewStatusBadge"></span>
+        </div>
+        <button class="modal-close" onclick="app.hideModal('docPreviewModal')">&times;</button>
+      </div>
+
+      <div class="modal-body" style="flex: 1; overflow: hidden; padding: 0.75rem; display: flex; flex-direction: column; background: #0f172a;">
+        <div id="docViewerFrameContainer" style="flex: 1; width: 100%; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: auto;">
+          <div style="color: var(--text-muted); font-size: 0.9rem;">Loading document...</div>
+        </div>
+
+        <div id="docPreviewDecisionToolbar" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color); border-radius: 8px; display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 240px;">
+            <input type="text" id="docVerifyNoteInput" class="input-control" placeholder="Underwriter Note (e.g. 'PAN card verified against NSDL')" style="margin: 0; font-size: 0.85rem; padding: 0.4rem 0.75rem;">
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnDownloadDocFromPreview">
+              ⬇️ Download File
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="app.decideDocFromPreview('rejected')">
+              ✕ Reject Document
+            </button>
+            <button type="button" class="btn btn-success btn-sm" onclick="app.decideDocFromPreview('verified')">
+              ✓ Approve & Verify
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

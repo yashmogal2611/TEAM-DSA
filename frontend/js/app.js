@@ -675,7 +675,7 @@ class ApplicationController {
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */
 
-  openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
+  async openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
     this.currentReviewLoanId = loanId;
     document.getElementById('modalLoanIdTitle').textContent = `Review Loan Application #${loanId}`;
     document.getElementById('modalApplicantDesc').textContent = `${applicantName} — Requested ${amountStr}`;
@@ -684,7 +684,142 @@ class ApplicationController {
     document.getElementById('adminInterestRate').value = rate || 10.5;
     document.getElementById('adminNoteInput').value = '';
 
+    // Load applicant documents in review modal
+    const docsContainer = document.getElementById('reviewLoanDocsList');
+    const countBadge = document.getElementById('reviewDocsCountBadge');
+    if (docsContainer) {
+      docsContainer.innerHTML = '<div style="font-size:0.85rem; color:var(--text-muted); text-align:center;">Loading documents...</div>';
+      try {
+        const docs = await api.getDocuments(loanId);
+        if (countBadge) countBadge.textContent = `${docs.length} Attached`;
+        if (docs && docs.length > 0) {
+          docsContainer.innerHTML = docs.map(d => {
+            const fileName = d.original_filename || d.file_name || 'Document';
+            const category = (d.doc_category || 'other').toUpperCase();
+            const type = d.doc_type || '';
+            const status = d.verification_status || d.status || 'pending';
+            const isVerified = status === 'verified';
+            const isRejected = status === 'rejected';
+
+            return `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem; border-bottom: 1px solid var(--border-color); gap: 0.5rem;">
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
+                  <div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${fileName}
+                  </div>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">
+                    ${category} • ${type} • <span style="color:${isVerified ? 'var(--emerald)' : isRejected ? 'var(--rose)' : 'var(--amber)'}; font-weight:700;">${status.toUpperCase()}</span>
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.35rem; align-items:center; flex-shrink:0;">
+                  <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${d.id}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
+                    👁️ View
+                  </button>
+                  <button type="button" class="btn btn-sm btn-success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'verified')" title="Verify Document">✓</button>
+                  <button type="button" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'rejected')" title="Reject Document">✕</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          docsContainer.innerHTML = '<div style="font-size:0.85rem; color:var(--text-muted); text-align:center;">No documents uploaded yet.</div>';
+        }
+      } catch (e) {
+        docsContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--rose); text-align:center;">Failed to load documents: ${e.message}</div>`;
+      }
+    }
+
     this.showModal('reviewLoanModal');
+  }
+
+  /* ---------------- DOCUMENT PREVIEW & INSPECTION ---------------- */
+
+  openDocumentPreviewModal(loanId, docId, encodedFileName, category, type, status) {
+    const fileName = decodeURIComponent(encodedFileName || 'Document');
+    this.currentPreviewDoc = { loanId, docId, fileName, category, type, status };
+
+    document.getElementById('previewDocTitle').textContent = fileName;
+    document.getElementById('previewDocMeta').textContent = `Category: ${category} • Type: ${type} • Loan #${loanId}`;
+    
+    const statusBadge = document.getElementById('docPreviewStatusBadge');
+    if (statusBadge) {
+      statusBadge.innerHTML = Components.renderStatusBadge(status);
+    }
+
+    const noteInput = document.getElementById('docVerifyNoteInput');
+    if (noteInput) noteInput.value = '';
+
+    const baseApi = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') ? window.location.origin : CONFIG.API_BASE_URL;
+    const token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
+    const container = document.getElementById('docViewerFrameContainer');
+    const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
+
+    const viewUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/view?token=${encodeURIComponent(token)}`;
+    const downloadUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/download?token=${encodeURIComponent(token)}`;
+
+    if (downloadBtn) {
+      downloadBtn.onclick = () => {
+        window.open(downloadUrl, '_blank');
+      };
+    }
+
+    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
+    const isPdf = /\.pdf$/i.test(fileName);
+
+    if (isPdf) {
+      container.innerHTML = `
+        <iframe src="${viewUrl}" style="width: 100%; height: 100%; min-height: 480px; border: none; border-radius: 8px; background: #ffffff;" title="${fileName}"></iframe>
+      `;
+    } else if (isImage) {
+      container.innerHTML = `
+        <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 8px; padding: 1rem; overflow: auto;">
+          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center; color:#f8fafc; padding:2rem;\\'><div style=\\'font-size:3rem;\\'>🖼️</div><p style=\\'margin-top:0.5rem;\\'>Image preview unavailable.</p><a href=\\'${downloadUrl}\\' target=\\'_blank\\' class=\\'btn btn-primary btn-sm\\' style=\\'margin-top:0.75rem;\\'>Download File</a></div>';">
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div style="text-align: center; color: #f8fafc; padding: 3rem 1rem;">
+          <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">📑</div>
+          <div style="font-size: 1.15rem; font-weight: 600;">${fileName}</div>
+          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
+            Category: ${category} • Type: ${type}
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-top: 1.25rem;" onclick="window.open('${downloadUrl}', '_blank')">
+            ⬇️ Download ${fileName}
+          </button>
+        </div>
+      `;
+    }
+
+    const decisionToolbar = document.getElementById('docPreviewDecisionToolbar');
+    const user = store.user;
+    if (decisionToolbar) {
+      decisionToolbar.style.display = (user && user.is_admin) ? 'flex' : 'none';
+    }
+
+    this.showModal('docPreviewModal');
+  }
+
+  async decideDocFromPreview(status) {
+    if (!this.currentPreviewDoc) return;
+    const { loanId, docId } = this.currentPreviewDoc;
+    const note = document.getElementById('docVerifyNoteInput').value.trim() || `Marked as ${status} by underwriter.`;
+
+    try {
+      await api.verifyDocument(loanId, docId, status, note);
+      Components.showToast('Document Updated', `Document #${docId} has been marked as ${status.toUpperCase()}.`, 'success');
+      this.hideModal('docPreviewModal');
+      
+      // Refresh documents in current review modal or document modal
+      if (this.currentReviewLoanId === loanId) {
+        this.openReviewModal(loanId, document.getElementById('modalApplicantDesc').textContent, '', document.getElementById('adminSanctionAmount').value, document.getElementById('adminSanctionAmount').value, document.getElementById('adminInterestRate').value);
+      }
+      if (this.currentDocLoanId === loanId) {
+        this.openDocumentModal(loanId, '', this.isDocAdminMode);
+      }
+    } catch (err) {
+      Components.showToast('Action Failed', err.message, 'error');
+    }
   }
 
   async handleApproveLoan() {
