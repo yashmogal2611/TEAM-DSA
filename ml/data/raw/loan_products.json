@@ -1,0 +1,247 @@
+[
+  {
+    "product_id": "HDFC_PL_01", "product_name": "HDFC Personal Loan", "lender_name": "HDFC Bank",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 10.5, "min_loan_amount": 50000, "max_loan_amount": 4000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 1.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 700, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "SBI_PL_01", "product_name": "SBI Xpress Credit", "lender_name": "State Bank of India",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 11.0, "min_loan_amount": 25000, "max_loan_amount": 2000000,
+    "min_tenure_months": 6, "max_tenure_months": 72, "processing_fee_pct": 1.0,
+    "allowed_employment_types": ["SALARIED"], "min_credit_score": 650, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "ICICI_PL_01", "product_name": "ICICI Bank Personal Loan", "lender_name": "ICICI Bank",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 10.75, "min_loan_amount": 50000, "max_loan_amount": 5000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 700, "min_monthly_income": 30000, "serviceable_cities": []
+  },
+  {
+    "product_id": "BAJAJ_PL_01", "product_name": "Bajaj Finserv Personal Loan", "lender_name": "Bajaj Finance",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 12.0, "min_loan_amount": 30000, "max_loan_amount": 2500000,
+    "min_tenure_months": 12, "max_tenure_months": 84, "processing_fee_pct": 2.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 620, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "AXIS_PL_01", "product_name": "Axis Bank Personal Loan", "lender_name": "Axis Bank",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 10.99, "min_loan_amount": 50000, "max_loan_amount": 4000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 1.5,
+    "allowed_employment_types": ["SALARIED"], "min_credit_score": 700, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "KOTAK_PL_01", "product_name": "Kotak Personal Loan", "lender_name": "Kotak Mahindra Bank",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 10.25, "min_loan_amount": 50000, "max_loan_amount": 3500000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 1.75,
+    "allowed_employment_types": ["SALARIED"], "min_credit_score": 720, "min_monthly_income": 30000, "serviceable_cities": []
+  },
+  {
+    "product_id": "TATA_PL_01", "product_name": "Tata Capital Personal Loan", "lender_name": "Tata Capital",
+    "loan_type": "PERSONAL_LOAN", "loan_purposes": ["HOME_RENOVATION","MEDICAL","TRAVEL","WEDDING","OTHER"],
+    "base_interest_rate": 10.99, "min_loan_amount": 75000, "max_loan_amount": 3500000,
+    "min_tenure_months": 12, "max_tenure_months": 72, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 680, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "SBI_HL_01", "product_name": "SBI Home Loan", "lender_name": "State Bank of India",
+    "loan_type": "HOME_LOAN", "loan_purposes": ["HOME_PURCHASE","HOME_CONSTRUCTION","HOME_RENOVATION"],
+    "base_interest_rate": 8.5, "min_loan_amount": 500000, "max_loan_amount": 100000000,
+    "min_tenure_months": 60, "max_tenure_months": 360, "processing_fee_pct": 0.35,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 650, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "HDFC_HL_01", "product_name": "HDFC Home Loan", "lender_name": "HDFC Bank",
+    "loan_type": "HOME_LOAN", "loan_purposes": ["HOME_PURCHASE","HOME_CONSTRUCTION","HOME_RENOVATION"],
+    "base_interest_rate": 8.65, "min_loan_amount": 500000, "max_loan_amount": 100000000,
+    "min_tenure_months": 60, "max_tenure_months": 360, "processing_fee_pct": 0.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 700, "min_monthly_income": 30000, "serviceable_cities": []
+  },
+  {
+    "product_id": "ICICI_HL_01", "product_name": "ICICI Bank Home Loan", "lender_name": "ICICI Bank",
+    "loan_type": "HOME_LOAN", "loan_purposes": ["HOME_PURCHASE","HOME_CONSTRUCTION","HOME_RENOVATION"],
+    "base_interest_rate": 8.75, "min_loan_amount": 500000, "max_loan_amount": 100000000,
+    "min_tenure_months": 60, "max_tenure_months": 360, "processing_fee_pct": 0.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 700, "min_monthly_income": 35000, "serviceable_cities": []
+  },
+  {
+    "product_id": "LIC_HL_01", "product_name": "LIC Housing Finance Home Loan", "lender_name": "LIC Housing Finance",
+    "loan_type": "HOME_LOAN", "loan_purposes": ["HOME_PURCHASE","HOME_CONSTRUCTION"],
+    "base_interest_rate": 8.45, "min_loan_amount": 500000, "max_loan_amount": 50000000,
+    "min_tenure_months": 60, "max_tenure_months": 300, "processing_fee_pct": 0.25,
+    "allowed_employment_types": ["SALARIED"], "min_credit_score": 650, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "PNB_HL_01", "product_name": "PNB Housing Home Loan", "lender_name": "PNB Housing Finance",
+    "loan_type": "HOME_LOAN", "loan_purposes": ["HOME_PURCHASE","HOME_CONSTRUCTION","HOME_RENOVATION"],
+    "base_interest_rate": 8.75, "min_loan_amount": 500000, "max_loan_amount": 50000000,
+    "min_tenure_months": 60, "max_tenure_months": 300, "processing_fee_pct": 0.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 650, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "AXIS_HL_01", "product_name": "Axis Bank Home Loan", "lender_name": "Axis Bank",
+    "loan_type": "HOME_LOAN", "loan_purposes": ["HOME_PURCHASE","HOME_CONSTRUCTION","HOME_RENOVATION"],
+    "base_interest_rate": 8.75, "min_loan_amount": 300000, "max_loan_amount": 100000000,
+    "min_tenure_months": 12, "max_tenure_months": 360, "processing_fee_pct": 1.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 700, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "SBI_EL_01", "product_name": "SBI Student Loan", "lender_name": "State Bank of India",
+    "loan_type": "EDUCATION_LOAN", "loan_purposes": ["EDUCATION"],
+    "base_interest_rate": 8.15, "min_loan_amount": 50000, "max_loan_amount": 10000000,
+    "min_tenure_months": 12, "max_tenure_months": 180, "processing_fee_pct": 0.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "AXIS_EL_01", "product_name": "Axis Bank Education Loan", "lender_name": "Axis Bank",
+    "loan_type": "EDUCATION_LOAN", "loan_purposes": ["EDUCATION"],
+    "base_interest_rate": 13.7, "min_loan_amount": 50000, "max_loan_amount": 7500000,
+    "min_tenure_months": 12, "max_tenure_months": 180, "processing_fee_pct": 0.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "BOB_EL_01", "product_name": "Bank of Baroda Baroda Vidya", "lender_name": "Bank of Baroda",
+    "loan_type": "EDUCATION_LOAN", "loan_purposes": ["EDUCATION"],
+    "base_interest_rate": 9.7, "min_loan_amount": 50000, "max_loan_amount": 8000000,
+    "min_tenure_months": 12, "max_tenure_months": 180, "processing_fee_pct": 0.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 15000, "serviceable_cities": []
+  },
+  {
+    "product_id": "HDFC_EL_01", "product_name": "HDFC Credila Education Loan", "lender_name": "HDFC Credila",
+    "loan_type": "EDUCATION_LOAN", "loan_purposes": ["EDUCATION"],
+    "base_interest_rate": 10.5, "min_loan_amount": 100000, "max_loan_amount": 15000000,
+    "min_tenure_months": 12, "max_tenure_months": 180, "processing_fee_pct": 1.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 650, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "UNION_EL_01", "product_name": "Union Bank Education Loan", "lender_name": "Union Bank of India",
+    "loan_type": "EDUCATION_LOAN", "loan_purposes": ["EDUCATION"],
+    "base_interest_rate": 8.4, "min_loan_amount": 50000, "max_loan_amount": 5000000,
+    "min_tenure_months": 12, "max_tenure_months": 180, "processing_fee_pct": 0.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 15000, "serviceable_cities": []
+  },
+  {
+    "product_id": "BAJAJ_ML_01", "product_name": "Bajaj Finserv Medical Loan", "lender_name": "Bajaj Finance",
+    "loan_type": "MEDICAL_LOAN", "loan_purposes": ["MEDICAL"],
+    "base_interest_rate": 11.0, "min_loan_amount": 25000, "max_loan_amount": 3500000,
+    "min_tenure_months": 6, "max_tenure_months": 96, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 15000, "serviceable_cities": []
+  },
+  {
+    "product_id": "HDFC_ML_01", "product_name": "HDFC Medical Loan", "lender_name": "HDFC Bank",
+    "loan_type": "MEDICAL_LOAN", "loan_purposes": ["MEDICAL"],
+    "base_interest_rate": 10.75, "min_loan_amount": 50000, "max_loan_amount": 4000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 1.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 680, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "KREDIT_ML_01", "product_name": "KreditBee Medical Loan", "lender_name": "KreditBee",
+    "loan_type": "MEDICAL_LOAN", "loan_purposes": ["MEDICAL"],
+    "base_interest_rate": 15.0, "min_loan_amount": 10000, "max_loan_amount": 500000,
+    "min_tenure_months": 3, "max_tenure_months": 24, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 580, "min_monthly_income": 12000, "serviceable_cities": []
+  },
+  {
+    "product_id": "ICICI_ML_01", "product_name": "ICICI Bank Medical Loan", "lender_name": "ICICI Bank",
+    "loan_type": "MEDICAL_LOAN", "loan_purposes": ["MEDICAL"],
+    "base_interest_rate": 10.99, "min_loan_amount": 50000, "max_loan_amount": 5000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 680, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "ICICI_VL_01", "product_name": "ICICI Bank Car Loan", "lender_name": "ICICI Bank",
+    "loan_type": "VEHICLE_LOAN", "loan_purposes": ["VEHICLE_PURCHASE"],
+    "base_interest_rate": 8.85, "min_loan_amount": 100000, "max_loan_amount": 10000000,
+    "min_tenure_months": 12, "max_tenure_months": 84, "processing_fee_pct": 1.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 680, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "AXIS_VL_01", "product_name": "Axis Bank Car Loan", "lender_name": "Axis Bank",
+    "loan_type": "VEHICLE_LOAN", "loan_purposes": ["VEHICLE_PURCHASE"],
+    "base_interest_rate": 8.7, "min_loan_amount": 100000, "max_loan_amount": 10000000,
+    "min_tenure_months": 12, "max_tenure_months": 84, "processing_fee_pct": 1.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 700, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "KOTAK_VL_01", "product_name": "Kotak Mahindra Car Loan", "lender_name": "Kotak Mahindra Bank",
+    "loan_type": "VEHICLE_LOAN", "loan_purposes": ["VEHICLE_PURCHASE"],
+    "base_interest_rate": 8.75, "min_loan_amount": 100000, "max_loan_amount": 10000000,
+    "min_tenure_months": 12, "max_tenure_months": 84, "processing_fee_pct": 1.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 700, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "SBI_VL_01", "product_name": "SBI Car Loan", "lender_name": "State Bank of India",
+    "loan_type": "VEHICLE_LOAN", "loan_purposes": ["VEHICLE_PURCHASE"],
+    "base_interest_rate": 8.65, "min_loan_amount": 100000, "max_loan_amount": 10000000,
+    "min_tenure_months": 12, "max_tenure_months": 84, "processing_fee_pct": 0.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 650, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "SBI_BL_01", "product_name": "SBI SME Business Loan", "lender_name": "State Bank of India",
+    "loan_type": "BUSINESS_LOAN", "loan_purposes": ["BUSINESS"],
+    "base_interest_rate": 10.0, "min_loan_amount": 100000, "max_loan_amount": 50000000,
+    "min_tenure_months": 12, "max_tenure_months": 120, "processing_fee_pct": 1.0,
+    "allowed_employment_types": ["SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 650, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "HDFC_BL_01", "product_name": "HDFC Business Loan", "lender_name": "HDFC Bank",
+    "loan_type": "BUSINESS_LOAN", "loan_purposes": ["BUSINESS"],
+    "base_interest_rate": 10.75, "min_loan_amount": 500000, "max_loan_amount": 75000000,
+    "min_tenure_months": 12, "max_tenure_months": 120, "processing_fee_pct": 1.5,
+    "allowed_employment_types": ["SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 700, "min_monthly_income": 50000, "serviceable_cities": []
+  },
+  {
+    "product_id": "BAJAJ_BL_01", "product_name": "Bajaj Finserv Business Loan", "lender_name": "Bajaj Finance",
+    "loan_type": "BUSINESS_LOAN", "loan_purposes": ["BUSINESS"],
+    "base_interest_rate": 14.0, "min_loan_amount": 100000, "max_loan_amount": 5000000,
+    "min_tenure_months": 12, "max_tenure_months": 96, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 620, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "MUDRA_BL_01", "product_name": "MUDRA Tarun Loan", "lender_name": "MUDRA (Govt. Scheme)",
+    "loan_type": "BUSINESS_LOAN", "loan_purposes": ["BUSINESS"],
+    "base_interest_rate": 9.5, "min_loan_amount": 50000, "max_loan_amount": 1000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 0.0,
+    "allowed_employment_types": ["SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 15000, "serviceable_cities": []
+  },
+  {
+    "product_id": "ICICI_BL_01", "product_name": "ICICI Bank Business Loan", "lender_name": "ICICI Bank",
+    "loan_type": "BUSINESS_LOAN", "loan_purposes": ["BUSINESS"],
+    "base_interest_rate": 11.0, "min_loan_amount": 200000, "max_loan_amount": 50000000,
+    "min_tenure_months": 12, "max_tenure_months": 120, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 680, "min_monthly_income": 40000, "serviceable_cities": []
+  },
+  {
+    "product_id": "HDFC_DCL_01", "product_name": "HDFC Debt Consolidation Loan", "lender_name": "HDFC Bank",
+    "loan_type": "DEBT_CONSOLIDATION_LOAN", "loan_purposes": ["DEBT_CONSOLIDATION"],
+    "base_interest_rate": 11.0, "min_loan_amount": 50000, "max_loan_amount": 4000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 1.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 650, "min_monthly_income": 25000, "serviceable_cities": []
+  },
+  {
+    "product_id": "ICICI_DCL_01", "product_name": "ICICI Bank Balance Transfer Loan", "lender_name": "ICICI Bank",
+    "loan_type": "DEBT_CONSOLIDATION_LOAN", "loan_purposes": ["DEBT_CONSOLIDATION"],
+    "base_interest_rate": 10.99, "min_loan_amount": 50000, "max_loan_amount": 5000000,
+    "min_tenure_months": 12, "max_tenure_months": 60, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 680, "min_monthly_income": 30000, "serviceable_cities": []
+  },
+  {
+    "product_id": "BAJAJ_DCL_01", "product_name": "Bajaj Finserv Debt Consolidation", "lender_name": "Bajaj Finance",
+    "loan_type": "DEBT_CONSOLIDATION_LOAN", "loan_purposes": ["DEBT_CONSOLIDATION"],
+    "base_interest_rate": 13.0, "min_loan_amount": 30000, "max_loan_amount": 2500000,
+    "min_tenure_months": 12, "max_tenure_months": 84, "processing_fee_pct": 2.5,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED","BUSINESS_OWNER"], "min_credit_score": 600, "min_monthly_income": 20000, "serviceable_cities": []
+  },
+  {
+    "product_id": "TATA_DCL_01", "product_name": "Tata Capital Debt Consolidation", "lender_name": "Tata Capital",
+    "loan_type": "DEBT_CONSOLIDATION_LOAN", "loan_purposes": ["DEBT_CONSOLIDATION"],
+    "base_interest_rate": 11.49, "min_loan_amount": 75000, "max_loan_amount": 3500000,
+    "min_tenure_months": 12, "max_tenure_months": 72, "processing_fee_pct": 2.0,
+    "allowed_employment_types": ["SALARIED","SELF_EMPLOYED"], "min_credit_score": 650, "min_monthly_income": 25000, "serviceable_cities": []
+  }
+]
