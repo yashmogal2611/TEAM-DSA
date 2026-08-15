@@ -431,12 +431,9 @@ const Components = {
   },
 
   renderDocumentsList(documents, isAdmin = false, loanId) {
-    if (!documents || documents.length === 0) {
-      return `
-        <div class="empty-state" style="padding:1.5rem;">
-          <p>No documents uploaded yet for this application.</p>
-        </div>
-      `;
+    return this.renderDocumentsTable(documents, loanId, isAdmin);
+  },
+
   renderDocumentsTable(documents, loanId, isAdmin = false) {
     if (!documents || documents.length === 0) {
       return `

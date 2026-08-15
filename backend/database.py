@@ -1,6 +1,7 @@
 from sqlalchemy import (
     create_engine, Column, Integer, Float,
-    String, DateTime, Boolean, ForeignKey, Text
+    String, DateTime, Boolean, ForeignKey, Text,
+    event
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
@@ -11,7 +12,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, "loan_recs.db")
 DATABASE_URL = f"sqlite:///{DB_FILE}"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False, "timeout": 15})
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+    finally:
+        cursor.close()
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -241,22 +253,40 @@ def init_db():
 
 
 def seed_default_admin():
-    """Create default system admin account if not present."""
+    """Create default system admin and demo borrower accounts if not present."""
     import bcrypt as _bcrypt
+    from sqlalchemy import func
     db = SessionLocal()
     try:
-        existing = db.query(User).filter(User.email == "admin@loanapp.com").first()
-        if not existing:
+        # 1. Admin Account
+        existing_admin = db.query(User).filter(func.lower(User.email) == "admin@loanapp.com").first()
+        if not existing_admin:
             hashed = _bcrypt.hashpw("Admin@123".encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
             admin = User(
                 full_name="System Admin",
                 email="admin@loanapp.com",
+                phone="9999999999",
                 hashed_password=hashed,
                 is_admin=True,
                 is_active=True
             )
             db.add(admin)
-            db.commit()
+
+        # 2. Demo Borrower (Ravi Kumar)
+        existing_ravi = db.query(User).filter(func.lower(User.email) == "ravi@example.com").first()
+        if not existing_ravi:
+            hashed_ravi = _bcrypt.hashpw("MyPass@123".encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+            ravi = User(
+                full_name="Ravi Kumar",
+                email="ravi@example.com",
+                phone="9812345678",
+                hashed_password=hashed_ravi,
+                is_admin=False,
+                is_active=True
+            )
+            db.add(ravi)
+
+        db.commit()
     finally:
         db.close()
 
