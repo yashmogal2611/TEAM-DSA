@@ -23,7 +23,7 @@ try:
         DocumentOut,
         DocumentVerifyPayload,
     )
-    from ..auth import get_current_admin
+    from ..auth import get_current_admin, decode_token
 except ImportError:
     from database import LoanApplication, LoanDocument, User, get_db
     from schemas import (
@@ -34,7 +34,7 @@ except ImportError:
         DocumentOut,
         DocumentVerifyPayload,
     )
-    from auth import get_current_admin
+    from auth import get_current_admin, decode_token
 
 router = APIRouter(prefix="/admin", tags=["Admin – Underwriting & Management"])
 
@@ -42,6 +42,7 @@ router = APIRouter(prefix="/admin", tags=["Admin – Underwriting & Management"]
 def _to_doc_out(doc: LoanDocument) -> DocumentOut:
     d = DocumentOut.model_validate(doc)
     d.download_url = f"/admin/loans/{doc.loan_application_id}/documents/{doc.id}/download"
+    d.view_url = f"/admin/loans/{doc.loan_application_id}/documents/{doc.id}/view"
     return d
 
 
@@ -236,6 +237,51 @@ def download_loan_document(
         path=doc.file_path,
         filename=doc.original_filename,
         media_type=doc.mime_type or "application/octet-stream"
+    )
+
+
+@router.get("/loans/{loan_id}/documents/{doc_id}/view")
+def view_loan_document(
+    loan_id: int,
+    doc_id: int,
+    token: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """
+    Inline preview endpoint for uploaded supporting documents.
+    Allows viewing in iframe / new tab using token query param or authorization header.
+    """
+    if token:
+        try:
+            payload = decode_token(token)
+            user_id = payload.get("sub")
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if not user or not user.is_active or not user.is_admin:
+                raise HTTPException(status_code=403, detail="Admin authorization required.")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid authorization token.")
+
+    doc = db.query(LoanDocument).filter(
+        LoanDocument.id == doc_id,
+        LoanDocument.loan_application_id == loan_id
+    ).first()
+    if not doc or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Document file not found on disk.")
+
+    media_type = doc.mime_type
+    if not media_type or media_type == "application/octet-stream":
+        ext = os.path.splitext(doc.file_path)[1].lower()
+        if ext == ".pdf":
+            media_type = "application/pdf"
+        elif ext in [".png", ".jpg", ".jpeg", ".webp"]:
+            media_type = f"image/{ext.replace('.', '')}"
+        else:
+            media_type = "application/octet-stream"
+
+    return FileResponse(
+        path=doc.file_path,
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{doc.original_filename}"'}
     )
 
 

@@ -150,6 +150,7 @@ class DocumentOut(BaseModel):
     uploaded_at: datetime
     verified_at: Optional[datetime] = None
     download_url: Optional[str] = None
+    view_url: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -705,6 +705,17 @@
             <label class="form-label" for="adminNoteInput">Admin Decision Notes / Underwriter Remarks</label>
             <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved with 10.5% interest rate.')"></textarea>
           </div>
+
+          <!-- Applicant Uploaded Documents for Underwriter Inspection -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span>📑 Supporting Documents Checklist</span>
+              <span id="reviewDocsCountBadge" class="status-badge" style="font-size: 0.75rem;">0 Uploaded</span>
+            </label>
+            <div id="reviewLoanDocsList" style="max-height: 180px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.5rem;">
+              <div style="font-size: 0.85rem; color: var(--text-muted); text-align: center; padding: 0.5rem;">Loading documents...</div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer" id="reviewModalFooter">
           <button type="button" class="btn btn-secondary" onclick="app.hideModal('reviewLoanModal')">Close</button>
@@ -712,6 +723,43 @@
           <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve & Issue Sanction</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: DOCUMENT PREVIEW & UNDERWRITER INSPECTOR -->
+  <div class="modal-backdrop" id="docPreviewModal">
+    <div class="modal-card" style="max-width: 840px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="previewDocTitle">Document Inspection</h3>
+          <div style="font-size:0.85rem; color:var(--text-muted);" id="previewDocMeta">Category • Type • File info</div>
+        </div>
+        <button class="modal-close" onclick="app.hideModal('docPreviewModal')">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem;">
+        <!-- Embedded Preview Viewer -->
+        <div id="docViewerFrameContainer" style="width: 100%; height: 420px; background: #0f172a; border-radius: var(--radius-md); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;">
+          <!-- Loaded dynamically: iframe / img / fallback -->
+        </div>
+
+        <!-- Underwriter Document Decision Bar -->
+        <div id="docUnderwriterToolbar" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+          <label class="form-label" for="docVerifyNoteInput" style="font-size: 0.85rem;">Underwriter Verification Note (Optional)</label>
+          <input type="text" id="docVerifyNoteInput" class="input-control" placeholder="e.g. 'PAN card verified against tax records.'" style="margin-bottom: 0.75rem;">
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div id="docPreviewStatusBadge"></div>
+            <div style="display: flex; gap: 0.5rem;" id="docPreviewActionButtons">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnDownloadDocFromPreview">⬇️ Download File</button>
+              <button type="button" class="btn btn-danger btn-sm" id="btnRejectDocFromPreview" onclick="app.decideDocFromPreview('rejected')">✕ Reject Document</button>
+              <button type="button" class="btn btn-success btn-sm" id="btnVerifyDocFromPreview" onclick="app.decideDocFromPreview('verified')">✓ Approve & Verify</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="app.hideModal('docPreviewModal')">Close</button>
+      </div>
     </div>
   </div>
 
