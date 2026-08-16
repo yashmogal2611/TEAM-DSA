@@ -65,11 +65,13 @@ app.add_middleware(
 # ── Mount static files for document storage ───────────────────
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# ── Mount frontend static assets (CSS, JS) ────────────────────
+# ── Mount frontend static assets (CSS, JS, Assets/Images) ─────
 if os.path.exists(os.path.join(FRONTEND_DIR, "css")):
     app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
 if os.path.exists(os.path.join(FRONTEND_DIR, "js")):
     app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
+if os.path.exists(os.path.join(FRONTEND_DIR, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
 
 # ── Register routers ──────────────────────────────────────────
 app.include_router(auth_router)
