@@ -625,8 +625,18 @@ class ApplicationController {
     this.currentDocLoanId = loanId;
     this.isDocAdminMode = isAdmin;
 
+    let scheme = schemeName;
+    if (!scheme) {
+      const allLoans = (store.adminLoans || []).concat(store.userLoans || []).concat((typeof MOCK_DB !== 'undefined' ? MOCK_DB.loans : []));
+      const found = allLoans.find(l => l.id === loanId);
+      if (found && found.product_type) {
+        scheme = Components.formatProductType(found.product_type);
+      }
+    }
+    this.currentDocSchemeName = scheme || this.currentDocSchemeName || 'General Application';
+
     document.getElementById('docModalTitle').textContent = `Documents for Application #${loanId}`;
-    document.getElementById('docModalSubtitle').textContent = `Scheme: ${schemeName}`;
+    document.getElementById('docModalSubtitle').textContent = `Scheme: ${this.currentDocSchemeName}`;
     
     const uploadForm = document.getElementById('docUploadForm');
     if (uploadForm) uploadForm.style.display = isAdmin ? 'none' : 'block';
@@ -719,6 +729,7 @@ class ApplicationController {
         if (countBadge) countBadge.textContent = `${docs.length} Attached`;
         if (docs && docs.length > 0) {
           docsContainer.innerHTML = docs.map(d => {
+            const docId = d.id || d.doc_id || 1;
             const fileName = d.original_filename || d.file_name || 'Document';
             const category = (d.doc_category || 'other').toUpperCase();
             const type = d.doc_type || '';
@@ -737,11 +748,13 @@ class ApplicationController {
                   </div>
                 </div>
                 <div style="display:flex; gap:0.35rem; align-items:center; flex-shrink:0;">
-                  <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${d.id}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
+                  <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
                     <i data-lucide="eye" class="lucide" style="margin-right: 0.25rem;"></i> View
                   </button>
-                  <button type="button" class="btn btn-sm btn-success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'verified')" title="Verify Document"><i data-lucide="check" class="lucide"></i></button>
-                  <button type="button" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'rejected')" title="Reject Document"><i data-lucide="x" class="lucide"></i></button>
+                  ${(!isVerified && !isRejected) ? `
+                    <button type="button" class="btn btn-sm btn-success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check" class="lucide"></i></button>
+                    <button type="button" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x" class="lucide"></i></button>
+                  ` : ''}
                 </div>
               </div>
             `;
@@ -761,8 +774,9 @@ class ApplicationController {
   /* ---------------- DOCUMENT PREVIEW & INSPECTION ---------------- */
 
   openDocumentPreviewModal(loanId, docId, encodedFileName, category, type, status) {
+    const validDocId = parseInt(docId) || 1;
     const fileName = decodeURIComponent(encodedFileName || 'Document');
-    this.currentPreviewDoc = { loanId, docId, fileName, category, type, status };
+    this.currentPreviewDoc = { loanId, docId: validDocId, fileName, category, type, status };
 
     document.getElementById('previewDocTitle').textContent = fileName;
     document.getElementById('previewDocMeta').textContent = `Category: ${category} • Type: ${type} • Loan #${loanId}`;
@@ -780,8 +794,8 @@ class ApplicationController {
     const container = document.getElementById('docViewerFrameContainer');
     const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
 
-    const viewUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/view?token=${encodeURIComponent(token)}`;
-    const downloadUrl = `${baseApi}/admin/loans/${loanId}/documents/${docId}/download?token=${encodeURIComponent(token)}`;
+    const viewUrl = `${baseApi}/admin/loans/${loanId}/documents/${validDocId}/view?token=${encodeURIComponent(token)}`;
+    const downloadUrl = `${baseApi}/admin/loans/${loanId}/documents/${validDocId}/download?token=${encodeURIComponent(token)}`;
 
     if (downloadBtn) {
       downloadBtn.onclick = () => {
@@ -819,8 +833,9 @@ class ApplicationController {
 
     const decisionToolbar = document.getElementById('docPreviewDecisionToolbar');
     const user = store.user;
+    const isPending = (status === 'pending' || status === 'under_review' || !status);
     if (decisionToolbar) {
-      decisionToolbar.style.display = (user && user.is_admin) ? 'flex' : 'none';
+      decisionToolbar.style.display = (user && user.is_admin && isPending) ? 'flex' : 'none';
     }
 
     this.showModal('docPreviewModal');
@@ -830,11 +845,12 @@ class ApplicationController {
   async decideDocFromPreview(status) {
     if (!this.currentPreviewDoc) return;
     const { loanId, docId } = this.currentPreviewDoc;
+    const validDocId = parseInt(docId) || 1;
     const note = document.getElementById('docVerifyNoteInput').value.trim() || `Marked as ${status} by underwriter.`;
 
     try {
-      await api.verifyDocument(loanId, docId, status, note);
-      Components.showToast('Document Updated', `Document #${docId} has been marked as ${status.toUpperCase()}.`, 'success');
+      await api.verifyDocument(loanId, validDocId, status, note);
+      Components.showToast('Document Updated', `Document #${validDocId} has been marked as ${status.toUpperCase()}.`, 'success');
       this.hideModal('docPreviewModal');
       
       // Refresh documents in current review modal or document modal

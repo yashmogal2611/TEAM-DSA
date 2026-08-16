@@ -410,14 +410,17 @@ class ApiClient {
     // 11. Documents: Upload POST /loans/{id}/documents
     if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'POST') {
       const loanId = parseInt(endpoint.split('/')[2]);
+      const newId = (MOCK_DB.documents.length + 1) * 101;
       const doc = {
-        doc_id: (MOCK_DB.documents.length + 1) * 101,
+        id: newId,
+        doc_id: newId,
         loan_id: loanId,
         doc_category: options.formData?.get('doc_category') || 'kyc',
         doc_type: options.formData?.get('doc_type') || 'document',
         file_name: options.formData?.get('file')?.name || 'uploaded_document.pdf',
         file_size: '2.1 MB',
         status: 'pending',
+        verification_status: 'pending',
         verification_note: options.formData?.get('verification_note') || 'Awaiting review',
         uploaded_at: new Date().toISOString().split('.')[0]
       };
@@ -426,9 +429,10 @@ class ApiClient {
       return doc;
     }
 
-    // 12. Documents: List GET /loans/{id}/documents
-    if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'GET') {
-      const loanId = parseInt(endpoint.split('/')[2]);
+    // 12. Documents: List GET /loans/{id}/documents & GET /admin/loans/{id}/documents
+    if ((endpoint.match(/\/loans\/\d+\/documents$/) || endpoint.match(/\/admin\/loans\/\d+\/documents$/)) && method === 'GET') {
+      const parts = endpoint.split('/');
+      const loanId = parseInt(parts[parts.length - 2]);
       return MOCK_DB.documents.filter(d => d.loan_id === loanId);
     }
 
@@ -436,7 +440,7 @@ class ApiClient {
     if (endpoint.match(/\/loans\/\d+\/documents\/\d+$/) && method === 'DELETE') {
       const parts = endpoint.split('/');
       const docId = parseInt(parts[4]);
-      MOCK_DB.documents = MOCK_DB.documents.filter(d => d.doc_id !== docId);
+      MOCK_DB.documents = MOCK_DB.documents.filter(d => (d.doc_id !== docId && d.id !== docId));
       MOCK_DB.save();
       return { success: true, message: 'Document deleted' };
     }
@@ -479,14 +483,15 @@ class ApiClient {
     }
 
     // 17. Admin: Document Verify PATCH /admin/loans/{id}/documents/{doc_id}/verify
-    if (endpoint.match(/\/admin\/loans\/\d+\/documents\/\d+\/verify/) && method === 'PATCH') {
+    if (endpoint.match(/\/admin\/loans\/\d+\/documents\/\d+\/verify/) && (method === 'PATCH' || method === 'POST')) {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
       const parts = endpoint.split('/');
       const docId = parseInt(parts[5]);
-      const doc = MOCK_DB.documents.find(d => d.doc_id === docId);
+      const doc = MOCK_DB.documents.find(d => (d.doc_id === docId || d.id === docId));
       if (!doc) throw new Error('Document not found (404)');
 
-      doc.status = body?.status || 'verified';
+      doc.status = body?.status || body?.verification_status || 'verified';
+      doc.verification_status = doc.status;
       doc.verification_note = body?.verification_note || 'Verified by admin';
       MOCK_DB.save();
       return doc;

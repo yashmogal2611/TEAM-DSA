@@ -580,6 +580,7 @@ const MOCK_DB = {
 
   documents: [
     {
+      id: 101,
       doc_id: 101,
       loan_id: 101,
       doc_category: "kyc",
@@ -591,6 +592,7 @@ const MOCK_DB = {
       uploaded_at: "2026-08-13T12:35:00"
     },
     {
+      id: 102,
       doc_id: 102,
       loan_id: 101,
       doc_category: "income",
@@ -602,6 +604,7 @@ const MOCK_DB = {
       uploaded_at: "2026-08-13T12:36:00"
     },
     {
+      id: 103,
       doc_id: 103,
       loan_id: 102,
       doc_category: "loan_specific",
@@ -613,6 +616,7 @@ const MOCK_DB = {
       uploaded_at: "2026-08-12T15:10:00"
     },
     {
+      id: 104,
       doc_id: 104,
       loan_id: 104,
       doc_category: "income",

@@ -546,15 +546,15 @@ const Components = {
     }
 
     return `
-      <div class="documents-list-wrapper">
-        <table class="data-table">
+      <div class="documents-list-wrapper" style="overflow-x: auto; width: 100%;">
+        <table class="data-table" style="width: 100%; min-width: 680px;">
           <thead>
             <tr>
-              <th>Category / Type</th>
-              <th>Filename & Size</th>
-              <th>Status</th>
-              <th>Verification Note</th>
-              <th>Action</th>
+              <th style="padding: 0.85rem 1rem; width: 18%;">Category / Type</th>
+              <th style="padding: 0.85rem 1rem; width: 28%;">Filename & Size</th>
+              <th style="padding: 0.85rem 1rem; width: 15%;">Status</th>
+              <th style="padding: 0.85rem 1rem; width: 21%;">Verification Note</th>
+              <th style="padding: 0.85rem 1rem; width: 18%; text-align: right;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -569,24 +569,31 @@ const Components = {
 
               return `
               <tr>
-                <td>
+                <td style="padding: 0.9rem 1rem;">
                   <span class="product-tag" style="text-transform:uppercase;">${category}</span>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">${type}</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${type}</div>
                 </td>
-                <td><strong>${fileName}</strong> (${fileSize})</td>
-                <td>${this.renderStatusBadge(status)}</td>
-                <td>${note}</td>
-                <td>
-                  <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')" title="Inspect / View Document">
+                <td style="padding: 0.9rem 1rem;">
+                  <div style="font-weight: 700; color: var(--text-primary); word-break: break-word;">${fileName}</div>
+                  <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${fileSize}</div>
+                </td>
+                <td style="padding: 0.9rem 1rem;">${this.renderStatusBadge(status)}</td>
+                <td style="padding: 0.9rem 1rem; font-size: 0.825rem; color: var(--text-secondary); word-break: break-word;">${note}</td>
+                <td style="padding: 0.9rem 1rem; text-align: right;">
+                  <div style="display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: nowrap;">
+                    <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; white-space: nowrap;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')" title="Inspect / View Document">
                       <i data-lucide="eye"></i> View
                     </button>
-                    ${isAdmin ? `
-                      <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check"></i> Verify</button>
-                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x"></i> Reject</button>
-                    ` : `
-                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.deleteDocumentAction(${loanId}, ${docId})"><i data-lucide="trash-2"></i> Delete</button>
-                    `}
+                    ${isAdmin ? (
+                      (status === 'pending' || status === 'under_review') ? `
+                        <button type="button" class="btn btn-sm btn-success" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; white-space: nowrap;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check"></i> Verify</button>
+                        <button type="button" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; white-space: nowrap;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x"></i> Reject</button>
+                      ` : ''
+                    ) : (
+                      (status === 'pending' || status === 'under_review') ? `
+                        <button type="button" class="btn btn-sm btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.78rem; white-space: nowrap;" onclick="app.deleteDocumentAction(${loanId}, ${docId})"><i data-lucide="trash-2"></i> Delete</button>
+                      ` : ''
+                    )}
                   </div>
                 </td>
               </tr>
