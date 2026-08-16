@@ -11,15 +11,25 @@ class ApplicationController {
   }
 
   async init() {
-    // Register global session expiry listener
-    window.addEventListener('auth:expired', () => {
-      Components.showToast('Session Expired', 'Your token expired or is invalid. Please log in again.', 'warning');
-      this.navigate('/login');
-    });
-
     this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
+
+    // Verify token on startup if present, before registering global session expiry listener
+    if (store.token) {
+      try {
+        const profile = await api.getMe();
+        store.setSession(store.token, profile);
+      } catch (err) {
+        store.clearSession();
+      }
+    }
+
+    // Register global session expiry listener for subsequent operations
+    window.addEventListener('auth:expired', () => {
+      Components.showToast('Session Expired', 'Your token expired or is invalid. Please log in again.', 'warning');
+      this.navigate('#/login');
+    });
 
     this.handleRoute();
     this.setupEmiCalculator();
@@ -88,7 +98,13 @@ class ApplicationController {
     document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
 
     // Public routes that don't require token
-    const isPublicRoute = (hash === '#/login' || hash === '#/register' || hash === '#/schemes' || hash === '#/eligibility');
+    const isPublicRoute = (
+      hash === '#/' ||
+      hash === '#/login' ||
+      hash === '#/register' ||
+      hash === '#/schemes' ||
+      hash === '#/eligibility'
+    );
 
     if (!token && !isPublicRoute) {
       this.navigate('#/login');
@@ -167,14 +183,14 @@ class ApplicationController {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
             <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon">🛡️</span>
+              <span class="dropdown-icon"><i data-lucide="shield"></i></span>
               <div>
                 <div class="item-title">Admin Control Board</div>
                 <div class="item-sub">Underwrite & sanction loans</div>
               </div>
             </a>
             <a href="#/admin-users" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon">👥</span>
+              <span class="dropdown-icon"><i data-lucide="users"></i></span>
               <div>
                 <div class="item-title">User Directory</div>
                 <div class="item-sub">Registered borrowers list</div>
@@ -186,14 +202,14 @@ class ApplicationController {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
             <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon">📋</span>
+              <span class="dropdown-icon"><i data-lucide="file-text"></i></span>
               <div>
                 <div class="item-title">My Applications</div>
                 <div class="item-sub">Track active submissions</div>
               </div>
             </a>
             <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeNavDropdown(); app.showModal('applyLoanModal');">
-              <span class="dropdown-icon">➕</span>
+              <span class="dropdown-icon"><i data-lucide="plus"></i></span>
               <div>
                 <div class="item-title">+ New Application</div>
                 <div class="item-sub">Apply for home, personal, gold loan</div>
@@ -207,14 +223,14 @@ class ApplicationController {
       if (dropdownAuth) {
         dropdownAuth.innerHTML = `
           <a href="#/login" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon">🔐</span>
+            <span class="dropdown-icon"><i data-lucide="lock"></i></span>
             <div>
               <div class="item-title">Sign In</div>
               <div class="item-sub">Log in to your account</div>
             </div>
           </a>
           <a href="#/register" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon">✍️</span>
+            <span class="dropdown-icon"><i data-lucide="edit-3"></i></span>
             <div>
               <div class="item-title">Create Account</div>
               <div class="item-sub">Register as new borrower</div>
@@ -223,6 +239,7 @@ class ApplicationController {
         `;
       }
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   /* ---------------- VIEW LOADERS & API CALLS ---------------- */
@@ -234,6 +251,7 @@ class ApplicationController {
     try {
       const schemes = await api.getLoanSchemes();
       container.innerHTML = Components.renderSchemesGrid(schemes);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load schemes: ${err.message}</div>`;
     }
@@ -257,6 +275,7 @@ class ApplicationController {
       document.getElementById('userApprovedCount').textContent = approvedCount;
 
       container.innerHTML = Components.renderUserLoansTable(loans);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load applications: ${err.message}</div>`;
     }
@@ -278,6 +297,7 @@ class ApplicationController {
 
       statsContainer.innerHTML = Components.renderAdminStats(stats);
       container.innerHTML = Components.renderAdminLoansTable(loans);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load admin data: ${err.message}</div>`;
     }
@@ -290,6 +310,7 @@ class ApplicationController {
 
     if (!q) {
       container.innerHTML = Components.renderAdminLoansTable(store.adminLoans);
+      if (window.lucide) window.lucide.createIcons();
       return;
     }
 
@@ -301,6 +322,7 @@ class ApplicationController {
     );
 
     container.innerHTML = Components.renderAdminLoansTable(filtered);
+    if (window.lucide) window.lucide.createIcons();
   }
 
   async loadAdminUsers() {
@@ -315,6 +337,7 @@ class ApplicationController {
       store.adminUsers = users;
       store.adminLoans = loans;
       container.innerHTML = Components.renderAdminUsersTable(users, loans);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load users: ${err.message}</div>`;
     }
@@ -331,11 +354,17 @@ class ApplicationController {
     const isVisible = dropdownRow.style.display !== 'none';
     if (isVisible) {
       dropdownRow.style.display = 'none';
-      if (chevron) chevron.textContent = '▼';
+      if (chevron) {
+        chevron.innerHTML = '<i data-lucide="chevron-down"></i>';
+        if (window.lucide) window.lucide.createIcons();
+      }
       if (userRow) userRow.classList.remove('active-user-expanded');
     } else {
       dropdownRow.style.display = 'table-row';
-      if (chevron) chevron.textContent = '▲';
+      if (chevron) {
+        chevron.innerHTML = '<i data-lucide="chevron-up"></i>';
+        if (window.lucide) window.lucide.createIcons();
+      }
       if (userRow) userRow.classList.add('active-user-expanded');
     }
   }
@@ -409,7 +438,7 @@ class ApplicationController {
   async handleCheckEligibility(event) {
     event.preventDefault();
     const container = document.getElementById('eligibilityResultsContainer');
-    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending">⚡ Calculating Personalised Interest Rates & Offers...</div></div>`;
+    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending"><i data-lucide="zap" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Calculating Personalised Interest Rates & Offers...</div></div>`;
 
     const inputs = {
       age: Number(document.getElementById('elAge').value),
@@ -433,6 +462,7 @@ class ApplicationController {
       const res = await api.recommendLoans(inputs);
       container.innerHTML = Components.renderEligibilityResults(res);
       container.scrollIntoView({ behavior: 'smooth' });
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       if (err.message && (err.message.includes('422') || err.message.includes('Invalid option'))) {
         Components.showToast('Validation Error', 'An input value does not match allowed criteria.', 'error');
@@ -449,7 +479,7 @@ class ApplicationController {
       case 'gold_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🥇 Gold Loan Parameters</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="award" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Gold Loan Parameters</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Gold Weight (Grams)</label>
@@ -471,7 +501,7 @@ class ApplicationController {
       case 'vehicle_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🚗 Vehicle Details</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="car" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Vehicle Details</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Vehicle Type</label>
@@ -492,7 +522,7 @@ class ApplicationController {
       case 'education_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🎓 Academic Institution</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="graduation-cap" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Academic Institution</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Institution / University Name</label>
@@ -510,7 +540,7 @@ class ApplicationController {
       case 'business_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🏢 Business Details</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="building-2" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Business Details</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Business Name</label>
@@ -529,6 +559,7 @@ class ApplicationController {
         fieldsContainer.innerHTML = '';
         break;
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   fillSchemeAndApply(loanType, recommendedEmi = null) {
@@ -620,6 +651,7 @@ class ApplicationController {
     try {
       const docs = await api.getDocuments(this.currentDocLoanId);
       container.innerHTML = Components.renderDocumentsList(docs, this.isDocAdminMode, this.currentDocLoanId);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state">Failed to load documents: ${err.message}</div>`;
     }
@@ -713,10 +745,10 @@ class ApplicationController {
                 </div>
                 <div style="display:flex; gap:0.35rem; align-items:center; flex-shrink:0;">
                   <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${d.id}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
-                    👁️ View
+                    <i data-lucide="eye" class="lucide" style="margin-right: 0.25rem;"></i> View
                   </button>
-                  <button type="button" class="btn btn-sm btn-success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'verified')" title="Verify Document">✓</button>
-                  <button type="button" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'rejected')" title="Reject Document">✕</button>
+                  <button type="button" class="btn btn-sm btn-success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'verified')" title="Verify Document"><i data-lucide="check" class="lucide"></i></button>
+                  <button type="button" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${d.id}, 'rejected')" title="Reject Document"><i data-lucide="x" class="lucide"></i></button>
                 </div>
               </div>
             `;
@@ -730,6 +762,7 @@ class ApplicationController {
     }
 
     this.showModal('reviewLoanModal');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   /* ---------------- DOCUMENT PREVIEW & INSPECTION ---------------- */
@@ -773,19 +806,19 @@ class ApplicationController {
     } else if (isImage) {
       container.innerHTML = `
         <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 8px; padding: 1rem; overflow: auto;">
-          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center; color:#f8fafc; padding:2rem;\\'><div style=\\'font-size:3rem;\\'>🖼️</div><p style=\\'margin-top:0.5rem;\\'>Image preview unavailable.</p><a href=\\'${downloadUrl}\\' target=\\'_blank\\' class=\\'btn btn-primary btn-sm\\' style=\\'margin-top:0.75rem;\\'>Download File</a></div>';">
+          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center; color:#f8fafc; padding:2rem;\\'><div style=\\'font-size:3rem; margin-bottom:0.75rem;\\'><i data-lucide=\\'image\\' class=\\'lucide\\' style=\\'width:48px; height:48px;\\'></i></div><p style=\\'margin-top:0.5rem;\\'>Image preview unavailable.</p><a href=\\'${downloadUrl}\\' target=\\'_blank\\' class=\\'btn btn-primary btn-sm\\' style=\\'margin-top:0.75rem;\\'>Download File</a></div>';">
         </div>
       `;
     } else {
       container.innerHTML = `
         <div style="text-align: center; color: #f8fafc; padding: 3rem 1rem;">
-          <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">📑</div>
+          <div style="margin-bottom: 0.75rem;"><i data-lucide="file-text" class="lucide" style="width:48px; height:48px;"></i></div>
           <div style="font-size: 1.15rem; font-weight: 600;">${fileName}</div>
           <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
             Category: ${category} • Type: ${type}
           </div>
           <button class="btn btn-primary btn-sm" style="margin-top: 1.25rem;" onclick="window.open('${downloadUrl}', '_blank')">
-            ⬇️ Download ${fileName}
+            <i data-lucide="download" class="lucide" style="margin-right: 0.4rem;"></i> Download ${fileName}
           </button>
         </div>
       `;
@@ -798,6 +831,7 @@ class ApplicationController {
     }
 
     this.showModal('docPreviewModal');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   async decideDocFromPreview(status) {
@@ -847,7 +881,7 @@ class ApplicationController {
 
     try {
       await api.rejectLoan(this.currentReviewLoanId, note);
-      Components.showToast('Application Rejected', `Loan #${this.currentReviewLoanId} status updated to ❌ Rejected.`, 'warning');
+      Components.showToast('Application Rejected', `Loan #${this.currentReviewLoanId} status updated to <i data-lucide="x-circle" class="lucide" style="color:var(--rose); margin-right: 0.25rem; vertical-align: -2px;"></i> Rejected.`, 'warning');
       this.hideModal('reviewLoanModal');
       this.loadAdminDashboard();
     } catch (err) {
