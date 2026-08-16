@@ -71,9 +71,30 @@ class LoanRecommendationRequest(BaseModel):
 
     # Loan request
     requested_loan_amount: float = Field(..., gt=0, description="Desired loan amount in ₹")
-    preferred_tenure_months: int = Field(..., ge=6, le=84)
+    preferred_tenure_months: int = Field(..., ge=6, le=360)
     loan_purpose: LoanPurpose
     primary_preference: PrimaryPreference
+
+    @field_validator("loan_purpose", mode="before")
+    @classmethod
+    def normalize_purpose(cls, v: Any) -> str:
+        if isinstance(v, str):
+            clean = v.strip().lower()
+            mapping = {
+                "home_loan": "HOME_RENOVATION",
+                "personal_loan": "OTHER",
+                "vehicle_loan": "CONSUMER_DURABLES",
+                "gold_loan": "OTHER",
+                "education_loan": "EDUCATION",
+                "business_loan": "BUSINESS",
+            }
+            if clean in mapping:
+                return mapping[clean]
+            upper = v.strip().upper()
+            valid_keys = {e.value for e in LoanPurpose}
+            if upper in valid_keys:
+                return upper
+        return "OTHER"
 
     @field_validator("city")
     @classmethod
