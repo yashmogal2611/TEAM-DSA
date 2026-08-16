@@ -14,29 +14,46 @@ class ApplicationController {
   }
 
   async init() {
-    // Register global session expiry listener
-    window.addEventListener('auth:expired', () => {
-      Components.showToast('Session Expired', 'Your token expired or is invalid. Please log in again.', 'warning');
-      this.navigate('/login');
-    });
+    // Clear any previous session on startup to ensure we start with no user logged in
+    store.clearSession();
 
     this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
 
+    // Register global session expiry listener for subsequent operations
+    window.addEventListener('auth:expired', () => {
+      Components.showToast('Session Expired', 'Your token expired or is invalid. Please log in again.', 'warning');
+      this.navigate('#/login');
+    });
+
     this.handleRoute();
     this.setupEmiCalculator();
+    this.showChatFab();
 
     document.addEventListener('click', (e) => {
-      const wrapper = document.getElementById('navDropdownWrapper');
-      if (wrapper && !wrapper.contains(e.target)) {
-        wrapper.classList.remove('open');
+      const navWrapper = document.getElementById('navDropdownWrapper');
+      if (navWrapper && !navWrapper.contains(e.target)) {
+        navWrapper.classList.remove('open');
+      }
+
+      const schemesWrapper = document.getElementById('schemesDropdownWrapper');
+      if (schemesWrapper && !schemesWrapper.contains(e.target)) {
+        schemesWrapper.classList.remove('open');
+      }
+
+      const profileWrapper = document.getElementById('userProfileDropdown');
+      const avatarBtn = document.getElementById('headerAvatarBtn');
+      if (profileWrapper && !profileWrapper.contains(e.target) && avatarBtn && !avatarBtn.contains(e.target)) {
+        profileWrapper.classList.remove('open');
       }
     });
   }
 
   toggleNavDropdown(event) {
     if (event) event.stopPropagation();
+    this.closeSchemesDropdown();
+    this.closeProfileDropdown();
     const wrapper = document.getElementById('navDropdownWrapper');
     if (wrapper) wrapper.classList.toggle('open');
   }
@@ -44,6 +61,60 @@ class ApplicationController {
   closeNavDropdown() {
     const wrapper = document.getElementById('navDropdownWrapper');
     if (wrapper) wrapper.classList.remove('open');
+  }
+
+  toggleSchemesDropdown(event) {
+    if (event) event.stopPropagation();
+    this.closeNavDropdown();
+    this.closeProfileDropdown();
+    const wrapper = document.getElementById('schemesDropdownWrapper');
+    if (wrapper) wrapper.classList.toggle('open');
+  }
+
+  closeSchemesDropdown() {
+    const wrapper = document.getElementById('schemesDropdownWrapper');
+    if (wrapper) wrapper.classList.remove('open');
+  }
+
+  toggleProfileDropdown(event) {
+    if (event) event.stopPropagation();
+    this.closeNavDropdown();
+    this.closeSchemesDropdown();
+    const dropdown = document.getElementById('userProfileDropdown');
+    if (dropdown) dropdown.classList.toggle('open');
+  }
+
+  closeProfileDropdown() {
+    const dropdown = document.getElementById('userProfileDropdown');
+    if (dropdown) dropdown.classList.remove('open');
+  }
+
+  navigateToUserDashboard() {
+    this.closeProfileDropdown();
+    const user = store.user;
+    if (user?.is_admin) {
+      this.navigate('#/admin-dashboard');
+    } else {
+      this.navigate('#/user-dashboard');
+    }
+  }
+
+  selectSchemeType(type) {
+    this.closeSchemesDropdown();
+    if (type === 'all') {
+      this.navigate('#/schemes');
+    } else {
+      const slugMap = {
+        'home_loan': 'home-loan',
+        'personal_loan': 'personal-loan',
+        'vehicle_loan': 'vehicle-loan',
+        'education_loan': 'education-loan',
+        'business_loan': 'business-loan',
+        'gold_loan': 'gold-loan'
+      };
+      const slug = slugMap[type] || type;
+      this.navigate(`#/schemes/${slug}`);
+    }
   }
 
   updateStatusPill() {
@@ -91,14 +162,21 @@ class ApplicationController {
     document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
 
     // Public routes that don't require token
-    const isPublicRoute = (hash === '#/login' || hash === '#/register' || hash === '#/schemes' || hash === '#/eligibility');
+    const isPublicRoute = (
+      hash === '#/' ||
+      hash === '#/home' ||
+      hash.startsWith('#/schemes') ||
+      hash === '#/login' ||
+      hash === '#/register' ||
+      hash === '#/eligibility'
+    );
 
     if (!token && !isPublicRoute) {
       this.navigate('#/login');
       return;
     }
 
-    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/')) {
+    if (token && (hash === '#/login' || hash === '#/register')) {
       if (user?.is_admin) {
         this.navigate('#/admin-dashboard');
       } else {
@@ -107,49 +185,57 @@ class ApplicationController {
       return;
     }
 
-    switch (hash) {
-      case '#/login':
-        document.getElementById('viewLogin').classList.add('active');
-        break;
+    const routePath = hash.split('?')[0];
 
-      case '#/register':
-        document.getElementById('viewRegister').classList.add('active');
-        break;
+    if (routePath.startsWith('#/schemes')) {
+      document.getElementById('viewSchemes').classList.add('active');
+      await this.loadSchemesView();
+    } else {
+      switch (routePath) {
+        case '#/':
+        case '#/home':
+          document.getElementById('viewHome').classList.add('active');
+          const homeBanner = document.getElementById('homeUserWelcomeBanner');
+          if (homeBanner) {
+            homeBanner.innerHTML = Components.renderHomeUserWelcomeBanner(user);
+          }
+          if (window.lucide) window.lucide.createIcons();
+          break;
 
-      case '#/schemes':
-        document.getElementById('viewSchemes').classList.add('active');
-        await this.loadSchemesView();
-        break;
+        case '#/login':
+          document.getElementById('viewLogin').classList.add('active');
+          break;
 
-      case '#/eligibility':
-        document.getElementById('viewEligibility').classList.add('active');
-        break;
+        case '#/register':
+          document.getElementById('viewRegister').classList.add('active');
+          break;
 
-      case '#/user-dashboard':
-        if (user?.is_admin) { this.navigate('#/admin-dashboard'); return; }
-        document.getElementById('viewUserDashboard').classList.add('active');
-        await this.loadUserDashboard();
-        break;
+        case '#/eligibility':
+          document.getElementById('viewEligibility').classList.add('active');
+          break;
 
-      case '#/admin-dashboard':
-        if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
-        document.getElementById('viewAdminDashboard').classList.add('active');
-        await this.loadAdminDashboard();
-        break;
+        case '#/user-dashboard':
+          if (user?.is_admin) { this.navigate('#/admin-dashboard'); return; }
+          document.getElementById('viewUserDashboard').classList.add('active');
+          await this.loadUserDashboard();
+          break;
 
-      case '#/admin-users':
-        if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
-        document.getElementById('viewAdminUsers').classList.add('active');
-        await this.loadAdminUsers();
-        break;
+        case '#/admin-dashboard':
+          if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
+          document.getElementById('viewAdminDashboard').classList.add('active');
+          await this.loadAdminDashboard();
+          break;
 
-      default:
-        if (token) {
-          user?.is_admin ? this.navigate('#/admin-dashboard') : this.navigate('#/user-dashboard');
-        } else {
-          this.navigate('#/schemes');
-        }
-        break;
+        case '#/admin-users':
+          if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
+          document.getElementById('viewAdminUsers').classList.add('active');
+          await this.loadAdminUsers();
+          break;
+
+        default:
+          this.navigate('#/home');
+          break;
+      }
     }
 
     this.renderHeader();
@@ -158,26 +244,42 @@ class ApplicationController {
   renderHeader() {
     const user = store.user;
     const navUser = document.getElementById('navUserControls');
+    const loginBtn = document.getElementById('headerLoginBtn');
     const dropdownAuth = document.getElementById('dropdownAuthItems');
 
     if (user && store.token) {
-      navUser.style.display = 'flex';
-      document.getElementById('headerAvatar').textContent = user.full_name.charAt(0).toUpperCase();
-      document.getElementById('headerUserName').textContent = user.full_name;
-      document.getElementById('headerUserEmail').textContent = user.email;
+      if (navUser) navUser.style.display = 'block';
+      if (loginBtn) loginBtn.style.display = 'none';
+      
+      const initials = (user.full_name || 'U').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().substring(0, 2);
+      
+      const headerInitials = document.getElementById('headerAvatarInitials');
+      const popAvatar = document.getElementById('popoverAvatar');
+      const popName = document.getElementById('popoverUserName');
+      const popEmail = document.getElementById('popoverUserEmail');
+      const popRole = document.getElementById('popoverUserRole');
+
+      if (headerInitials) headerInitials.textContent = initials;
+      if (popAvatar) popAvatar.textContent = initials;
+      if (popName) popName.textContent = user.full_name;
+      if (popEmail) popEmail.textContent = user.email;
+      if (popRole) {
+        popRole.textContent = user.is_admin ? 'System Administrator' : 'Verified Borrower';
+        popRole.className = `popover-role-badge ${user.is_admin ? 'admin' : 'user'}`;
+      }
 
       if (user.is_admin) {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
             <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon">🛡️</span>
+              <span class="dropdown-icon"><i data-lucide="shield"></i></span>
               <div>
                 <div class="item-title">Admin Control Board</div>
                 <div class="item-sub">Underwrite & sanction loans</div>
               </div>
             </a>
             <a href="#/admin-users" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon">👥</span>
+              <span class="dropdown-icon"><i data-lucide="users"></i></span>
               <div>
                 <div class="item-title">User Directory</div>
                 <div class="item-sub">Registered borrowers list</div>
@@ -189,14 +291,14 @@ class ApplicationController {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
             <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon">📋</span>
+              <span class="dropdown-icon"><i data-lucide="file-text"></i></span>
               <div>
                 <div class="item-title">My Applications</div>
                 <div class="item-sub">Track active submissions</div>
               </div>
             </a>
             <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeNavDropdown(); app.showModal('applyLoanModal');">
-              <span class="dropdown-icon">➕</span>
+              <span class="dropdown-icon"><i data-lucide="plus"></i></span>
               <div>
                 <div class="item-title">+ New Application</div>
                 <div class="item-sub">Apply for home, personal, gold loan</div>
@@ -206,18 +308,20 @@ class ApplicationController {
         }
       }
     } else {
-      navUser.style.display = 'none';
+      if (navUser) navUser.style.display = 'none';
+      if (loginBtn) loginBtn.style.display = 'inline-flex';
+
       if (dropdownAuth) {
         dropdownAuth.innerHTML = `
           <a href="#/login" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon">🔐</span>
+            <span class="dropdown-icon"><i data-lucide="lock"></i></span>
             <div>
               <div class="item-title">Sign In</div>
               <div class="item-sub">Log in to your account</div>
             </div>
           </a>
           <a href="#/register" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon">✍️</span>
+            <span class="dropdown-icon"><i data-lucide="edit-3"></i></span>
             <div>
               <div class="item-title">Create Account</div>
               <div class="item-sub">Register as new borrower</div>
@@ -226,6 +330,7 @@ class ApplicationController {
         `;
       }
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   /* ---------------- VIEW LOADERS & API CALLS ---------------- */
@@ -234,9 +339,20 @@ class ApplicationController {
     const container = document.getElementById('schemesContainer');
     container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading loan schemes...</div></div>`;
 
+    const hash = window.location.hash;
+    let selectedType = 'all';
+
+    if (hash.includes('/schemes/home-loan') || hash.includes('type=home_loan')) selectedType = 'home_loan';
+    else if (hash.includes('/schemes/personal-loan') || hash.includes('type=personal_loan')) selectedType = 'personal_loan';
+    else if (hash.includes('/schemes/vehicle-loan') || hash.includes('type=vehicle_loan')) selectedType = 'vehicle_loan';
+    else if (hash.includes('/schemes/education-loan') || hash.includes('type=education_loan')) selectedType = 'education_loan';
+    else if (hash.includes('/schemes/business-loan') || hash.includes('type=business_loan')) selectedType = 'business_loan';
+    else if (hash.includes('/schemes/gold-loan') || hash.includes('type=gold_loan')) selectedType = 'gold_loan';
+
     try {
       const schemes = await api.getLoanSchemes();
-      container.innerHTML = Components.renderSchemesGrid(schemes);
+      container.innerHTML = Components.renderSchemesGrid(schemes, selectedType);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load schemes: ${err.message}</div>`;
     }
@@ -260,6 +376,7 @@ class ApplicationController {
       document.getElementById('userApprovedCount').textContent = approvedCount;
 
       container.innerHTML = Components.renderUserLoansTable(loans);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load applications: ${err.message}</div>`;
     }
@@ -281,6 +398,7 @@ class ApplicationController {
 
       statsContainer.innerHTML = Components.renderAdminStats(stats);
       container.innerHTML = Components.renderAdminLoansTable(loans);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load admin data: ${err.message}</div>`;
     }
@@ -293,6 +411,7 @@ class ApplicationController {
 
     if (!q) {
       container.innerHTML = Components.renderAdminLoansTable(store.adminLoans);
+      if (window.lucide) window.lucide.createIcons();
       return;
     }
 
@@ -304,6 +423,7 @@ class ApplicationController {
     );
 
     container.innerHTML = Components.renderAdminLoansTable(filtered);
+    if (window.lucide) window.lucide.createIcons();
   }
 
   async loadAdminUsers() {
@@ -318,6 +438,7 @@ class ApplicationController {
       store.adminUsers = users;
       store.adminLoans = loans;
       container.innerHTML = Components.renderAdminUsersTable(users, loans);
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load users: ${err.message}</div>`;
     }
@@ -334,11 +455,17 @@ class ApplicationController {
     const isVisible = dropdownRow.style.display !== 'none';
     if (isVisible) {
       dropdownRow.style.display = 'none';
-      if (chevron) chevron.textContent = '▼';
+      if (chevron) {
+        chevron.innerHTML = '<i data-lucide="chevron-down"></i>';
+        if (window.lucide) window.lucide.createIcons();
+      }
       if (userRow) userRow.classList.remove('active-user-expanded');
     } else {
       dropdownRow.style.display = 'table-row';
-      if (chevron) chevron.textContent = '▲';
+      if (chevron) {
+        chevron.innerHTML = '<i data-lucide="chevron-up"></i>';
+        if (window.lucide) window.lucide.createIcons();
+      }
       if (userRow) userRow.classList.add('active-user-expanded');
     }
   }
@@ -412,7 +539,7 @@ class ApplicationController {
   async handleCheckEligibility(event) {
     event.preventDefault();
     const container = document.getElementById('eligibilityResultsContainer');
-    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending">⚡ Calculating Personalised Interest Rates & Offers...</div></div>`;
+    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending"><i data-lucide="zap" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Calculating Personalised Interest Rates & Offers...</div></div>`;
 
     const inputs = {
       age: Number(document.getElementById('elAge').value),
@@ -439,6 +566,7 @@ class ApplicationController {
 
       container.innerHTML = Components.renderEligibilityResults(res);
       container.scrollIntoView({ behavior: 'smooth' });
+      if (window.lucide) window.lucide.createIcons();
 
       if (res && res.status === 'APPROVED') {
         this.loadGenAIFeatures(res);
@@ -478,7 +606,7 @@ class ApplicationController {
         summaryContainer.innerHTML = `
           <div class="ai-summary-banner error-banner">
             <div class="ai-summary-header">
-              <span class="ai-badge">🤖 AI Summary</span>
+              <span class="ai-badge"><i data-lucide="bot" class="lucide"></i> AI Summary</span>
               <span class="ai-note">AI summary temporarily unavailable — see detailed breakdown below</span>
             </div>
           </div>
@@ -492,12 +620,13 @@ class ApplicationController {
       } else {
         explanationContainer.innerHTML = `
           <div class="explanation-box error-box" style="margin-top:1.5rem;">
-            <h4>📋 Policy Breakdown</h4>
+            <h4><i data-lucide="clipboard-list" class="lucide"></i> Policy Breakdown</h4>
             <p style="font-size:0.9rem; color:var(--text-muted);">Detailed feature explanations temporarily unavailable.</p>
           </div>
         `;
       }
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   showChatFab() {
@@ -506,8 +635,9 @@ class ApplicationController {
       fab = document.createElement('button');
       fab.id = 'chatFab';
       fab.className = 'chat-fab';
+      fab.title = 'AI Loan Assistant';
       fab.onclick = () => this.toggleChatWidget();
-      fab.innerHTML = `<span class="fab-icon">🤖</span><span class="fab-text">AI Assistant</span>`;
+      fab.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
       document.body.appendChild(fab);
     }
     fab.style.display = 'flex';
@@ -534,6 +664,7 @@ class ApplicationController {
     this.isChatOpen = true;
 
     this.renderChatHistory();
+    if (window.lucide) window.lucide.createIcons();
   }
 
   closeChatWidget() {
@@ -552,14 +683,14 @@ class ApplicationController {
       if (!this.currentRecommendationContext) {
         container.innerHTML = `
           <div class="chat-intro-box">
-            <span class="intro-icon">💡</span>
+            <span class="intro-icon"><i data-lucide="lightbulb" class="lucide"></i></span>
             <p>Run an <strong>Eligibility & Loan Calculation</strong> first to enable the AI credit assistant.</p>
           </div>
         `;
       } else {
         container.innerHTML = `
           <div class="chat-intro-box">
-            <span class="intro-icon">👋</span>
+            <span class="intro-icon"><i data-lucide="hand" class="lucide"></i></span>
             <p>Hello! I am your AI Loan Assistant. Ask me anything about your credit eligibility, offer comparison, or document requirements.</p>
           </div>
         `;
@@ -569,6 +700,7 @@ class ApplicationController {
 
     container.innerHTML = this.chatHistory.map(msg => Components.renderChatMessage(msg)).join('');
     container.scrollTop = container.scrollHeight;
+    if (window.lucide) window.lucide.createIcons();
   }
 
   sendSuggestedPrompt(text) {
@@ -650,7 +782,7 @@ class ApplicationController {
       case 'gold_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🥇 Gold Loan Parameters</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="award" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Gold Loan Parameters</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Gold Weight (Grams)</label>
@@ -672,7 +804,7 @@ class ApplicationController {
       case 'vehicle_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🚗 Vehicle Details</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="car" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Vehicle Details</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Vehicle Type</label>
@@ -693,7 +825,7 @@ class ApplicationController {
       case 'education_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🎓 Academic Institution</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="graduation-cap" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Academic Institution</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Institution / University Name</label>
@@ -711,7 +843,7 @@ class ApplicationController {
       case 'business_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🏢 Business Details</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="building-2" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Business Details</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Business Name</label>
@@ -730,6 +862,7 @@ class ApplicationController {
         fieldsContainer.innerHTML = '';
         break;
     }
+    if (window.lucide) window.lucide.createIcons();
   }
 
   fillSchemeAndApply(loanType, recommendedEmi = null) {
@@ -802,8 +935,18 @@ class ApplicationController {
     this.currentDocLoanId = loanId;
     this.isDocAdminMode = isAdmin;
 
+    let scheme = schemeName;
+    if (!scheme) {
+      const allLoans = (store.adminLoans || []).concat(store.userLoans || []).concat((typeof MOCK_DB !== 'undefined' ? MOCK_DB.loans : []));
+      const found = allLoans.find(l => l.id === loanId);
+      if (found && found.product_type) {
+        scheme = Components.formatProductType(found.product_type);
+      }
+    }
+    this.currentDocSchemeName = scheme || this.currentDocSchemeName || 'General Application';
+
     document.getElementById('docModalTitle').textContent = `Documents for Application #${loanId}`;
-    document.getElementById('docModalSubtitle').textContent = `Scheme: ${schemeName}`;
+    document.getElementById('docModalSubtitle').textContent = `Scheme: ${this.currentDocSchemeName}`;
     
     const uploadForm = document.getElementById('docUploadForm');
     if (uploadForm) uploadForm.style.display = isAdmin ? 'none' : 'block';
@@ -821,6 +964,60 @@ class ApplicationController {
     try {
       const docs = await api.getDocuments(this.currentDocLoanId);
       container.innerHTML = Components.renderDocumentsList(docs, this.isDocAdminMode, this.currentDocLoanId);
+
+      // Disable categories that have already been uploaded (Prevent Duplicate Category Uploads)
+      const uploadedCategories = new Set((docs || []).map(d => (d.doc_category || '').toLowerCase()));
+      const select = document.getElementById('docCategorySelect');
+      const uploadForm = document.getElementById('docUploadForm');
+      
+      let noticeContainer = document.getElementById('docUploadCompleteNotice');
+      if (!noticeContainer && uploadForm && uploadForm.parentNode) {
+        noticeContainer = document.createElement('div');
+        noticeContainer.id = 'docUploadCompleteNotice';
+        uploadForm.parentNode.insertBefore(noticeContainer, uploadForm);
+      }
+
+      if (select) {
+        let availableCount = 0;
+        Array.from(select.options).forEach(opt => {
+          const isUploaded = uploadedCategories.has(opt.value.toLowerCase());
+          const cleanLabel = opt.textContent.replace(/\s*—\s*Already Uploaded\s*✔/gi, '');
+          if (isUploaded) {
+            opt.disabled = true;
+            opt.textContent = `${cleanLabel} — Already Uploaded ✔`;
+          } else {
+            opt.disabled = false;
+            opt.textContent = cleanLabel;
+            availableCount++;
+          }
+        });
+
+        // Select first available non-disabled option
+        const firstAvailable = Array.from(select.options).find(opt => !opt.disabled);
+        if (firstAvailable) {
+          select.value = firstAvailable.value;
+        }
+
+        if (availableCount === 0) {
+          if (uploadForm) uploadForm.style.display = 'none';
+          if (noticeContainer) {
+            noticeContainer.innerHTML = `
+              <div style="background: #E6F4F1; color: #00A896; border: 1px solid rgba(0, 168, 150, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.75rem;">
+                <i data-lucide="check-circle-2" style="width:24px; height:24px; flex-shrink:0;"></i>
+                <div>
+                  <div style="font-size: 0.95rem; font-weight: 800;">All Required Document Categories Uploaded!</div>
+                  <div style="font-size: 0.8rem; opacity: 0.9; font-weight: 500;">All 5 document categories (KYC, Income, Bank, Loan Specific, Collateral) are attached.</div>
+                </div>
+              </div>
+            `;
+          }
+        } else {
+          if (uploadForm) uploadForm.style.display = this.isDocAdminMode ? 'none' : 'block';
+          if (noticeContainer) noticeContainer.innerHTML = '';
+        }
+      }
+
+      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state">Failed to load documents: ${err.message}</div>`;
     }
@@ -830,9 +1027,22 @@ class ApplicationController {
     event.preventDefault();
     if (!this.currentDocLoanId) return;
 
+    const fileInput = document.getElementById('docFileInput');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      Components.showToast('Select File', 'Please choose a document file to upload.', 'error');
+      return;
+    }
+
+    const categorySelect = document.getElementById('docCategorySelect');
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    if (selectedOption && selectedOption.disabled) {
+      Components.showToast('Category Uploaded', 'This document category has already been uploaded for this loan.', 'warning');
+      return;
+    }
+
     const formData = new FormData();
-    formData.append('doc_category', document.getElementById('docCategorySelect').value);
-    formData.append('file', document.getElementById('docFileInput').files[0]);
+    formData.append('doc_category', categorySelect.value);
+    formData.append('file', fileInput.files[0]);
 
     try {
       await api.uploadDocument(this.currentDocLoanId, formData);
@@ -876,7 +1086,7 @@ class ApplicationController {
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */
 
-  openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
+  async openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
     this.currentReviewLoanId = loanId;
     document.getElementById('modalLoanIdTitle').textContent = `Review Loan Application #${loanId}`;
     document.getElementById('modalApplicantDesc').textContent = `${applicantName} — Requested ${amountStr}`;
@@ -885,7 +1095,171 @@ class ApplicationController {
     document.getElementById('adminInterestRate').value = rate || 10.5;
     document.getElementById('adminNoteInput').value = '';
 
+    // Load applicant documents in review modal
+    const docsContainer = document.getElementById('reviewLoanDocsList');
+    const countBadge = document.getElementById('reviewDocsCountBadge');
+    if (docsContainer) {
+      docsContainer.innerHTML = '<div style="font-size:0.85rem; color:var(--text-muted); text-align:center;">Loading documents...</div>';
+      try {
+        const docs = await api.getDocuments(loanId);
+        if (countBadge) countBadge.textContent = `${docs.length} Attached`;
+        if (docs && docs.length > 0) {
+          docsContainer.innerHTML = docs.map(d => {
+            const docId = d.id || d.doc_id || 1;
+            const fileName = d.original_filename || d.file_name || 'Document';
+            const category = (d.doc_category || 'other').toUpperCase();
+            const type = d.doc_type || '';
+            const status = d.verification_status || d.status || 'pending';
+            const isVerified = status === 'verified';
+            const isRejected = status === 'rejected';
+
+            return `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.6rem; border-bottom: 1px solid var(--border-color); gap: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 0.35rem;">
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
+                  <div style="font-size:0.85rem; font-weight:700; color: #FFFFFF; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    ${fileName}
+                  </div>
+                  <div style="font-size:0.75rem; color:#94A3B8;">
+                    ${category} • ${type} • <span style="color:${isVerified ? '#00A896' : isRejected ? '#EF4444' : '#F59E0B'}; font-weight:700;">${status.toUpperCase()}</span>
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.35rem; align-items:center; flex-shrink:0;">
+                  <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
+                    <i data-lucide="eye" class="lucide" style="margin-right: 0.25rem;"></i> View
+                  </button>
+                  ${(!isVerified && !isRejected) ? `
+                    <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check" class="lucide"></i></button>
+                    <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x" class="lucide"></i></button>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          docsContainer.innerHTML = '<div style="font-size:0.85rem; color:var(--text-muted); text-align:center;">No documents uploaded yet.</div>';
+        }
+      } catch (e) {
+        docsContainer.innerHTML = `<div style="font-size:0.85rem; color:var(--rose); text-align:center;">Failed to load documents: ${e.message}</div>`;
+      }
+    }
+
     this.showModal('reviewLoanModal');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  /* ---------------- DOCUMENT PREVIEW & INSPECTION ---------------- */
+
+  openDocumentPreviewModal(loanId, docId, encodedFileName, category, type, status) {
+    const validDocId = parseInt(docId) || 1;
+    const fileName = decodeURIComponent(encodedFileName || 'Document');
+    this.currentPreviewDoc = { loanId, docId: validDocId, fileName, category, type, status };
+
+    document.getElementById('previewDocTitle').textContent = fileName;
+    document.getElementById('previewDocMeta').textContent = `Category: ${category} • Type: ${type} • Loan #${loanId}`;
+    
+    const statusBadge = document.getElementById('docPreviewStatusBadge');
+    if (statusBadge) {
+      statusBadge.innerHTML = Components.renderStatusBadge(status);
+    }
+
+    const noteInput = document.getElementById('docVerifyNoteInput');
+    if (noteInput) noteInput.value = '';
+
+    const container = document.getElementById('docViewerFrameContainer');
+    const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
+
+    // Find actual doc in MOCK_DB
+    const docObj = (typeof MOCK_DB !== 'undefined' && MOCK_DB.documents) ? MOCK_DB.documents.find(d => (d.doc_id === validDocId || d.id === validDocId)) : null;
+    const fileUrl = docObj?.file_url;
+
+    if (downloadBtn) {
+      downloadBtn.onclick = () => {
+        if (fileUrl) {
+          const a = document.createElement('a');
+          a.href = fileUrl;
+          a.download = fileName;
+          a.click();
+        } else {
+          Components.showToast('Document Download', `Downloading ${fileName}...`, 'info');
+        }
+      };
+    }
+
+    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName) || (fileUrl && fileUrl.startsWith('blob:'));
+
+    if (fileUrl && isImage) {
+      container.innerHTML = `
+        <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 1rem; overflow: auto;">
+          <img src="${fileUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+        </div>
+      `;
+    } else {
+      // Clean Document View Certificate Template
+      container.innerHTML = `
+        <div style="width: 100%; max-width: 580px; margin: auto; background: #1E293B; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 2rem; color: #F8FAFC; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #072AC8 0%, #00A896 100%); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; box-shadow: 0 4px 16px rgba(7, 42, 200, 0.4);">
+            <i data-lucide="file-check-2" style="width:32px; height:32px; color:#FFFFFF;"></i>
+          </div>
+
+          <h3 style="font-family:'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.35rem; margin-bottom: 0.35rem; color: #FFFFFF;">${fileName}</h3>
+          <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 1.5rem;">
+            Loan Application #${loanId} • Category: <strong style="color:#00A896;">${category}</strong>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.25rem; text-align: left; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem;">
+              <span style="color: #94A3B8;">Document Type:</span>
+              <strong style="color: #F8FAFC;">${type || 'Official Verification Proof'}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem;">
+              <span style="color: #94A3B8;">Verification Status:</span>
+              <span>${Components.renderStatusBadge(status)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+              <span style="color: #94A3B8;">File Size:</span>
+              <span style="color: #F8FAFC;">${docObj?.file_size || '1.8 MB'}</span>
+            </div>
+          </div>
+
+          <div style="font-size: 0.8rem; color: #64748B;">
+            🔐 Encrypted CrediWise Document Store • Verified Underwriter Access
+          </div>
+        </div>
+      `;
+    }
+
+    const decisionToolbar = document.getElementById('docPreviewDecisionToolbar');
+    const user = store.user;
+    const isPending = (status === 'pending' || status === 'under_review' || !status);
+    if (decisionToolbar) {
+      decisionToolbar.style.display = (user && user.is_admin && isPending) ? 'flex' : 'none';
+    }
+
+    this.showModal('docPreviewModal');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  async decideDocFromPreview(status) {
+    if (!this.currentPreviewDoc) return;
+    const { loanId, docId } = this.currentPreviewDoc;
+    const validDocId = parseInt(docId) || 1;
+    const note = document.getElementById('docVerifyNoteInput').value.trim() || `Marked as ${status} by underwriter.`;
+
+    try {
+      await api.verifyDocument(loanId, validDocId, status, note);
+      Components.showToast('Document Updated', `Document #${validDocId} has been marked as ${status.toUpperCase()}.`, 'success');
+      this.hideModal('docPreviewModal');
+      
+      // Refresh documents in current review modal or document modal
+      if (this.currentReviewLoanId === loanId) {
+        this.openReviewModal(loanId, document.getElementById('modalApplicantDesc').textContent, '', document.getElementById('adminSanctionAmount').value, document.getElementById('adminSanctionAmount').value, document.getElementById('adminInterestRate').value);
+      }
+      if (this.currentDocLoanId === loanId) {
+        this.openDocumentModal(loanId, '', this.isDocAdminMode);
+      }
+    } catch (err) {
+      Components.showToast('Action Failed', err.message, 'error');
+    }
   }
 
   async handleApproveLoan() {
@@ -913,7 +1287,7 @@ class ApplicationController {
 
     try {
       await api.rejectLoan(this.currentReviewLoanId, note);
-      Components.showToast('Application Rejected', `Loan #${this.currentReviewLoanId} status updated to ❌ Rejected.`, 'warning');
+      Components.showToast('Application Rejected', `Loan #${this.currentReviewLoanId} status updated to <i data-lucide="x-circle" class="lucide" style="color:var(--rose); margin-right: 0.25rem; vertical-align: -2px;"></i> Rejected.`, 'warning');
       this.hideModal('reviewLoanModal');
       this.loadAdminDashboard();
     } catch (err) {

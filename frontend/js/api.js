@@ -4,7 +4,11 @@
  */
 class ApiClient {
   constructor() {
-    this.baseUrl = CONFIG.API_BASE_URL;
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') {
+      this.baseUrl = window.location.origin;
+    } else {
+      this.baseUrl = CONFIG.API_BASE_URL;
+    }
   }
 
   getHeaders(authRequired = true) {
@@ -223,7 +227,7 @@ class ApiClient {
         primary_preference: ['LOWEST_EMI', 'LOWEST_TOTAL_COST', 'SHORTEST_TENURE', 'REQUIRED_AMOUNT'],
         employment_type: ['SALARIED', 'SELF_EMPLOYED', 'BUSINESS_OWNER'],
         income_type: ['FIXED', 'VARIABLE', 'MIXED'],
-        loan_purpose: ['HOME_RENOVATION', 'HOME_PURCHASE', 'HOME_CONSTRUCTION', 'MEDICAL', 'EDUCATION', 'TRAVEL', 'WEDDING', 'VEHICLE_PURCHASE', 'BUSINESS', 'DEBT_CONSOLIDATION', 'OTHER']
+        loan_purpose: ['home_loan', 'personal_loan', 'vehicle_loan', 'education_loan', 'business_loan', 'gold_loan', 'HOME_LOAN', 'PERSONAL_LOAN', 'VEHICLE_LOAN', 'EDUCATION_LOAN', 'BUSINESS_LOAN', 'GOLD_LOAN', 'HOME_RENOVATION', 'HOME_PURCHASE', 'HOME_CONSTRUCTION', 'MEDICAL', 'EDUCATION', 'TRAVEL', 'WEDDING', 'VEHICLE_PURCHASE', 'BUSINESS', 'DEBT_CONSOLIDATION', 'OTHER']
       };
 
       // Check enum values match strictly (422 HTTP validation)
@@ -298,7 +302,7 @@ class ApiClient {
           recommendations: [],
           explanation: {
             eligibility_reasons: [
-              `❌ ${rejectionCode}`,
+              `<i data-lucide="x-circle" class="lucide" style="color:var(--rose); margin-right: 0.4rem;"></i> ${rejectionCode}`,
               rejectionReasons[0]
             ],
             risk_drivers: [],
@@ -391,9 +395,9 @@ class ApiClient {
             }
           ],
           offer_reasons: [
-            `✅ Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
-            `✅ Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
-            `✅ Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
+            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
+            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
+            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
           ],
           comparative_reasons: [
             `${recommendations[0].lender_name} offers the lowest EMI among all matched lenders.`
@@ -463,25 +467,46 @@ class ApiClient {
     // 11. Documents: Upload POST /loans/{id}/documents
     if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'POST') {
       const loanId = parseInt(endpoint.split('/')[2]);
+      const newId = (MOCK_DB.documents.length + 1) * 101;
+      
+      const formData = options.body || options.formData;
+      const category = formData?.get ? (formData.get('doc_category') || 'kyc') : 'kyc';
+      const fileObj = formData?.get ? formData.get('file') : null;
+      const fileName = fileObj?.name || (typeof fileObj === 'string' ? fileObj : 'uploaded_document.pdf');
+      const fileSize = fileObj?.size ? (fileObj.size / 1024).toFixed(1) + ' KB' : '1.8 MB';
+
+      const typeLabels = {
+        'kyc': 'KYC Proof (PAN / Aadhaar / Passport)',
+        'income': 'Income Proof (Salary Slips / ITR)',
+        'bank': 'Bank Account Statement (6 Months)',
+        'loan_specific': 'Loan Specific Agreement / Admission Letter',
+        'collateral': 'Collateral Deed / Appraisal Document'
+      };
+
       const doc = {
-        doc_id: (MOCK_DB.documents.length + 1) * 101,
+        id: newId,
+        doc_id: newId,
         loan_id: loanId,
-        doc_category: options.formData?.get('doc_category') || 'kyc',
-        doc_type: options.formData?.get('doc_type') || 'document',
-        file_name: options.formData?.get('file')?.name || 'uploaded_document.pdf',
-        file_size: '2.1 MB',
+        doc_category: category,
+        doc_type: typeLabels[category] || 'Verification Document',
+        file_name: fileName,
+        original_filename: fileName,
+        file_size: fileSize,
+        file_url: (fileObj && typeof fileObj === 'object' && typeof URL !== 'undefined') ? URL.createObjectURL(fileObj) : null,
         status: 'pending',
-        verification_note: options.formData?.get('verification_note') || 'Awaiting review',
-        uploaded_at: new Date().toISOString().split('.')[0]
+        verification_status: 'pending',
+        verification_note: 'Awaiting Underwriter Review',
+        uploaded_at: new Date().toISOString().split('T')[0]
       };
       MOCK_DB.documents.push(doc);
       MOCK_DB.save();
       return doc;
     }
 
-    // 12. Documents: List GET /loans/{id}/documents
-    if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'GET') {
-      const loanId = parseInt(endpoint.split('/')[2]);
+    // 12. Documents: List GET /loans/{id}/documents & GET /admin/loans/{id}/documents
+    if ((endpoint.match(/\/loans\/\d+\/documents$/) || endpoint.match(/\/admin\/loans\/\d+\/documents$/)) && method === 'GET') {
+      const parts = endpoint.split('/');
+      const loanId = parseInt(parts[parts.length - 2]);
       return MOCK_DB.documents.filter(d => d.loan_id === loanId);
     }
 
@@ -489,7 +514,7 @@ class ApiClient {
     if (endpoint.match(/\/loans\/\d+\/documents\/\d+$/) && method === 'DELETE') {
       const parts = endpoint.split('/');
       const docId = parseInt(parts[4]);
-      MOCK_DB.documents = MOCK_DB.documents.filter(d => d.doc_id !== docId);
+      MOCK_DB.documents = MOCK_DB.documents.filter(d => (d.doc_id !== docId && d.id !== docId));
       MOCK_DB.save();
       return { success: true, message: 'Document deleted' };
     }
@@ -532,14 +557,15 @@ class ApiClient {
     }
 
     // 17. Admin: Document Verify PATCH /admin/loans/{id}/documents/{doc_id}/verify
-    if (endpoint.match(/\/admin\/loans\/\d+\/documents\/\d+\/verify/) && method === 'PATCH') {
+    if (endpoint.match(/\/admin\/loans\/\d+\/documents\/\d+\/verify/) && (method === 'PATCH' || method === 'POST')) {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
       const parts = endpoint.split('/');
       const docId = parseInt(parts[5]);
-      const doc = MOCK_DB.documents.find(d => d.doc_id === docId);
+      const doc = MOCK_DB.documents.find(d => (d.doc_id === docId || d.id === docId));
       if (!doc) throw new Error('Document not found (404)');
 
-      doc.status = body?.status || 'verified';
+      doc.status = body?.status || body?.verification_status || 'verified';
+      doc.verification_status = doc.status;
       doc.verification_note = body?.verification_note || 'Verified by admin';
       MOCK_DB.save();
       return doc;
