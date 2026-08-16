@@ -22,27 +22,27 @@
   <header class="app-header">
     <div class="header-left">
       <div class="brand" onclick="app.navigate('#/')">
-        <div class="brand-icon"><i data-lucide="zap"></i></div>
+        <div class="brand-icon">⚡</div>
         <span>ApexLoans</span>
       </div>
 
       <!-- Top-Left Navigation Dropdown Menu -->
       <div class="nav-dropdown-wrapper" id="navDropdownWrapper">
         <button type="button" class="nav-dropdown-btn" onclick="app.toggleNavDropdown(event)">
-          <span><i data-lucide="menu"></i> Menu</span>
-          <span class="dropdown-chevron"><i data-lucide="chevron-down"></i></span>
+          <span>☰ Menu</span>
+          <span class="dropdown-chevron">▾</span>
         </button>
         <div class="nav-dropdown-menu" id="navDropdownMenu">
           <div class="dropdown-section-title">Navigation & Tools</div>
           <a href="#/schemes" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon"><i data-lucide="file-text"></i></span>
+            <span class="dropdown-icon">📜</span>
             <div>
               <div class="item-title">Loan Schemes</div>
               <div class="item-sub">Interest rates & policy rules</div>
             </div>
           </a>
           <a href="#/eligibility" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon"><i data-lucide="calculator"></i></span>
+            <span class="dropdown-icon">🧮</span>
             <div>
               <div class="item-title">Eligibility Checker</div>
               <div class="item-sub">Multi-step FOIR calculator</div>
@@ -89,11 +89,11 @@
 
           <!-- Quick Demo Credentials Fill -->
           <div class="demo-credentials-box">
-            <h4><i data-lucide="lightbulb"></i> Quick Demo Credentials</h4>
+            <h4>💡 Quick Demo Credentials</h4>
             <div>Select a role to auto-fill test credentials:</div>
             <div class="demo-btns">
-              <button type="button" class="btn-demo-fill" onclick="app.fillDemoUser()"><i data-lucide="user"></i> Regular User</button>
-              <button type="button" class="btn-demo-fill" onclick="app.fillDemoAdmin()"><i data-lucide="shield"></i> System Admin</button>
+              <button type="button" class="btn-demo-fill" onclick="app.fillDemoUser()">👤 Regular User</button>
+              <button type="button" class="btn-demo-fill" onclick="app.fillDemoAdmin()">🛡️ System Admin</button>
             </div>
           </div>
 
@@ -170,7 +170,7 @@
           <p>Explore RBI-compliant credit products, interest rate slabs, and required document checklists.</p>
         </div>
         <a href="#/eligibility" class="btn btn-primary">
-          <i data-lucide="calculator"></i> Calculate My Eligibility <i data-lucide="arrow-right"></i>
+          🧮 Calculate My Eligibility →
         </a>
       </div>
       <div id="schemesContainer"></div>
@@ -188,17 +188,17 @@
       <!-- Standard Eligibility Policy Rules Banner -->
       <div class="eligibility-rules-banner">
         <div class="rules-header">
-          <span class="rules-icon"><i data-lucide="clipboard-list"></i></span>
+          <span class="rules-icon">📋</span>
           <strong>Standard Credit Eligibility Guidelines</strong>
         </div>
         <div class="rules-grid">
-          <div class="rule-chip"><i data-lucide="user"></i> Age: <strong>21 - 65 yrs</strong></div>
-          <div class="rule-chip"><i data-lucide="bar-chart-3"></i> Min Credit Score: <strong>600 CIBIL</strong></div>
-          <div class="rule-chip"><i data-lucide="banknote"></i> Min Monthly Income: <strong>₹20,000</strong></div>
-          <div class="rule-chip"><i data-lucide="trending-down"></i> Max EMI Ratio: <strong>65% of Income</strong></div>
-          <div class="rule-chip"><i data-lucide="binary"></i> Max Active Loans: <strong>5</strong></div>
-          <div class="rule-chip"><i data-lucide="clock"></i> Min Employment: <strong>6 mos (0.5 yrs)</strong></div>
-          <div class="rule-chip"><i data-lucide="building-2"></i> Business Loan: <strong>Self Employed / Business Owner</strong></div>
+          <div class="rule-chip">👤 Age: <strong>21 - 65 yrs</strong></div>
+          <div class="rule-chip">📊 Min Credit Score: <strong>600 CIBIL</strong></div>
+          <div class="rule-chip">💵 Min Monthly Income: <strong>₹20,000</strong></div>
+          <div class="rule-chip">📉 Max EMI Ratio: <strong>65% of Income</strong></div>
+          <div class="rule-chip">🔢 Max Active Loans: <strong>5</strong></div>
+          <div class="rule-chip">⏱️ Min Employment: <strong>6 mos (0.5 yrs)</strong></div>
+          <div class="rule-chip">🏢 Business Loan: <strong>Self Employed / Business Owner</strong></div>
         </div>
       </div>
 
@@ -321,7 +321,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary btn-full" style="margin-top:1rem;">
-            <i data-lucide="zap"></i> Calculate Personalised Loan Offers
+            ⚡ Calculate Personalised Loan Offers
           </button>
         </form>
       </div>
@@ -337,7 +337,7 @@
           <p>Track your submitted applications, upload verification documents, and review sanction notes.</p>
         </div>
         <button class="btn btn-primary" onclick="app.showModal('applyLoanModal')">
-          <i data-lucide="plus"></i> Submit New Application
+          + Submit New Application
         </button>
       </div>
 
@@ -348,37 +348,37 @@
           <p>Explore interest rate schemes, calculate your FOIR ratio, or submit a new application.</p>
         </div>
         <div class="banner-actions">
-          <a href="#/schemes" class="btn btn-secondary btn-sm"><i data-lucide="file-text"></i> Schemes</a>
-          <a href="#/eligibility" class="btn btn-secondary btn-sm"><i data-lucide="calculator"></i> Calculator</a>
-          <button class="btn btn-primary btn-sm" onclick="app.showModal('applyLoanModal')"><i data-lucide="plus"></i> Apply Now</button>
+          <a href="#/schemes" class="btn btn-secondary btn-sm">📜 Schemes</a>
+          <a href="#/eligibility" class="btn btn-secondary btn-sm">🧮 Calculator</a>
+          <button class="btn btn-primary btn-sm" onclick="app.showModal('applyLoanModal')">+ Apply Now</button>
         </div>
       </div>
 
       <!-- User KPI Summary -->
       <div class="kpi-grid">
         <div class="kpi-card">
-          <div class="kpi-icon blue"><i data-lucide="indian-rupee"></i></div>
+          <div class="kpi-icon blue">💰</div>
           <div class="kpi-details">
             <span class="kpi-value" id="userTotalApplied">₹0</span>
             <span class="kpi-label">Total Amount Requested</span>
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon amber"><i data-lucide="clock"></i></div>
+          <div class="kpi-icon amber">⏳</div>
           <div class="kpi-details">
             <span class="kpi-value" id="userPendingCount">0</span>
             <span class="kpi-label">Under Review</span>
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon emerald"><i data-lucide="check-circle-2"></i></div>
+          <div class="kpi-icon emerald">✅</div>
           <div class="kpi-details">
             <span class="kpi-value" id="userApprovedCount">0</span>
             <span class="kpi-label">Approved Applications</span>
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon blue"><i data-lucide="clipboard-list"></i></div>
+          <div class="kpi-icon blue">📋</div>
           <div class="kpi-details">
             <span class="kpi-value" id="userActiveCount">0</span>
             <span class="kpi-label">Total Submissions</span>
@@ -398,7 +398,7 @@
           <p>Review incoming applicant requests, verify documents, set interest rates, and issue sanction letters.</p>
         </div>
         <a href="#/admin-users" class="btn btn-secondary">
-          <i data-lucide="users"></i> Registered Users Directory
+          👥 Registered Users Directory
         </a>
       </div>
 
@@ -409,12 +409,11 @@
       <div class="admin-toolbar">
         <div class="tab-filters">
           <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Applications</button>
-          <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)"><i data-lucide="clock"></i> Pending Review</button>
-          <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)"><i data-lucide="check-circle"></i> Approved</button>
-          <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)"><i data-lucide="x-circle"></i> Rejected</button>
+          <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)">⏳ Pending Review</button>
+          <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)">✅ Approved</button>
+          <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)">❌ Rejected</button>
         </div>
         <div class="search-box">
-          <i data-lucide="search" class="search-icon"></i>
           <input type="text" id="adminSearchInput" class="input-control" placeholder="Search applicant name, email..." oninput="app.handleAdminSearch(this.value)">
         </div>
       </div>
@@ -431,7 +430,7 @@
           <p>List of registered borrower accounts and profile details.</p>
         </div>
         <a href="#/admin-dashboard" class="btn btn-secondary">
-          <i data-lucide="arrow-left"></i> Back to Admin Board
+          ← Back to Admin Board
         </a>
       </div>
 
@@ -553,7 +552,7 @@
             </div>
           </div>
           <button type="submit" class="btn btn-primary btn-sm">
-            <i data-lucide="upload"></i> Upload Document
+            📤 Upload Document
           </button>
         </form>
 
@@ -588,74 +587,22 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-top: 1rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <label class="form-label" style="margin-bottom: 0;">Applicant Uploaded Documents</label>
-              <span class="status-badge" id="reviewDocsCountBadge" style="font-size:0.75rem;">0 Attached</span>
-            </div>
-            <div id="reviewLoanDocsList" style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; max-height: 200px; overflow-y: auto;">
-              <div style="font-size:0.85rem; color:var(--text-muted); text-align:center;">No documents uploaded yet.</div>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-top: 1rem;">
+          <div class="form-group">
             <label class="form-label" for="adminNoteInput">Admin Decision Notes / Underwriter Remarks</label>
-            <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Verified KYC and income proofs. Approved with 10.5% interest rate.')"></textarea>
+            <textarea id="adminNoteInput" class="input-control" placeholder="Enter remarks (e.g. 'Strong credit history. Approved with 10.5% interest rate.')"></textarea>
           </div>
         </div>
         <div class="modal-footer" id="reviewModalFooter">
           <button type="button" class="btn btn-secondary" onclick="app.hideModal('reviewLoanModal')">Close</button>
-          <button type="button" class="btn btn-danger" onclick="app.handleRejectLoan()"><i data-lucide="x-circle"></i> Reject Application</button>
-          <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()"><i data-lucide="check-circle"></i> Approve & Issue Sanction</button>
+          <button type="button" class="btn btn-danger" onclick="app.handleRejectLoan()">❌ Reject Application</button>
+          <button type="button" class="btn btn-success" onclick="app.handleApproveLoan()">✅ Approve & Issue Sanction</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- MODAL 4: DOCUMENT INLINE INSPECTION & PREVIEW -->
-  <div class="modal-backdrop" id="docPreviewModal" style="z-index: 1200;">
-    <div class="modal-card" style="max-width: 900px; width: 95vw; height: 90vh; max-height: 90vh; display: flex; flex-direction: column;">
-      <div class="modal-header" style="flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <div>
-            <h3 id="previewDocTitle" style="margin-bottom: 0.2rem; font-size: 1.15rem;">Document Preview</h3>
-            <div style="font-size:0.8rem; color:var(--text-muted);" id="previewDocMeta">Category • Type • Loan #</div>
-          </div>
-          <span id="docPreviewStatusBadge"></span>
-        </div>
-        <button class="modal-close" onclick="app.hideModal('docPreviewModal')">&times;</button>
-      </div>
-
-      <div class="modal-body" style="flex: 1; overflow: hidden; padding: 0.75rem; display: flex; flex-direction: column; background: #0f172a;">
-        <div id="docViewerFrameContainer" style="flex: 1; width: 100%; height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: auto;">
-          <div style="color: var(--text-muted); font-size: 0.9rem;">Loading document...</div>
-        </div>
-
-        <div id="docPreviewDecisionToolbar" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--bg-card, #1e293b); border: 1px solid var(--border-color); border-radius: 8px; display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-          <div style="flex: 1; min-width: 240px;">
-            <input type="text" id="docVerifyNoteInput" class="input-control" placeholder="Underwriter Note (e.g. 'PAN card verified against NSDL')" style="margin: 0; font-size: 0.85rem; padding: 0.4rem 0.75rem;">
-          </div>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btnDownloadDocFromPreview">
-              <i data-lucide="download"></i> Download File
-            </button>
-            <button type="button" class="btn btn-danger btn-sm" onclick="app.decideDocFromPreview('rejected')">
-              <i data-lucide="x"></i> Reject Document
-            </button>
-            <button type="button" class="btn btn-success btn-sm" onclick="app.decideDocFromPreview('verified')">
-              <i data-lucide="check"></i> Approve & Verify
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Global Toast Notifications Container -->
   <div class="toast-container" id="toastContainer"></div>
-
-  <!-- Lucide Icons -->
-  <script src="js/lucide.min.js"></script>
 
   <!-- Application Scripts -->
   <script src="js/background.js"></script>

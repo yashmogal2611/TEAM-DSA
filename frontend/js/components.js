@@ -7,13 +7,13 @@ const Components = {
     switch (status) {
       case 'pending':
       case 'under_review':
-        return `<span class="status-badge pending"><i data-lucide="clock"></i> Under Review</span>`;
+        return `<span class="status-badge pending">⏳ Under Review</span>`;
       case 'approved':
-        return `<span class="status-badge approved"><i data-lucide="check-circle-2"></i> Approved</span>`;
+        return `<span class="status-badge approved">✅ Approved</span>`;
       case 'rejected':
-        return `<span class="status-badge rejected"><i data-lucide="x-circle"></i> Rejected</span>`;
+        return `<span class="status-badge rejected">❌ Rejected</span>`;
       case 'verified':
-        return `<span class="status-badge approved"><i data-lucide="shield-check"></i> Verified</span>`;
+        return `<span class="status-badge approved">✓ Verified</span>`;
       default:
         return `<span class="status-badge">${status}</span>`;
     }
@@ -71,15 +71,15 @@ const Components = {
     if (!loan) return '—';
     switch (loan.product_type) {
       case 'home_loan':
-        return loan.property_location ? `<i data-lucide="map-pin"></i> ${loan.property_location}` : (loan.purpose || 'Residential Property');
+        return loan.property_location ? `📍 ${loan.property_location}` : (loan.purpose || 'Residential Property');
       case 'vehicle_loan':
-        return loan.vehicle_make_model ? `<i data-lucide="car"></i> ${loan.vehicle_make_model}` : (loan.purpose || 'Vehicle Purchase');
+        return loan.vehicle_make_model ? `🚗 ${loan.vehicle_make_model}` : (loan.purpose || 'Vehicle Purchase');
       case 'business_loan':
-        return loan.business_name ? `<i data-lucide="building-2"></i> ${loan.business_name}` : (loan.purpose || 'MSME Expansion');
+        return loan.business_name ? `🏢 ${loan.business_name}` : (loan.purpose || 'MSME Expansion');
       case 'education_loan':
-        return loan.university_name ? `<i data-lucide="graduation-cap"></i> ${loan.university_name}` : (loan.purpose || 'Higher Studies');
+        return loan.university_name ? `🎓 ${loan.university_name}` : (loan.purpose || 'Higher Studies');
       case 'gold_loan':
-        return loan.gold_weight_grams ? `<i data-lucide="sparkles"></i> ${loan.gold_weight_grams}g (${loan.gold_purity_karats || 22}K Gold)` : (loan.purpose || 'Gold Pledge');
+        return loan.gold_weight_grams ? `✨ ${loan.gold_weight_grams}g (${loan.gold_purity_karats || 22}K Gold)` : (loan.purpose || 'Gold Pledge');
       default:
         return loan.purpose || 'Personal Financing';
     }
@@ -110,18 +110,18 @@ const Components = {
             </div>
 
             <div class="scheme-checklist-box">
-              <div class="chk-header"><i data-lucide="clipboard-list"></i> Required Documents Checklist</div>
+              <div class="chk-header">📋 Required Documents Checklist</div>
               <ul class="chk-list">
-                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
-                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
+                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li>✓ ${d}</li>`).join('')}
+                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li>✓ ${d}</li>`).join('')}
               </ul>
             </div>
 
             <div class="scheme-footer">
               <button class="btn btn-secondary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
-                Apply Under Scheme <i data-lucide="arrow-right"></i>
+                Apply Under Scheme →
               </button>
-              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs <i data-lucide="external-link"></i></a>
+              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs ↗</a>
             </div>
           </div>
         `).join('')}
@@ -143,21 +143,21 @@ const Components = {
         <div class="eligibility-results-wrapper">
           <div class="result-status-card rejected-card">
             <div class="status-header">
-              <span class="status-badge rejected"><i data-lucide="x-circle"></i> REJECTED</span>
+              <span class="status-badge rejected">❌ REJECTED</span>
               <span class="request-id-tag">Req ID: #${requestId}</span>
             </div>
             <h2>Application Criteria Assessment Required</h2>
             <p class="rejection-message">${data.message || 'Criteria not met for loan recommendation.'}</p>
             
             <div class="explanation-box" style="margin-top: 1.5rem;">
-              <h4><i data-lucide="clipboard-list"></i> Policy Criteria Failure Reasons</h4>
+              <h4>📋 Policy Criteria Failure Reasons</h4>
               <ul class="reasons-list">
                 ${(explanation.eligibility_reasons || []).map(r => `<li>${r}</li>`).join('')}
               </ul>
             </div>
 
             <div class="advice-box" style="margin-top:1.5rem;">
-              <h4><i data-lucide="lightbulb"></i> How to improve your eligibility:</h4>
+              <h4>💡 How to improve your eligibility:</h4>
               <ul>
                 <li>• Maintain a CIBIL credit score above 600 (preferably 750+ for prime rates).</li>
                 <li>• Pay off existing credit cards to lower your monthly EMI obligations.</li>
@@ -180,18 +180,21 @@ const Components = {
         <!-- Status & System Summary Header -->
         <div class="result-status-card approved-card">
           <div class="status-header">
-            <span class="status-badge approved"><i data-lucide="check-circle-2"></i> APPROVED</span>
+            <span class="status-badge approved">✅ APPROVED</span>
             <span class="request-id-tag">Req ID: #${requestId}</span>
           </div>
           <h2>${data.message || 'Personalised loan offers generated successfully.'}</h2>
         </div>
+
+        <!-- GenAI Phase 2: AI Summary Banner Container -->
+        <div id="aiSummaryContainer" style="margin-top:1.25rem;"></div>
 
         <!-- Metrics Overview Grid: Risk Summary & Affordability Summary -->
         <div class="ml-summary-grid">
           
           <!-- Risk Summary Card -->
           <div class="ml-summary-card risk-card">
-            <div class="card-title"><i data-lucide="shield"></i> Underwriting Risk Assessment</div>
+            <div class="card-title">🛡️ Underwriting Risk Assessment</div>
             <div class="risk-badge-row">
               <span class="risk-band-pill ${risk.risk_band === 'LOW' ? 'low-risk' : risk.risk_band === 'MEDIUM' ? 'med-risk' : 'high-risk'}">
                 Risk Band: ${risk.risk_band || 'LOW'}
@@ -211,7 +214,7 @@ const Components = {
 
           <!-- Affordability Summary Card -->
           <div class="ml-summary-card afford-card">
-            <div class="card-title"><i data-lucide="credit-card"></i> Affordability & FOIR Summary</div>
+            <div class="card-title">💳 Affordability & FOIR Summary</div>
             <div class="metrics-grid">
               <div class="metric-block">
                 <span class="m-val">${this.formatCurrency(afford.monthly_income)}</span>
@@ -236,7 +239,7 @@ const Components = {
 
         <!-- Recommendations Grid (Rule #6: Rank 1 highlighted as best) -->
         <h2 class="section-title" style="margin-top:2rem;">
-          <i data-lucide="trophy"></i> Recommended Loan Offers (${recommendations.length})
+          🏆 Recommended Loan Offers (${recommendations.length})
         </h2>
 
         <div class="ml-recommendations-grid">
@@ -246,7 +249,7 @@ const Components = {
               <div class="recommendation-card ${isRank1 ? 'rank-1-card' : ''}">
                 ${isRank1 ? `
                   <div class="rank-badge-highlight">
-                    <i data-lucide="star"></i> RANK #1 — BEST MATCH RECOMMENDATION
+                    ⭐ RANK #1 — BEST MATCH RECOMMENDATION
                   </div>
                 ` : `
                   <div class="rank-badge-standard">Rank #${rec.rank}</div>
@@ -301,7 +304,7 @@ const Components = {
 
                 <div class="rec-footer">
                   <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${rec.product_id}', ${rec.monthly_emi})">
-                    Apply for ${rec.lender_name} Offer Now <i data-lucide="arrow-right"></i>
+                    Apply for ${rec.lender_name} Offer Now →
                   </button>
                 </div>
               </div>
@@ -309,12 +312,15 @@ const Components = {
           }).join('')}
         </div>
 
+        <!-- GenAI Phase 1: Explanation Panel Container -->
+        <div id="explanationContainer" style="margin-top:2rem;"></div>
+
         <!-- Explanation & AI Offer Reasons -->
         <div class="ml-explanation-section" style="margin-top:2rem;">
           
           ${(explanation.offer_reasons || []).length > 0 ? `
             <div class="explanation-box offer-reasons-box">
-              <h4><i data-lucide="sparkles"></i> Key Offer Highlights</h4>
+              <h4>✨ Key Offer Highlights</h4>
               <ul class="reasons-list">
                 ${explanation.offer_reasons.map(reason => `<li>${reason}</li>`).join('')}
               </ul>
@@ -323,7 +329,7 @@ const Components = {
 
           ${(explanation.risk_drivers || []).length > 0 ? `
             <div class="explanation-box risk-drivers-box" style="margin-top:1rem;">
-              <h4><i data-lucide="bar-chart-3"></i> Risk Drivers Analysis</h4>
+              <h4>📊 Risk Drivers Analysis</h4>
               <div class="risk-drivers-list">
                 ${explanation.risk_drivers.map(rd => `
                   <div class="risk-driver-item">
@@ -340,7 +346,7 @@ const Components = {
 
           ${(explanation.comparative_reasons || []).length > 0 ? `
             <div class="explanation-box comparative-box" style="margin-top:1rem;">
-              <h4><i data-lucide="scale"></i> Comparative Analysis</h4>
+              <h4>⚖️ Comparative Analysis</h4>
               <ul class="reasons-list">
                 ${explanation.comparative_reasons.map(cr => `<li>• ${cr}</li>`).join('')}
               </ul>
@@ -349,6 +355,174 @@ const Components = {
 
         </div>
 
+      </div>
+    `;
+  },
+
+  renderAISummaryBanner(data, isLoading) {
+    if (isLoading) {
+      return `
+        <div class="ai-summary-banner loading">
+          <div class="ai-summary-header">
+            <span class="ai-badge">🤖 AI Summary</span>
+            <span class="ai-loading-skeleton">Synthesizing personalized loan insights with Gemini AI...</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (!data || !data.ai_summary) {
+      return `
+        <div class="ai-summary-banner info">
+          <div class="ai-summary-header">
+            <span class="ai-badge">🤖 AI Summary</span>
+            <span class="ai-text">Personalized loan recommendation summary generated. Review individual offer breakdowns below.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="ai-summary-banner">
+        <div class="ai-summary-header">
+          <span class="ai-badge">🤖 AI Executive Summary</span>
+          <span class="ai-model-tag">Gemini-3.6-Flash Engine</span>
+        </div>
+        <p class="ai-summary-content">${data.ai_summary}</p>
+      </div>
+    `;
+  },
+
+  renderExplanationPanel(data, isLoading) {
+    if (isLoading) {
+      return `
+        <div class="explanation-panel loading">
+          <div class="panel-header">
+            <h4>🧠 SHAP Feature Attribution & Financial Reasoning</h4>
+          </div>
+          <div class="ai-loading-skeleton" style="padding:1rem;">Evaluating risk drivers and affordability factors...</div>
+        </div>
+      `;
+    }
+
+    if (!data) return '';
+
+    const positive = data.positive || [];
+    const caution = data.caution || [];
+    const topFactors = data.top_factors || [];
+
+    return `
+      <div class="explanation-panel">
+        <div class="panel-header">
+          <h4>🧠 SHAP Feature Attribution & Financial Reasoning</h4>
+          <span class="panel-subtitle">Deterministic Phase 1 Explanation Engine</span>
+        </div>
+
+        <div class="factors-dual-grid">
+          ${positive.length > 0 ? `
+            <div class="factor-column positive-col">
+              <div class="col-title">✅ Positive Credit Attributes</div>
+              <ul class="factor-list">
+                ${positive.map(p => `
+                  <li class="factor-chip positive">
+                    <span class="chip-icon">✦</span> ${p}
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          ${caution.length > 0 ? `
+            <div class="factor-column caution-col">
+              <div class="col-title">⚠️ Risk Caution Factors</div>
+              <ul class="factor-list">
+                ${caution.map(c => `
+                  <li class="factor-chip caution">
+                    <span class="chip-icon">⚡</span> ${c}
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+
+        ${data.financial_explanation || data.eligibility_explanation ? `
+          <div class="explanation-text-box">
+            ${data.financial_explanation ? `<p class="exp-para"><strong>💳 Financial Fit:</strong> ${data.financial_explanation}</p>` : ''}
+            ${data.eligibility_explanation ? `<p class="exp-para"><strong>📋 Policy Fit:</strong> ${data.eligibility_explanation}</p>` : ''}
+          </div>
+        ` : ''}
+
+        ${topFactors.length > 0 ? `
+          <details class="top-factors-collapsible">
+            <summary class="factors-summary-title">
+              🔍 Inspect SHAP Feature Weights (${topFactors.length} Key Drivers)
+            </summary>
+            <div class="shap-weights-grid">
+              ${topFactors.map(f => {
+                const isReduce = (f.direction === 'reduces_risk');
+                return `
+                  <div class="shap-factor-row ${isReduce ? 'reduces' : 'increases'}">
+                    <span class="f-name">${(f.feature || '').replace(/_/g, ' ')}</span>
+                    <span class="f-direction ${isReduce ? 'reduces_risk' : 'increases_risk'}">
+                      ${isReduce ? '🟢 Reduces Risk' : '🔴 Increases Risk'} (${(f.impact || 0).toFixed(2)})
+                    </span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </details>
+        ` : ''}
+      </div>
+    `;
+  },
+
+  renderChatWidget() {
+    return `
+      <div class="chat-widget-inner">
+        <div class="chat-widget-header">
+          <div class="header-info">
+            <span class="bot-avatar">🤖</span>
+            <div>
+              <div class="bot-title">ApexLoans AI Assistant</div>
+              <div class="bot-sub">Grounded Credit Advisory Engine</div>
+            </div>
+          </div>
+          <button class="chat-close-btn" onclick="app.closeChatWidget()" title="Close Assistant">✕</button>
+        </div>
+
+        <div class="chat-messages-container" id="chatMessagesContainer">
+          <!-- Chat messages rendered dynamically -->
+        </div>
+
+        <div class="chat-suggested-prompts" id="chatSuggestedPrompts">
+          <button class="prompt-chip" onclick="app.sendSuggestedPrompt('Why is Rank #1 best for me?')">Why is Rank #1 best?</button>
+          <button class="prompt-chip" onclick="app.sendSuggestedPrompt('How can I lower my monthly EMI?')">How to lower EMI?</button>
+          <button class="prompt-chip" onclick="app.sendSuggestedPrompt('What documents do I need to submit?')">Required Documents?</button>
+        </div>
+
+        <form class="chat-input-area" onsubmit="app.handleSendChatMessage(event)">
+          <input type="text" id="chatInputText" class="chat-input" placeholder="Ask a question about your loan offer..." autocomplete="off">
+          <button type="submit" class="chat-send-btn" id="chatSendBtn">
+            <span>Send</span>
+          </button>
+        </form>
+      </div>
+    `;
+  },
+
+  renderChatMessage(msg) {
+    const isUser = (msg.sender === 'user');
+    return `
+      <div class="chat-bubble-row ${isUser ? 'user-row' : 'bot-row'}">
+        <div class="chat-bubble ${isUser ? 'user' : 'bot'}">
+          ${!isUser ? `
+            <div class="chat-source-badge">
+              ${msg.source === 'gemini' ? '<span class="src-badge gemini">🤖 AI</span>' : '<span class="src-badge fallback">⚡ Instant</span>'}
+            </div>
+          ` : ''}
+          <div class="bubble-text">${msg.text}</div>
+        </div>
       </div>
     `;
   },
@@ -415,7 +589,7 @@ const Components = {
                   </td>
                   <td>
                     <button class="btn btn-secondary btn-sm" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}')">
-                      <i data-lucide="folder"></i> Docs (${(loan.documents || []).length || 'Upload'})
+                      📁 Docs (${(loan.documents || []).length || 'Upload'})
                     </button>
                   </td>
                 </tr>
@@ -431,28 +605,28 @@ const Components = {
     if (!stats) return '';
     return `
       <div class="kpi-card">
-        <div class="kpi-icon blue"><i data-lucide="bar-chart-3"></i></div>
+        <div class="kpi-icon blue">📊</div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.total_applications}</span>
           <span class="kpi-label">Total Applications</span>
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon amber"><i data-lucide="clock"></i></div>
+        <div class="kpi-icon amber">⏳</div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.pending}</span>
           <span class="kpi-label">Pending Underwriting</span>
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon emerald"><i data-lucide="check-circle-2"></i></div>
+        <div class="kpi-icon emerald">✅</div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.approved}</span>
           <span class="kpi-label">Sanctioned & Approved</span>
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon rose"><i data-lucide="x-circle"></i></div>
+        <div class="kpi-icon rose">❌</div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.rejected}</span>
           <span class="kpi-label">Rejected Applications</span>
@@ -523,7 +697,7 @@ const Components = {
                         Review & Sanction
                       </button>
                       <button class="btn btn-sm btn-secondary" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}', true)">
-                        <i data-lucide="folder"></i> Verify Docs
+                        📁 Verify Docs
                       </button>
                     </div>
                   </td>
@@ -558,39 +732,25 @@ const Components = {
             </tr>
           </thead>
           <tbody>
-            ${documents.map(doc => {
-              const docId = doc.id || doc.doc_id;
-              const fileName = doc.original_filename || doc.file_name || 'Document';
-              const fileSize = doc.file_size || (doc.file_size_bytes ? (doc.file_size_bytes / 1024).toFixed(1) + ' KB' : '—');
-              const status = doc.verification_status || doc.status || 'pending';
-              const category = (doc.doc_category || 'other').toUpperCase();
-              const type = doc.doc_type || 'document';
-              const note = doc.verification_note || '—';
-
-              return `
+            ${documents.map(doc => `
               <tr>
                 <td>
-                  <span class="product-tag" style="text-transform:uppercase;">${category}</span>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">${type}</div>
+                  <span class="product-tag" style="text-transform:uppercase;">${doc.doc_category}</span>
+                  <div style="font-size:0.75rem; color:var(--text-muted);">${doc.doc_type}</div>
                 </td>
-                <td><strong>${fileName}</strong> (${fileSize})</td>
-                <td>${this.renderStatusBadge(status)}</td>
-                <td>${note}</td>
+                <td><strong>${doc.file_name}</strong> (${doc.file_size})</td>
+                <td>${this.renderStatusBadge(doc.status)}</td>
+                <td>${doc.verification_note || '—'}</td>
                 <td>
-                  <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')" title="Inspect / View Document">
-                      <i data-lucide="eye"></i> View
-                    </button>
-                    ${isAdmin ? `
-                      <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check"></i> Verify</button>
-                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x"></i> Reject</button>
-                    ` : `
-                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.deleteDocumentAction(${loanId}, ${docId})"><i data-lucide="trash-2"></i> Delete</button>
-                    `}
-                  </div>
+                  ${isAdmin ? `
+                    <button class="btn btn-sm btn-success" onclick="app.verifyDocumentAction(${loanId}, ${doc.doc_id}, 'verified')">✓ Verify</button>
+                    <button class="btn btn-sm btn-danger" onclick="app.verifyDocumentAction(${loanId}, ${doc.doc_id}, 'rejected')">✕ Reject</button>
+                  ` : `
+                    <button class="btn btn-sm btn-danger" onclick="app.deleteDocumentAction(${loanId}, ${doc.doc_id})">Delete</button>
+                  `}
                 </td>
               </tr>
-            `;}).join('')}
+            `).join('')}
           </tbody>
         </table>
       </div>
@@ -629,7 +789,7 @@ const Components = {
                     <td>${u.phone || 'N/A'}</td>
                     <td>
                       <span class="status-badge ${u.is_admin ? 'approved' : 'pending'}">
-                        ${u.is_admin ? '<i data-lucide="shield"></i> Administrator' : '<i data-lucide="user"></i> Borrower'}
+                        ${u.is_admin ? '🛡️ Administrator' : '👤 Borrower'}
                       </span>
                     </td>
                     <td>${this.formatDate(u.created_at)}</td>
@@ -640,7 +800,7 @@ const Components = {
                     </td>
                     <td>
                       <button type="button" class="btn btn-secondary btn-sm user-expand-btn" onclick="app.toggleUserLoansDropdown(${u.id}, event)">
-                        <i data-lucide="folder-open"></i> View Loans (${userLoans.length}) <span class="chevron-icon" id="user-chevron-${u.id}"><i data-lucide="chevron-down"></i></span>
+                        📂 View Loans (${userLoans.length}) <span class="chevron-icon" id="user-chevron-${u.id}">▼</span>
                       </button>
                     </td>
                   </tr>
@@ -651,7 +811,7 @@ const Components = {
                       <div class="user-loans-dropdown-container">
                         <div class="user-loans-dropdown-header">
                           <div class="dropdown-header-title">
-                            <i data-lucide="credit-card"></i> Loan Facilities & Applications for <strong>${u.full_name}</strong> (#${u.id})
+                            💳 Loan Facilities & Applications for <strong>${u.full_name}</strong> (#${u.id})
                           </div>
                           <div class="dropdown-header-subtitle">
                             Total Applications: ${userLoans.length} | Approved & Active: ${approvedCount}
@@ -660,7 +820,7 @@ const Components = {
 
                         ${userLoans.length === 0 ? `
                           <div class="no-loans-alert">
-                            <i data-lucide="info"></i> No loan applications or credit facilities acquired by this borrower yet.
+                            ℹ️ No loan applications or credit facilities acquired by this borrower yet.
                           </div>
                         ` : `
                           <div class="user-loans-cards-grid">
@@ -699,17 +859,17 @@ const Components = {
 
                                 ${loan.admin_note ? `
                                   <div class="user-loan-admin-note">
-                                    <strong><i data-lucide="pencil"></i> Underwriter Remarks:</strong> ${loan.admin_note}
+                                    <strong>📝 Underwriter Remarks:</strong> ${loan.admin_note}
                                   </div>
                                 ` : ''}
 
                                 ${loan.documents && loan.documents.length > 0 ? `
                                   <div class="user-loan-docs-section">
-                                    <div class="docs-title"><i data-lucide="paperclip"></i> Attached Supporting Documents (${loan.documents.length}):</div>
+                                    <div class="docs-title">📎 Attached Supporting Documents (${loan.documents.length}):</div>
                                     <div class="docs-chip-list">
                                       ${loan.documents.map(d => `
                                         <a href="${api.getDocumentViewUrl(loan.id, d.doc_id || d.id)}" target="_blank" class="doc-view-chip ${d.status || d.verification_status}">
-                                          <i data-lucide="file"></i> ${d.file_name || d.original_filename || d.doc_type} (${d.status || d.verification_status || 'uploaded'})
+                                          📄 ${d.file_name || d.original_filename || d.doc_type} (${d.status || d.verification_status || 'uploaded'})
                                         </a>
                                       `).join('')}
                                     </div>
@@ -719,7 +879,7 @@ const Components = {
                                 <div class="user-loan-card-footer">
                                   <span class="applied-date">Submitted: ${this.formatDate(loan.applied_at)}</span>
                                   <button type="button" class="btn btn-secondary btn-xs" onclick="app.reviewLoan(${loan.id})">
-                                    Review Application <i data-lucide="arrow-right"></i>
+                                    Review Application →
                                   </button>
                                 </div>
                               </div>
@@ -752,7 +912,6 @@ const Components = {
     `;
 
     container.appendChild(toast);
-    if (window.lucide) window.lucide.createIcons();
 
     setTimeout(() => {
       toast.style.opacity = '0';

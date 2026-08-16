@@ -4,11 +4,7 @@
  */
 class ApiClient {
   constructor() {
-    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') {
-      this.baseUrl = window.location.origin;
-    } else {
-      this.baseUrl = CONFIG.API_BASE_URL;
-    }
+    this.baseUrl = CONFIG.API_BASE_URL;
   }
 
   getHeaders(authRequired = true) {
@@ -109,6 +105,63 @@ class ApiClient {
         recommended_product: l.product_type,
         submitted_at: l.applied_at
       }));
+    }
+
+    // 1d. GenAI Phase 1: POST /explanation
+    if (endpoint === '/explanation' && method === 'POST') {
+      const isApproved = body?.status === 'APPROVED';
+      return {
+        positive: [
+          'Credit score of 780 is a strong positive factor for low interest rate offers.',
+          'Monthly income provides healthy debt service coverage ratio.',
+          'Clean employment record strengthens approval likelihood.'
+        ],
+        caution: [
+          'Existing monthly EMI obligations slightly reduce maximum sanctioned limit.',
+          'Active loan count is near standard policy threshold.'
+        ],
+        top_factors: [
+          { feature: 'credit_score', impact: -0.32, direction: 'reduces_risk' },
+          { feature: 'monthly_income', impact: -0.21, direction: 'reduces_risk' },
+          { feature: 'existing_monthly_emi', impact: 0.14, direction: 'increases_risk' },
+          { feature: 'number_of_active_loans', impact: 0.08, direction: 'increases_risk' }
+        ],
+        financial_explanation: `Based on your monthly income of ₹${(body?.affordability_summary?.monthly_income || 90000).toLocaleString('en-IN')}, your maximum affordable new EMI is ₹${(body?.affordability_summary?.max_affordable_new_emi || 35000).toLocaleString('en-IN')}/month.`,
+        eligibility_explanation: isApproved ? 'You meet all standard credit policy criteria.' : 'One or more policy criteria failed validation.'
+      };
+    }
+
+    // 1e. GenAI Phase 2: POST /summarize
+    if (endpoint === '/summarize' && method === 'POST') {
+      const topRec = body?.top_recommendations?.[0];
+      const name = topRec?.name || 'HDFC Bank Personal Loan';
+      const rate = topRec?.interest_rate || 9.5;
+      return {
+        ai_summary: `Your top recommendation from ${name} offers competitive rates starting at ${rate}% per annum. Based on your financial profile, this product provides optimal affordability with maximum sanctioned limit.`
+      };
+    }
+
+    // 1f. GenAI Phase 3: POST /chat
+    if (endpoint === '/chat' && method === 'POST') {
+      const q = (body?.question || '').toLowerCase();
+      let answer = "Based on your credit assessment, our AI underwriting system recommends comparing top offers based on total interest cost and monthly EMI affordability.";
+      let source = "gemini";
+
+      if (q.includes('rank') || q.includes('best') || q.includes('first') || q.includes('hdfc') || q.includes('why')) {
+        answer = "HDFC Bank is ranked #1 because it offers the lowest personalised interest rate (9.5% p.a.) and the highest composite suitability score for your credit profile.";
+      } else if (q.includes('emi') || q.includes('reduce') || q.includes('lower')) {
+        answer = "You can lower your monthly EMI by choosing a longer tenure (e.g. 48 or 60 months) or prepaying existing credit card outstanding balances.";
+      } else if (q.includes('doc') || q.includes('paper') || q.includes('require')) {
+        answer = "Standard document requirements include PAN Card, Aadhaar Card, last 3 months salary slips, and 6 months bank statement.";
+      } else if (q.includes('score') || q.includes('credit') || q.includes('cibil')) {
+        answer = "Your credit score is 780, placing you in the Low Risk band, which unlocks prime rate discounts across all partner lenders.";
+      }
+
+      return {
+        answer,
+        source,
+        grounded: true
+      };
     }
 
     // 2. Auth: Register POST /auth/register
@@ -245,7 +298,7 @@ class ApiClient {
           recommendations: [],
           explanation: {
             eligibility_reasons: [
-              `<i data-lucide="x-circle" class="lucide" style="color:var(--rose); margin-right: 0.4rem;"></i> ${rejectionCode}`,
+              `❌ ${rejectionCode}`,
               rejectionReasons[0]
             ],
             risk_drivers: [],
@@ -338,9 +391,9 @@ class ApiClient {
             }
           ],
           offer_reasons: [
-            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
-            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
-            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
+            `✅ Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
+            `✅ Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
+            `✅ Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
           ],
           comparative_reasons: [
             `${recommendations[0].lender_name} offers the lowest EMI among all matched lenders.`
@@ -540,6 +593,41 @@ class ApiClient {
 
   checkEligibility(inputs) {
     return this.recommendLoans(inputs);
+  }
+
+  explainRecommendation(recommendationResponse) {
+    return this.request('/explanation', {
+      method: 'POST',
+      body: JSON.stringify(recommendationResponse),
+      auth: false
+    });
+  }
+
+  summarizeRecommendation(recommendationResponse) {
+    const topRecs = (recommendationResponse?.recommendations || []).map(r => ({
+      name: r.product_name || r.lender_name || 'Loan Offer',
+      score: r.scores ? r.scores.composite : (r.score || 0.85),
+      interest_rate: r.personalised_rate || r.estimated_interest_rate || 10.5,
+      emi_ratio: r.monthly_emi ? (r.monthly_emi / (recommendationResponse.affordability_summary?.monthly_income || 90000)) : 0.25,
+      reasons: recommendationResponse.explanation?.offer_reasons || []
+    }));
+
+    return this.request('/summarize', {
+      method: 'POST',
+      body: JSON.stringify({ top_recommendations: topRecs }),
+      auth: false
+    });
+  }
+
+  chatWithBot(question, recommendationContext) {
+    return this.request('/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        question,
+        recommendation_context: recommendationContext
+      }),
+      auth: false
+    });
   }
 
   applyLoan(loanData) {
