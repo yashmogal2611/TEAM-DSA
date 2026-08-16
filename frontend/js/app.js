@@ -11,19 +11,12 @@ class ApplicationController {
   }
 
   async init() {
+    // Clear any previous session on startup to ensure we start with no user logged in
+    store.clearSession();
+
     this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
-
-    // Verify token on startup if present, before registering global session expiry listener
-    if (store.token) {
-      try {
-        const profile = await api.getMe();
-        store.setSession(store.token, profile);
-      } catch (err) {
-        store.clearSession();
-      }
-    }
 
     // Register global session expiry listener for subsequent operations
     window.addEventListener('auth:expired', () => {
