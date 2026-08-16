@@ -4,7 +4,11 @@
  */
 class ApiClient {
   constructor() {
-    this.baseUrl = CONFIG.API_BASE_URL;
+    if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') {
+      this.baseUrl = window.location.origin;
+    } else {
+      this.baseUrl = CONFIG.API_BASE_URL;
+    }
   }
 
   getHeaders(authRequired = true) {
@@ -302,7 +306,7 @@ class ApiClient {
           recommendations: [],
           explanation: {
             eligibility_reasons: [
-              `❌ ${rejectionCode}`,
+              `<i data-lucide="x-circle" class="lucide" style="color:var(--rose); margin-right: 0.4rem;"></i> ${rejectionCode}`,
               rejectionReasons[0]
             ],
             risk_drivers: [],
@@ -447,9 +451,9 @@ class ApiClient {
             }
           ],
           offer_reasons: [
-            `✅ Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
-            `✅ Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
-            `✅ Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
+            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Covers your full requested amount of ₹${requestedAmt.toLocaleString('en-IN')}.`,
+            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Low total interest cost of ₹${recommendations[0].total_interest.toLocaleString('en-IN')}.`,
+            `<i data-lucide="check" class="lucide" style="color:var(--emerald); margin-right: 0.4rem;"></i> Competitive personalized interest rate starting at ${recommendations[0].personalised_rate}% p.a.`
           ],
           comparative_reasons: [
             `${recommendations[0].lender_name} offers the lowest EMI among all matched lenders.`
