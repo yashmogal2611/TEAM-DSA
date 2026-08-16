@@ -111,6 +111,63 @@ class ApiClient {
       }));
     }
 
+    // 1d. GenAI Phase 1: POST /explanation
+    if (endpoint === '/explanation' && method === 'POST') {
+      const isApproved = body?.status === 'APPROVED';
+      return {
+        positive: [
+          'Credit score of 780 is a strong positive factor for low interest rate offers.',
+          'Monthly income provides healthy debt service coverage ratio.',
+          'Clean employment record strengthens approval likelihood.'
+        ],
+        caution: [
+          'Existing monthly EMI obligations slightly reduce maximum sanctioned limit.',
+          'Active loan count is near standard policy threshold.'
+        ],
+        top_factors: [
+          { feature: 'credit_score', impact: -0.32, direction: 'reduces_risk' },
+          { feature: 'monthly_income', impact: -0.21, direction: 'reduces_risk' },
+          { feature: 'existing_monthly_emi', impact: 0.14, direction: 'increases_risk' },
+          { feature: 'number_of_active_loans', impact: 0.08, direction: 'increases_risk' }
+        ],
+        financial_explanation: `Based on your monthly income of ₹${(body?.affordability_summary?.monthly_income || 90000).toLocaleString('en-IN')}, your maximum affordable new EMI is ₹${(body?.affordability_summary?.max_affordable_new_emi || 35000).toLocaleString('en-IN')}/month.`,
+        eligibility_explanation: isApproved ? 'You meet all standard credit policy criteria.' : 'One or more policy criteria failed validation.'
+      };
+    }
+
+    // 1e. GenAI Phase 2: POST /summarize
+    if (endpoint === '/summarize' && method === 'POST') {
+      const topRec = body?.top_recommendations?.[0];
+      const name = topRec?.name || 'HDFC Bank Personal Loan';
+      const rate = topRec?.interest_rate || 9.5;
+      return {
+        ai_summary: `Your top recommendation from ${name} offers competitive rates starting at ${rate}% per annum. Based on your financial profile, this product provides optimal affordability with maximum sanctioned limit.`
+      };
+    }
+
+    // 1f. GenAI Phase 3: POST /chat
+    if (endpoint === '/chat' && method === 'POST') {
+      const q = (body?.question || '').toLowerCase();
+      let answer = "Based on your credit assessment, our AI underwriting system recommends comparing top offers based on total interest cost and monthly EMI affordability.";
+      let source = "gemini";
+
+      if (q.includes('rank') || q.includes('best') || q.includes('first') || q.includes('hdfc') || q.includes('why')) {
+        answer = "HDFC Bank is ranked #1 because it offers the lowest personalised interest rate (9.5% p.a.) and the highest composite suitability score for your credit profile.";
+      } else if (q.includes('emi') || q.includes('reduce') || q.includes('lower')) {
+        answer = "You can lower your monthly EMI by choosing a longer tenure (e.g. 48 or 60 months) or prepaying existing credit card outstanding balances.";
+      } else if (q.includes('doc') || q.includes('paper') || q.includes('require')) {
+        answer = "Standard document requirements include PAN Card, Aadhaar Card, last 3 months salary slips, and 6 months bank statement.";
+      } else if (q.includes('score') || q.includes('credit') || q.includes('cibil')) {
+        answer = "Your credit score is 780, placing you in the Low Risk band, which unlocks prime rate discounts across all partner lenders.";
+      }
+
+      return {
+        answer,
+        source,
+        grounded: true
+      };
+    }
+
     // 2. Auth: Register POST /auth/register
     if (endpoint === '/auth/register' && method === 'POST') {
       const existing = MOCK_DB.users.find(u => u.email.toLowerCase() === body.email.toLowerCase());
@@ -170,7 +227,7 @@ class ApiClient {
         primary_preference: ['LOWEST_EMI', 'LOWEST_TOTAL_COST', 'SHORTEST_TENURE', 'REQUIRED_AMOUNT'],
         employment_type: ['SALARIED', 'SELF_EMPLOYED', 'BUSINESS_OWNER'],
         income_type: ['FIXED', 'VARIABLE', 'MIXED'],
-        loan_purpose: ['HOME_RENOVATION', 'HOME_PURCHASE', 'HOME_CONSTRUCTION', 'MEDICAL', 'EDUCATION', 'TRAVEL', 'WEDDING', 'VEHICLE_PURCHASE', 'BUSINESS', 'DEBT_CONSOLIDATION', 'OTHER']
+        loan_purpose: ['home_loan', 'personal_loan', 'vehicle_loan', 'education_loan', 'business_loan', 'gold_loan', 'HOME_LOAN', 'PERSONAL_LOAN', 'VEHICLE_LOAN', 'EDUCATION_LOAN', 'BUSINESS_LOAN', 'GOLD_LOAN', 'HOME_RENOVATION', 'HOME_PURCHASE', 'HOME_CONSTRUCTION', 'MEDICAL', 'EDUCATION', 'TRAVEL', 'WEDDING', 'VEHICLE_PURCHASE', 'BUSINESS', 'DEBT_CONSOLIDATION', 'OTHER']
       };
 
       // Check enum values match strictly (422 HTTP validation)
@@ -411,18 +468,35 @@ class ApiClient {
     if (endpoint.match(/\/loans\/\d+\/documents$/) && method === 'POST') {
       const loanId = parseInt(endpoint.split('/')[2]);
       const newId = (MOCK_DB.documents.length + 1) * 101;
+      
+      const formData = options.body || options.formData;
+      const category = formData?.get ? (formData.get('doc_category') || 'kyc') : 'kyc';
+      const fileObj = formData?.get ? formData.get('file') : null;
+      const fileName = fileObj?.name || (typeof fileObj === 'string' ? fileObj : 'uploaded_document.pdf');
+      const fileSize = fileObj?.size ? (fileObj.size / 1024).toFixed(1) + ' KB' : '1.8 MB';
+
+      const typeLabels = {
+        'kyc': 'KYC Proof (PAN / Aadhaar / Passport)',
+        'income': 'Income Proof (Salary Slips / ITR)',
+        'bank': 'Bank Account Statement (6 Months)',
+        'loan_specific': 'Loan Specific Agreement / Admission Letter',
+        'collateral': 'Collateral Deed / Appraisal Document'
+      };
+
       const doc = {
         id: newId,
         doc_id: newId,
         loan_id: loanId,
-        doc_category: options.formData?.get('doc_category') || 'kyc',
-        doc_type: options.formData?.get('doc_type') || 'document',
-        file_name: options.formData?.get('file')?.name || 'uploaded_document.pdf',
-        file_size: '2.1 MB',
+        doc_category: category,
+        doc_type: typeLabels[category] || 'Verification Document',
+        file_name: fileName,
+        original_filename: fileName,
+        file_size: fileSize,
+        file_url: (fileObj && typeof fileObj === 'object' && typeof URL !== 'undefined') ? URL.createObjectURL(fileObj) : null,
         status: 'pending',
         verification_status: 'pending',
-        verification_note: options.formData?.get('verification_note') || 'Awaiting review',
-        uploaded_at: new Date().toISOString().split('.')[0]
+        verification_note: 'Awaiting Underwriter Review',
+        uploaded_at: new Date().toISOString().split('T')[0]
       };
       MOCK_DB.documents.push(doc);
       MOCK_DB.save();
@@ -545,6 +619,41 @@ class ApiClient {
 
   checkEligibility(inputs) {
     return this.recommendLoans(inputs);
+  }
+
+  explainRecommendation(recommendationResponse) {
+    return this.request('/explanation', {
+      method: 'POST',
+      body: JSON.stringify(recommendationResponse),
+      auth: false
+    });
+  }
+
+  summarizeRecommendation(recommendationResponse) {
+    const topRecs = (recommendationResponse?.recommendations || []).map(r => ({
+      name: r.product_name || r.lender_name || 'Loan Offer',
+      score: r.scores ? r.scores.composite : (r.score || 0.85),
+      interest_rate: r.personalised_rate || r.estimated_interest_rate || 10.5,
+      emi_ratio: r.monthly_emi ? (r.monthly_emi / (recommendationResponse.affordability_summary?.monthly_income || 90000)) : 0.25,
+      reasons: recommendationResponse.explanation?.offer_reasons || []
+    }));
+
+    return this.request('/summarize', {
+      method: 'POST',
+      body: JSON.stringify({ top_recommendations: topRecs }),
+      auth: false
+    });
+  }
+
+  chatWithBot(question, recommendationContext) {
+    return this.request('/chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        question,
+        recommendation_context: recommendationContext
+      }),
+      auth: false
+    });
   }
 
   applyLoan(loanData) {

@@ -85,46 +85,229 @@ const Components = {
     }
   },
 
-  renderSchemesGrid(schemes) {
-    if (!schemes || schemes.length === 0) return `<div class="empty-state">No loan schemes found.</div>`;
+  renderHomeUserWelcomeBanner(user) {
+    if (!user) return '';
+    const initials = (user.full_name || 'U').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    const roleText = user.is_admin ? 'System Administrator' : 'Verified Borrower';
 
     return `
-      <div class="schemes-grid">
-        ${schemes.map(s => `
-          <div class="scheme-card">
-            <div class="scheme-header">
-              <div class="scheme-badge">${s.interest_rate_min}% - ${s.interest_rate_max}% p.a.</div>
-              <h3>${s.display_name}</h3>
-            </div>
-            <p class="scheme-desc">${s.description}</p>
-            
-            <div class="scheme-metrics">
-              <div class="metric-item">
-                <span class="m-val">${this.formatCurrency(s.min_amount)} - ${this.formatCurrency(s.max_amount)}</span>
-                <span class="m-lbl">Loan Amount Range</span>
-              </div>
-              <div class="metric-item">
-                <span class="m-val">${s.min_tenure_months} - ${s.max_tenure_months} Mos</span>
-                <span class="m-lbl">Flexible Tenure</span>
-              </div>
-            </div>
-
-            <div class="scheme-checklist-box">
-              <div class="chk-header"><i data-lucide="clipboard-list"></i> Required Documents Checklist</div>
-              <ul class="chk-list">
-                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
-                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
-              </ul>
-            </div>
-
-            <div class="scheme-footer">
-              <button class="btn btn-secondary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
-                Apply Under Scheme <i data-lucide="arrow-right"></i>
-              </button>
-              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs <i data-lucide="external-link"></i></a>
+      <div class="user-home-welcome-card">
+        <div class="welcome-card-content">
+          <div class="welcome-user-info">
+            <div class="welcome-avatar">${initials}</div>
+            <div>
+              <div class="welcome-greeting">Welcome back, ${user.full_name}! 👋</div>
+              <div class="welcome-role"><i data-lucide="${user.is_admin ? 'shield' : 'check-circle-2'}"></i> ${roleText} • ${user.email}</div>
             </div>
           </div>
-        `).join('')}
+          <div class="welcome-actions">
+            ${user.is_admin ? `
+              <a href="#/admin-dashboard" class="btn btn-primary"><i data-lucide="shield"></i> Open Admin Control Board →</a>
+            ` : `
+              <a href="#/user-dashboard" class="btn btn-primary"><i data-lucide="layout-dashboard"></i> View My Applications →</a>
+              <button class="btn btn-secondary" onclick="app.showModal('applyLoanModal')"><i data-lucide="plus"></i> New Application</button>
+            `}
+          </div>
+        </div>
+        
+        <!-- Welcome Hero Banner Image Box -->
+        <div class="welcome-banner-img-box">
+          <img src="https://images.unsplash.com/photo-1556742049-0a670fc80789?auto=format&fit=crop&w=800&q=80" alt="Banking Dashboard Banner" class="welcome-banner-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+          <div class="welcome-banner-placeholder" style="display:none;">
+            <i data-lucide="building-2"></i>
+            <span>ApexLoans Institutional Banking Services</span>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  getLoanTypeIcon(type) {
+    switch(type) {
+      case 'home_loan': return 'home';
+      case 'personal_loan': return 'user';
+      case 'vehicle_loan': return 'car';
+      case 'education_loan': return 'graduation-cap';
+      case 'business_loan': return 'briefcase';
+      case 'gold_loan': return 'coins';
+      default: return 'credit-card';
+    }
+  },
+
+  getLoanTypeImage(type) {
+    switch(type) {
+      case 'home_loan': return 'assets/images/personal_loan.jpg';
+      case 'personal_loan': return 'assets/images/personal_loan.jpg';
+      case 'vehicle_loan': return 'assets/images/vehicle_loan.jpg';
+      case 'education_loan': return 'assets/images/education_loan.jpg';
+      case 'business_loan': return 'assets/images/business_loan.jpg';
+      case 'gold_loan': return 'assets/images/gold_loan.jpg';
+      default: return 'assets/images/loan_home_banner.jpg';
+    }
+  },
+
+  renderSchemesGrid(schemes, selectedType = null) {
+    if (!schemes || schemes.length === 0) return `<div class="empty-state">No loan schemes found.</div>`;
+
+    const loanTypes = [
+      { id: 'all', label: 'All 6 Schemes', icon: 'layers' },
+      { id: 'home_loan', label: 'Home Loan', icon: 'home' },
+      { id: 'personal_loan', label: 'Personal Loan', icon: 'user' },
+      { id: 'vehicle_loan', label: 'Vehicle Loan', icon: 'car' },
+      { id: 'education_loan', label: 'Education Loan', icon: 'graduation-cap' },
+      { id: 'business_loan', label: 'Business Loan', icon: 'briefcase' },
+      { id: 'gold_loan', label: 'Gold Loan', icon: 'coins' }
+    ];
+
+    const currentFilter = selectedType || 'all';
+
+    // If specific loan type is selected, render individual detail view
+    const filteredSchemes = (currentFilter === 'all') 
+      ? schemes 
+      : schemes.filter(s => s.loan_type === currentFilter);
+
+    const isSingleView = (currentFilter !== 'all' && filteredSchemes.length === 1);
+    const singleScheme = isSingleView ? filteredSchemes[0] : null;
+
+    return `
+      <div class="schemes-page-wrapper">
+        <!-- Filter Tabs Toolbar -->
+        <div class="schemes-filter-tabs">
+          ${loanTypes.map(t => `
+            <button class="scheme-filter-btn ${currentFilter === t.id ? 'active' : ''}" onclick="app.selectSchemeType('${t.id}')">
+              <i data-lucide="${t.icon}"></i> ${t.label}
+            </button>
+          `).join('')}
+        </div>
+
+        ${singleScheme ? `
+          <!-- INDIVIDUAL DEDICATED LOAN DETAIL PAGE -->
+          <div class="single-loan-detail-page">
+            <div class="loan-detail-hero">
+              <div class="hero-left">
+                <div class="detail-badge"><i data-lucide="${this.getLoanTypeIcon(singleScheme.loan_type)}"></i> RBI Compliant Credit Scheme</div>
+                <h1>${singleScheme.display_name}</h1>
+                <p class="hero-desc">${singleScheme.description}</p>
+                <div class="rate-highlight-banner">
+                  <div class="r-badge">Interest Rates</div>
+                  <div class="r-val">${singleScheme.interest_rate_min}% - ${singleScheme.interest_rate_max}% <span>p.a.</span></div>
+                </div>
+                <div class="hero-cta-group">
+                  <button class="btn btn-primary" onclick="app.fillSchemeAndApply('${singleScheme.loan_type}')">
+                    Apply Under ${singleScheme.display_name} <i data-lucide="arrow-right"></i>
+                  </button>
+                  <a href="#/eligibility" class="btn btn-secondary"><i data-lucide="calculator"></i> Calculate Eligibility</a>
+                </div>
+              </div>
+
+              <!-- Featured Image Box for Individual Loan Page -->
+              <div class="hero-right-img-box">
+                <img src="${this.getLoanTypeImage(singleScheme.loan_type)}" alt="${singleScheme.display_name}" class="loan-hero-img" id="loanImg_${singleScheme.loan_type}" onerror="this.parentElement.classList.add('img-fallback');" />
+                <div class="img-caption">${singleScheme.display_name} — High Value Financing</div>
+              </div>
+            </div>
+
+            <!-- Key Metric Cards Grid -->
+            <div class="detail-metrics-grid">
+              <div class="metric-card">
+                <div class="m-icon"><i data-lucide="banknote"></i></div>
+                <div class="m-title">Loan Amount Range</div>
+                <div class="m-value">${this.formatCurrency(singleScheme.min_amount)} – ${this.formatCurrency(singleScheme.max_amount)}</div>
+              </div>
+              <div class="metric-card">
+                <div class="m-icon"><i data-lucide="calendar"></i></div>
+                <div class="m-title">Tenure Horizon</div>
+                <div class="m-value">${singleScheme.min_tenure_months} – ${singleScheme.max_tenure_months} Months</div>
+              </div>
+              <div class="metric-card">
+                <div class="m-icon"><i data-lucide="percent"></i></div>
+                <div class="m-title">Annual Interest Rate</div>
+                <div class="m-value">${singleScheme.interest_rate_min}% – ${singleScheme.interest_rate_max}% p.a.</div>
+              </div>
+            </div>
+
+            <!-- Document Checklist & Policy Guidelines -->
+            <div class="detail-sections-dual">
+              <div class="detail-box">
+                <h3><i data-lucide="clipboard-list"></i> Required Documentation Checklist</h3>
+                <div class="chk-group">
+                  <div class="chk-sub-title">KYC Identity Documents</div>
+                  <ul class="chk-list">
+                    ${(singleScheme.document_checklist?.kyc_documents || []).map(d => `<li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> ${d}</li>`).join('')}
+                  </ul>
+                </div>
+                <div class="chk-group" style="margin-top:1rem;">
+                  <div class="chk-sub-title">Income & Financial Verification</div>
+                  <ul class="chk-list">
+                    ${(singleScheme.document_checklist?.income_documents || []).map(d => `<li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> ${d}</li>`).join('')}
+                  </ul>
+                </div>
+              </div>
+
+              <div class="detail-box">
+                <h3><i data-lucide="shield-check"></i> Standard Underwriting Guidelines</h3>
+                <ul class="guidelines-list">
+                  <li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> Minimum credit score of <strong>600 CIBIL</strong> (750+ preferred for prime rates).</li>
+                  <li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> Maximum allowable FOIR (EMI-to-Income) ratio: <strong>65%</strong>.</li>
+                  <li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> Applicant age must be between <strong>21 and 65 years</strong>.</li>
+                  <li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> Maximum 5 active running loans across financial institutions.</li>
+                </ul>
+                <div class="rbi-link-wrapper" style="margin-top:1.5rem;">
+                  <a href="${singleScheme.source_url}" target="_blank" rel="noopener" class="scheme-source-link">
+                    <i data-lucide="external-link"></i> Official Regulatory Policy & Documentation
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <!-- ALL SCHEMES GRID VIEW -->
+          <div class="schemes-grid">
+            ${filteredSchemes.map(s => `
+              <div class="scheme-card">
+                <!-- Loan Type Image Banner -->
+                <div class="card-img-wrapper">
+                  <img src="${this.getLoanTypeImage(s.loan_type)}" alt="${s.display_name}" class="card-loan-img" onerror="this.parentElement.style.display='none';" />
+                  <div class="scheme-badge">${s.interest_rate_min}% - ${s.interest_rate_max}% p.a.</div>
+                </div>
+
+                <div class="scheme-card-body">
+                  <div class="scheme-header">
+                    <h3><i data-lucide="${this.getLoanTypeIcon(s.loan_type)}" class="scheme-type-icon"></i> ${s.display_name}</h3>
+                  </div>
+                  <p class="scheme-desc">${s.description}</p>
+                  
+                  <div class="scheme-metrics">
+                    <div class="metric-item">
+                      <span class="m-val">${this.formatCurrency(s.min_amount)} - ${this.formatCurrency(s.max_amount)}</span>
+                      <span class="m-lbl">Loan Amount Range</span>
+                    </div>
+                    <div class="metric-item">
+                      <span class="m-val">${s.min_tenure_months} - ${s.max_tenure_months} Mos</span>
+                      <span class="m-lbl">Flexible Tenure</span>
+                    </div>
+                  </div>
+
+                  <div class="scheme-checklist-box">
+                    <div class="chk-header"><i data-lucide="clipboard-list"></i> Document Checklist</div>
+                    <ul class="chk-list">
+                      ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
+                    </ul>
+                  </div>
+
+                  <div class="scheme-footer">
+                    <button class="btn btn-secondary btn-sm" onclick="app.selectSchemeType('${s.loan_type}')">
+                      View Details <i data-lucide="eye"></i>
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
+                      Apply Now <i data-lucide="arrow-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
       </div>
     `;
   },
@@ -185,6 +368,9 @@ const Components = {
           </div>
           <h2>${data.message || 'Personalised loan offers generated successfully.'}</h2>
         </div>
+
+        <!-- GenAI Phase 2: AI Summary Banner Container -->
+        <div id="aiSummaryContainer" style="margin-top:1.25rem;"></div>
 
         <!-- Metrics Overview Grid: Risk Summary & Affordability Summary -->
         <div class="ml-summary-grid">
@@ -301,13 +487,16 @@ const Components = {
 
                 <div class="rec-footer">
                   <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${rec.product_id}', ${rec.monthly_emi})">
-                    Apply for ${rec.lender_name} Offer Now <i data-lucide="arrow-right"></i>
+                    Apply for ${rec.lender_name} Offer Now →
                   </button>
                 </div>
               </div>
             `;
           }).join('')}
         </div>
+
+        <!-- GenAI Phase 1: Explanation Panel Container -->
+        <div id="explanationContainer" style="margin-top:2rem;"></div>
 
         <!-- Explanation & AI Offer Reasons -->
         <div class="ml-explanation-section" style="margin-top:2rem;">
@@ -349,6 +538,174 @@ const Components = {
 
         </div>
 
+      </div>
+    `;
+  },
+
+  renderAISummaryBanner(data, isLoading) {
+    if (isLoading) {
+      return `
+        <div class="ai-summary-banner loading">
+          <div class="ai-summary-header">
+            <span class="ai-badge"><i data-lucide="bot"></i> AI Summary</span>
+            <span class="ai-loading-skeleton">Synthesizing personalized loan insights with Gemini AI...</span>
+          </div>
+        </div>
+      `;
+    }
+
+    if (!data || !data.ai_summary) {
+      return `
+        <div class="ai-summary-banner info">
+          <div class="ai-summary-header">
+            <span class="ai-badge"><i data-lucide="bot"></i> AI Summary</span>
+            <span class="ai-text">Personalized loan recommendation summary generated. Review individual offer breakdowns below.</span>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="ai-summary-banner">
+        <div class="ai-summary-header">
+          <span class="ai-badge"><i data-lucide="bot"></i> AI Executive Summary</span>
+          <span class="ai-model-tag">Gemini-3.6-Flash Engine</span>
+        </div>
+        <p class="ai-summary-content">${data.ai_summary}</p>
+      </div>
+    `;
+  },
+
+  renderExplanationPanel(data, isLoading) {
+    if (isLoading) {
+      return `
+        <div class="explanation-panel loading">
+          <div class="panel-header">
+            <h4><i data-lucide="brain"></i> SHAP Feature Attribution & Financial Reasoning</h4>
+          </div>
+          <div class="ai-loading-skeleton" style="padding:1rem;">Evaluating risk drivers and affordability factors...</div>
+        </div>
+      `;
+    }
+
+    if (!data) return '';
+
+    const positive = data.positive || [];
+    const caution = data.caution || [];
+    const topFactors = data.top_factors || [];
+
+    return `
+      <div class="explanation-panel">
+        <div class="panel-header">
+          <h4><i data-lucide="brain"></i> SHAP Feature Attribution & Financial Reasoning</h4>
+          <span class="panel-subtitle">Deterministic Phase 1 Explanation Engine</span>
+        </div>
+
+        <div class="factors-dual-grid">
+          ${positive.length > 0 ? `
+            <div class="factor-column positive-col">
+              <div class="col-title"><i data-lucide="check-circle-2" style="color:var(--emerald);"></i> Positive Credit Attributes</div>
+              <ul class="factor-list">
+                ${positive.map(p => `
+                  <li class="factor-chip positive">
+                    <i data-lucide="check-circle-2" class="lucide" style="color:var(--emerald); flex-shrink:0;"></i> ${p}
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+
+          ${caution.length > 0 ? `
+            <div class="factor-column caution-col">
+              <div class="col-title"><i data-lucide="alert-triangle" style="color:var(--amber);"></i> Risk Caution Factors</div>
+              <ul class="factor-list">
+                ${caution.map(c => `
+                  <li class="factor-chip caution">
+                    <i data-lucide="alert-triangle" class="lucide" style="color:var(--amber); flex-shrink:0;"></i> ${c}
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          ` : ''}
+        </div>
+
+        ${data.financial_explanation || data.eligibility_explanation ? `
+          <div class="explanation-text-box">
+            ${data.financial_explanation ? `<p class="exp-para"><strong><i data-lucide="credit-card" class="lucide"></i> Financial Fit:</strong> ${data.financial_explanation}</p>` : ''}
+            ${data.eligibility_explanation ? `<p class="exp-para"><strong><i data-lucide="clipboard-list" class="lucide"></i> Policy Fit:</strong> ${data.eligibility_explanation}</p>` : ''}
+          </div>
+        ` : ''}
+
+        ${topFactors.length > 0 ? `
+          <details class="top-factors-collapsible">
+            <summary class="factors-summary-title">
+              <i data-lucide="search" class="lucide"></i> Inspect SHAP Feature Weights (${topFactors.length} Key Drivers)
+            </summary>
+            <div class="shap-weights-grid">
+              ${topFactors.map(f => {
+                const isReduce = (f.direction === 'reduces_risk');
+                return `
+                  <div class="shap-factor-row ${isReduce ? 'reduces' : 'increases'}">
+                    <span class="f-name">${(f.feature || '').replace(/_/g, ' ')}</span>
+                    <span class="f-direction ${isReduce ? 'reduces_risk' : 'increases_risk'}">
+                      ${isReduce ? '<i data-lucide="trending-down" class="lucide" style="color:var(--emerald);"></i> Reduces Risk' : '<i data-lucide="trending-up" class="lucide" style="color:var(--rose);"></i> Increases Risk'} (${(f.impact || 0).toFixed(2)})
+                    </span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </details>
+        ` : ''}
+      </div>
+    `;
+  },
+
+  renderChatWidget() {
+    return `
+      <div class="chat-widget-inner">
+        <div class="chat-widget-header">
+          <div class="header-info">
+            <span class="bot-avatar"><i data-lucide="bot"></i></span>
+            <div>
+              <div class="bot-title">CrediWise AI Assistant</div>
+              <div class="bot-sub">Grounded Credit Advisory Engine</div>
+            </div>
+          </div>
+          <button class="chat-close-btn" onclick="app.closeChatWidget()" title="Close Assistant"><i data-lucide="x" class="lucide"></i></button>
+        </div>
+
+        <div class="chat-messages-container" id="chatMessagesContainer">
+          <!-- Chat messages rendered dynamically -->
+        </div>
+
+        <div class="chat-suggested-prompts" id="chatSuggestedPrompts">
+          <button class="prompt-chip" onclick="app.sendSuggestedPrompt('Why is Rank #1 best for me?')">Why is Rank #1 best?</button>
+          <button class="prompt-chip" onclick="app.sendSuggestedPrompt('How can I lower my monthly EMI?')">How to lower EMI?</button>
+          <button class="prompt-chip" onclick="app.sendSuggestedPrompt('What documents do I need to submit?')">Required Documents?</button>
+        </div>
+
+        <form class="chat-input-area" onsubmit="app.handleSendChatMessage(event)">
+          <input type="text" id="chatInputText" class="chat-input" placeholder="Ask a question about your loan offer..." autocomplete="off">
+          <button type="submit" class="chat-send-btn" id="chatSendBtn">
+            <span>Send</span>
+          </button>
+        </form>
+      </div>
+    `;
+  },
+
+  renderChatMessage(msg) {
+    const isUser = (msg.sender === 'user');
+    return `
+      <div class="chat-bubble-row ${isUser ? 'user-row' : 'bot-row'}">
+        <div class="chat-bubble ${isUser ? 'user' : 'bot'}">
+          ${!isUser ? `
+            <div class="chat-source-badge">
+              ${msg.source === 'gemini' ? '<span class="src-badge gemini"><i data-lucide="bot" class="lucide"></i> AI</span>' : '<span class="src-badge fallback"><i data-lucide="zap" class="lucide"></i> Instant</span>'}
+            </div>
+          ` : ''}
+          <div class="bubble-text">${msg.text}</div>
+        </div>
       </div>
     `;
   },

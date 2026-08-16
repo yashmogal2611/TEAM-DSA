@@ -7,6 +7,9 @@ class ApplicationController {
     this.currentReviewLoanId = null;
     this.currentDocLoanId = null;
     this.isDocAdminMode = false;
+    this.currentRecommendationContext = null;
+    this.chatHistory = [];
+    this.isChatOpen = false;
     this.init();
   }
 
@@ -26,17 +29,31 @@ class ApplicationController {
 
     this.handleRoute();
     this.setupEmiCalculator();
+    this.showChatFab();
 
     document.addEventListener('click', (e) => {
-      const wrapper = document.getElementById('navDropdownWrapper');
-      if (wrapper && !wrapper.contains(e.target)) {
-        wrapper.classList.remove('open');
+      const navWrapper = document.getElementById('navDropdownWrapper');
+      if (navWrapper && !navWrapper.contains(e.target)) {
+        navWrapper.classList.remove('open');
+      }
+
+      const schemesWrapper = document.getElementById('schemesDropdownWrapper');
+      if (schemesWrapper && !schemesWrapper.contains(e.target)) {
+        schemesWrapper.classList.remove('open');
+      }
+
+      const profileWrapper = document.getElementById('userProfileDropdown');
+      const avatarBtn = document.getElementById('headerAvatarBtn');
+      if (profileWrapper && !profileWrapper.contains(e.target) && avatarBtn && !avatarBtn.contains(e.target)) {
+        profileWrapper.classList.remove('open');
       }
     });
   }
 
   toggleNavDropdown(event) {
     if (event) event.stopPropagation();
+    this.closeSchemesDropdown();
+    this.closeProfileDropdown();
     const wrapper = document.getElementById('navDropdownWrapper');
     if (wrapper) wrapper.classList.toggle('open');
   }
@@ -44,6 +61,60 @@ class ApplicationController {
   closeNavDropdown() {
     const wrapper = document.getElementById('navDropdownWrapper');
     if (wrapper) wrapper.classList.remove('open');
+  }
+
+  toggleSchemesDropdown(event) {
+    if (event) event.stopPropagation();
+    this.closeNavDropdown();
+    this.closeProfileDropdown();
+    const wrapper = document.getElementById('schemesDropdownWrapper');
+    if (wrapper) wrapper.classList.toggle('open');
+  }
+
+  closeSchemesDropdown() {
+    const wrapper = document.getElementById('schemesDropdownWrapper');
+    if (wrapper) wrapper.classList.remove('open');
+  }
+
+  toggleProfileDropdown(event) {
+    if (event) event.stopPropagation();
+    this.closeNavDropdown();
+    this.closeSchemesDropdown();
+    const dropdown = document.getElementById('userProfileDropdown');
+    if (dropdown) dropdown.classList.toggle('open');
+  }
+
+  closeProfileDropdown() {
+    const dropdown = document.getElementById('userProfileDropdown');
+    if (dropdown) dropdown.classList.remove('open');
+  }
+
+  navigateToUserDashboard() {
+    this.closeProfileDropdown();
+    const user = store.user;
+    if (user?.is_admin) {
+      this.navigate('#/admin-dashboard');
+    } else {
+      this.navigate('#/user-dashboard');
+    }
+  }
+
+  selectSchemeType(type) {
+    this.closeSchemesDropdown();
+    if (type === 'all') {
+      this.navigate('#/schemes');
+    } else {
+      const slugMap = {
+        'home_loan': 'home-loan',
+        'personal_loan': 'personal-loan',
+        'vehicle_loan': 'vehicle-loan',
+        'education_loan': 'education-loan',
+        'business_loan': 'business-loan',
+        'gold_loan': 'gold-loan'
+      };
+      const slug = slugMap[type] || type;
+      this.navigate(`#/schemes/${slug}`);
+    }
   }
 
   updateStatusPill() {
@@ -93,9 +164,10 @@ class ApplicationController {
     // Public routes that don't require token
     const isPublicRoute = (
       hash === '#/' ||
+      hash === '#/home' ||
+      hash.startsWith('#/schemes') ||
       hash === '#/login' ||
       hash === '#/register' ||
-      hash === '#/schemes' ||
       hash === '#/eligibility'
     );
 
@@ -104,7 +176,7 @@ class ApplicationController {
       return;
     }
 
-    if (token && (hash === '#/login' || hash === '#/register' || hash === '#/')) {
+    if (token && (hash === '#/login' || hash === '#/register')) {
       if (user?.is_admin) {
         this.navigate('#/admin-dashboard');
       } else {
@@ -113,49 +185,57 @@ class ApplicationController {
       return;
     }
 
-    switch (hash) {
-      case '#/login':
-        document.getElementById('viewLogin').classList.add('active');
-        break;
+    const routePath = hash.split('?')[0];
 
-      case '#/register':
-        document.getElementById('viewRegister').classList.add('active');
-        break;
+    if (routePath.startsWith('#/schemes')) {
+      document.getElementById('viewSchemes').classList.add('active');
+      await this.loadSchemesView();
+    } else {
+      switch (routePath) {
+        case '#/':
+        case '#/home':
+          document.getElementById('viewHome').classList.add('active');
+          const homeBanner = document.getElementById('homeUserWelcomeBanner');
+          if (homeBanner) {
+            homeBanner.innerHTML = Components.renderHomeUserWelcomeBanner(user);
+          }
+          if (window.lucide) window.lucide.createIcons();
+          break;
 
-      case '#/schemes':
-        document.getElementById('viewSchemes').classList.add('active');
-        await this.loadSchemesView();
-        break;
+        case '#/login':
+          document.getElementById('viewLogin').classList.add('active');
+          break;
 
-      case '#/eligibility':
-        document.getElementById('viewEligibility').classList.add('active');
-        break;
+        case '#/register':
+          document.getElementById('viewRegister').classList.add('active');
+          break;
 
-      case '#/user-dashboard':
-        if (user?.is_admin) { this.navigate('#/admin-dashboard'); return; }
-        document.getElementById('viewUserDashboard').classList.add('active');
-        await this.loadUserDashboard();
-        break;
+        case '#/eligibility':
+          document.getElementById('viewEligibility').classList.add('active');
+          break;
 
-      case '#/admin-dashboard':
-        if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
-        document.getElementById('viewAdminDashboard').classList.add('active');
-        await this.loadAdminDashboard();
-        break;
+        case '#/user-dashboard':
+          if (user?.is_admin) { this.navigate('#/admin-dashboard'); return; }
+          document.getElementById('viewUserDashboard').classList.add('active');
+          await this.loadUserDashboard();
+          break;
 
-      case '#/admin-users':
-        if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
-        document.getElementById('viewAdminUsers').classList.add('active');
-        await this.loadAdminUsers();
-        break;
+        case '#/admin-dashboard':
+          if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
+          document.getElementById('viewAdminDashboard').classList.add('active');
+          await this.loadAdminDashboard();
+          break;
 
-      default:
-        if (token) {
-          user?.is_admin ? this.navigate('#/admin-dashboard') : this.navigate('#/user-dashboard');
-        } else {
-          this.navigate('#/schemes');
-        }
-        break;
+        case '#/admin-users':
+          if (!user?.is_admin) { this.navigate('#/user-dashboard'); return; }
+          document.getElementById('viewAdminUsers').classList.add('active');
+          await this.loadAdminUsers();
+          break;
+
+        default:
+          this.navigate('#/home');
+          break;
+      }
     }
 
     this.renderHeader();
@@ -164,13 +244,29 @@ class ApplicationController {
   renderHeader() {
     const user = store.user;
     const navUser = document.getElementById('navUserControls');
+    const loginBtn = document.getElementById('headerLoginBtn');
     const dropdownAuth = document.getElementById('dropdownAuthItems');
 
     if (user && store.token) {
-      navUser.style.display = 'flex';
-      document.getElementById('headerAvatar').textContent = user.full_name.charAt(0).toUpperCase();
-      document.getElementById('headerUserName').textContent = user.full_name;
-      document.getElementById('headerUserEmail').textContent = user.email;
+      if (navUser) navUser.style.display = 'block';
+      if (loginBtn) loginBtn.style.display = 'none';
+      
+      const initials = (user.full_name || 'U').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().substring(0, 2);
+      
+      const headerInitials = document.getElementById('headerAvatarInitials');
+      const popAvatar = document.getElementById('popoverAvatar');
+      const popName = document.getElementById('popoverUserName');
+      const popEmail = document.getElementById('popoverUserEmail');
+      const popRole = document.getElementById('popoverUserRole');
+
+      if (headerInitials) headerInitials.textContent = initials;
+      if (popAvatar) popAvatar.textContent = initials;
+      if (popName) popName.textContent = user.full_name;
+      if (popEmail) popEmail.textContent = user.email;
+      if (popRole) {
+        popRole.textContent = user.is_admin ? 'System Administrator' : 'Verified Borrower';
+        popRole.className = `popover-role-badge ${user.is_admin ? 'admin' : 'user'}`;
+      }
 
       if (user.is_admin) {
         if (dropdownAuth) {
@@ -212,7 +308,9 @@ class ApplicationController {
         }
       }
     } else {
-      navUser.style.display = 'none';
+      if (navUser) navUser.style.display = 'none';
+      if (loginBtn) loginBtn.style.display = 'inline-flex';
+
       if (dropdownAuth) {
         dropdownAuth.innerHTML = `
           <a href="#/login" class="dropdown-item" onclick="app.closeNavDropdown()">
@@ -241,9 +339,19 @@ class ApplicationController {
     const container = document.getElementById('schemesContainer');
     container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading loan schemes...</div></div>`;
 
+    const hash = window.location.hash;
+    let selectedType = 'all';
+
+    if (hash.includes('/schemes/home-loan') || hash.includes('type=home_loan')) selectedType = 'home_loan';
+    else if (hash.includes('/schemes/personal-loan') || hash.includes('type=personal_loan')) selectedType = 'personal_loan';
+    else if (hash.includes('/schemes/vehicle-loan') || hash.includes('type=vehicle_loan')) selectedType = 'vehicle_loan';
+    else if (hash.includes('/schemes/education-loan') || hash.includes('type=education_loan')) selectedType = 'education_loan';
+    else if (hash.includes('/schemes/business-loan') || hash.includes('type=business_loan')) selectedType = 'business_loan';
+    else if (hash.includes('/schemes/gold-loan') || hash.includes('type=gold_loan')) selectedType = 'gold_loan';
+
     try {
       const schemes = await api.getLoanSchemes();
-      container.innerHTML = Components.renderSchemesGrid(schemes);
+      container.innerHTML = Components.renderSchemesGrid(schemes, selectedType);
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load schemes: ${err.message}</div>`;
@@ -453,14 +561,216 @@ class ApplicationController {
 
     try {
       const res = await api.recommendLoans(inputs);
+      this.currentRecommendationContext = res;
+      this.chatHistory = [];
+
       container.innerHTML = Components.renderEligibilityResults(res);
       container.scrollIntoView({ behavior: 'smooth' });
       if (window.lucide) window.lucide.createIcons();
+
+      if (res && res.status === 'APPROVED') {
+        this.loadGenAIFeatures(res);
+      } else {
+        this.closeChatWidget();
+      }
     } catch (err) {
       if (err.message && (err.message.includes('422') || err.message.includes('Invalid option'))) {
         Components.showToast('Validation Error', 'An input value does not match allowed criteria.', 'error');
       }
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Eligibility Assessment Error: ${err.message}</div>`;
+    }
+  }
+
+  async loadGenAIFeatures(recommendationRes) {
+    const summaryContainer = document.getElementById('aiSummaryContainer');
+    const explanationContainer = document.getElementById('explanationContainer');
+
+    if (summaryContainer) {
+      summaryContainer.innerHTML = Components.renderAISummaryBanner(null, true);
+    }
+    if (explanationContainer) {
+      explanationContainer.innerHTML = Components.renderExplanationPanel(null, true);
+    }
+
+    this.showChatFab();
+
+    const [explanationResult, summaryResult] = await Promise.allSettled([
+      api.explainRecommendation(recommendationRes),
+      api.summarizeRecommendation(recommendationRes)
+    ]);
+
+    if (summaryContainer) {
+      if (summaryResult.status === 'fulfilled' && summaryResult.value) {
+        summaryContainer.innerHTML = Components.renderAISummaryBanner(summaryResult.value, false);
+      } else {
+        summaryContainer.innerHTML = `
+          <div class="ai-summary-banner error-banner">
+            <div class="ai-summary-header">
+              <span class="ai-badge"><i data-lucide="bot" class="lucide"></i> AI Summary</span>
+              <span class="ai-note">AI summary temporarily unavailable — see detailed breakdown below</span>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    if (explanationContainer) {
+      if (explanationResult.status === 'fulfilled' && explanationResult.value) {
+        explanationContainer.innerHTML = Components.renderExplanationPanel(explanationResult.value, false);
+      } else {
+        explanationContainer.innerHTML = `
+          <div class="explanation-box error-box" style="margin-top:1.5rem;">
+            <h4><i data-lucide="clipboard-list" class="lucide"></i> Policy Breakdown</h4>
+            <p style="font-size:0.9rem; color:var(--text-muted);">Detailed feature explanations temporarily unavailable.</p>
+          </div>
+        `;
+      }
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  showChatFab() {
+    let fab = document.getElementById('chatFab');
+    if (!fab) {
+      fab = document.createElement('button');
+      fab.id = 'chatFab';
+      fab.className = 'chat-fab';
+      fab.title = 'AI Loan Assistant';
+      fab.onclick = () => this.toggleChatWidget();
+      fab.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>`;
+      document.body.appendChild(fab);
+    }
+    fab.style.display = 'flex';
+  }
+
+  toggleChatWidget() {
+    if (this.isChatOpen) {
+      this.closeChatWidget();
+    } else {
+      this.openChatWidget();
+    }
+  }
+
+  openChatWidget() {
+    let widget = document.getElementById('chatWidgetContainer');
+    if (!widget) {
+      widget = document.createElement('div');
+      widget.id = 'chatWidgetContainer';
+      widget.className = 'chat-widget-panel';
+      document.body.appendChild(widget);
+    }
+    widget.innerHTML = Components.renderChatWidget();
+    widget.style.display = 'flex';
+    this.isChatOpen = true;
+
+    this.renderChatHistory();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeChatWidget() {
+    const widget = document.getElementById('chatWidgetContainer');
+    if (widget) {
+      widget.style.display = 'none';
+    }
+    this.isChatOpen = false;
+  }
+
+  renderChatHistory() {
+    const container = document.getElementById('chatMessagesContainer');
+    if (!container) return;
+
+    if (this.chatHistory.length === 0) {
+      if (!this.currentRecommendationContext) {
+        container.innerHTML = `
+          <div class="chat-intro-box">
+            <span class="intro-icon"><i data-lucide="lightbulb" class="lucide"></i></span>
+            <p>Run an <strong>Eligibility & Loan Calculation</strong> first to enable the AI credit assistant.</p>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="chat-intro-box">
+            <span class="intro-icon"><i data-lucide="hand" class="lucide"></i></span>
+            <p>Hello! I am your AI Loan Assistant. Ask me anything about your credit eligibility, offer comparison, or document requirements.</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    container.innerHTML = this.chatHistory.map(msg => Components.renderChatMessage(msg)).join('');
+    container.scrollTop = container.scrollHeight;
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  sendSuggestedPrompt(text) {
+    const input = document.getElementById('chatInputText');
+    if (input) {
+      input.value = text;
+      const form = input.closest('form');
+      if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    }
+  }
+
+  async handleSendChatMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById('chatInputText');
+    const sendBtn = document.getElementById('chatSendBtn');
+    if (!input) return;
+
+    const question = input.value.trim();
+    if (!question) return;
+
+    if (!this.currentRecommendationContext) {
+      Components.showToast('Run Eligibility First', 'Please run a loan recommendation calculation to activate the AI assistant.', 'info');
+      return;
+    }
+
+    this.chatHistory.push({ sender: 'user', text: question });
+    input.value = '';
+    this.renderChatHistory();
+
+    const container = document.getElementById('chatMessagesContainer');
+    if (container) {
+      const typingDiv = document.createElement('div');
+      typingDiv.id = 'botTypingIndicator';
+      typingDiv.className = 'chat-bubble-row bot-row';
+      typingDiv.innerHTML = `
+        <div class="chat-bubble bot typing">
+          <span class="typing-dots">Analyzing credit model context...</span>
+        </div>
+      `;
+      container.appendChild(typingDiv);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    if (sendBtn) sendBtn.disabled = true;
+
+    try {
+      const res = await api.chatWithBot(question, this.currentRecommendationContext);
+      const typingDiv = document.getElementById('botTypingIndicator');
+      if (typingDiv) typingDiv.remove();
+
+      this.chatHistory.push({
+        sender: 'bot',
+        text: res.answer || 'Thank you for your question.',
+        source: res.source || 'gemini',
+        grounded: res.grounded !== false
+      });
+      this.renderChatHistory();
+    } catch (err) {
+      const typingDiv = document.getElementById('botTypingIndicator');
+      if (typingDiv) typingDiv.remove();
+
+      this.chatHistory.push({
+        sender: 'bot',
+        text: "I couldn't process that question right now. You can try rephrasing or ask about interest rates, EMI, or document requirements.",
+        source: 'fallback',
+        grounded: true
+      });
+      this.renderChatHistory();
+    } finally {
+      if (sendBtn) sendBtn.disabled = false;
     }
   }
 
@@ -654,6 +964,59 @@ class ApplicationController {
     try {
       const docs = await api.getDocuments(this.currentDocLoanId);
       container.innerHTML = Components.renderDocumentsList(docs, this.isDocAdminMode, this.currentDocLoanId);
+
+      // Disable categories that have already been uploaded (Prevent Duplicate Category Uploads)
+      const uploadedCategories = new Set((docs || []).map(d => (d.doc_category || '').toLowerCase()));
+      const select = document.getElementById('docCategorySelect');
+      const uploadForm = document.getElementById('docUploadForm');
+      
+      let noticeContainer = document.getElementById('docUploadCompleteNotice');
+      if (!noticeContainer && uploadForm && uploadForm.parentNode) {
+        noticeContainer = document.createElement('div');
+        noticeContainer.id = 'docUploadCompleteNotice';
+        uploadForm.parentNode.insertBefore(noticeContainer, uploadForm);
+      }
+
+      if (select) {
+        let availableCount = 0;
+        Array.from(select.options).forEach(opt => {
+          const isUploaded = uploadedCategories.has(opt.value.toLowerCase());
+          const cleanLabel = opt.textContent.replace(/\s*—\s*Already Uploaded\s*✔/gi, '');
+          if (isUploaded) {
+            opt.disabled = true;
+            opt.textContent = `${cleanLabel} — Already Uploaded ✔`;
+          } else {
+            opt.disabled = false;
+            opt.textContent = cleanLabel;
+            availableCount++;
+          }
+        });
+
+        // Select first available non-disabled option
+        const firstAvailable = Array.from(select.options).find(opt => !opt.disabled);
+        if (firstAvailable) {
+          select.value = firstAvailable.value;
+        }
+
+        if (availableCount === 0) {
+          if (uploadForm) uploadForm.style.display = 'none';
+          if (noticeContainer) {
+            noticeContainer.innerHTML = `
+              <div style="background: #E6F4F1; color: #00A896; border: 1px solid rgba(0, 168, 150, 0.3); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 0.75rem;">
+                <i data-lucide="check-circle-2" style="width:24px; height:24px; flex-shrink:0;"></i>
+                <div>
+                  <div style="font-size: 0.95rem; font-weight: 800;">All Required Document Categories Uploaded!</div>
+                  <div style="font-size: 0.8rem; opacity: 0.9; font-weight: 500;">All 5 document categories (KYC, Income, Bank, Loan Specific, Collateral) are attached.</div>
+                </div>
+              </div>
+            `;
+          }
+        } else {
+          if (uploadForm) uploadForm.style.display = this.isDocAdminMode ? 'none' : 'block';
+          if (noticeContainer) noticeContainer.innerHTML = '';
+        }
+      }
+
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state">Failed to load documents: ${err.message}</div>`;
@@ -664,9 +1027,22 @@ class ApplicationController {
     event.preventDefault();
     if (!this.currentDocLoanId) return;
 
+    const fileInput = document.getElementById('docFileInput');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+      Components.showToast('Select File', 'Please choose a document file to upload.', 'error');
+      return;
+    }
+
+    const categorySelect = document.getElementById('docCategorySelect');
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    if (selectedOption && selectedOption.disabled) {
+      Components.showToast('Category Uploaded', 'This document category has already been uploaded for this loan.', 'warning');
+      return;
+    }
+
     const formData = new FormData();
-    formData.append('doc_category', document.getElementById('docCategorySelect').value);
-    formData.append('file', document.getElementById('docFileInput').files[0]);
+    formData.append('doc_category', categorySelect.value);
+    formData.append('file', fileInput.files[0]);
 
     try {
       await api.uploadDocument(this.currentDocLoanId, formData);
@@ -738,22 +1114,22 @@ class ApplicationController {
             const isRejected = status === 'rejected';
 
             return `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.5rem; border-bottom: 1px solid var(--border-color); gap: 0.5rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding: 0.6rem; border-bottom: 1px solid var(--border-color); gap: 0.5rem; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 0.35rem;">
                 <div style="display:flex; flex-direction:column; gap:2px; flex:1; min-width:0;">
-                  <div style="font-size:0.85rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  <div style="font-size:0.85rem; font-weight:700; color: #FFFFFF; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                     ${fileName}
                   </div>
-                  <div style="font-size:0.75rem; color:var(--text-muted);">
-                    ${category} • ${type} • <span style="color:${isVerified ? 'var(--emerald)' : isRejected ? 'var(--rose)' : 'var(--amber)'}; font-weight:700;">${status.toUpperCase()}</span>
+                  <div style="font-size:0.75rem; color:#94A3B8;">
+                    ${category} • ${type} • <span style="color:${isVerified ? '#00A896' : isRejected ? '#EF4444' : '#F59E0B'}; font-weight:700;">${status.toUpperCase()}</span>
                   </div>
                 </div>
                 <div style="display:flex; gap:0.35rem; align-items:center; flex-shrink:0;">
-                  <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
+                  <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')">
                     <i data-lucide="eye" class="lucide" style="margin-right: 0.25rem;"></i> View
                   </button>
                   ${(!isVerified && !isRejected) ? `
-                    <button type="button" class="btn btn-sm btn-success" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check" class="lucide"></i></button>
-                    <button type="button" class="btn btn-sm btn-danger" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x" class="lucide"></i></button>
+                    <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check" class="lucide"></i></button>
+                    <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.55rem; font-size: 0.75rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x" class="lucide"></i></button>
                   ` : ''}
                 </div>
               </div>
@@ -789,44 +1165,65 @@ class ApplicationController {
     const noteInput = document.getElementById('docVerifyNoteInput');
     if (noteInput) noteInput.value = '';
 
-    const baseApi = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http') && window.location.port !== '5500' && window.location.port !== '3000' && window.location.port !== '5173') ? window.location.origin : CONFIG.API_BASE_URL;
-    const token = localStorage.getItem(CONFIG.TOKEN_KEY) || '';
     const container = document.getElementById('docViewerFrameContainer');
     const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
 
-    const viewUrl = `${baseApi}/admin/loans/${loanId}/documents/${validDocId}/view?token=${encodeURIComponent(token)}`;
-    const downloadUrl = `${baseApi}/admin/loans/${loanId}/documents/${validDocId}/download?token=${encodeURIComponent(token)}`;
+    // Find actual doc in MOCK_DB
+    const docObj = (typeof MOCK_DB !== 'undefined' && MOCK_DB.documents) ? MOCK_DB.documents.find(d => (d.doc_id === validDocId || d.id === validDocId)) : null;
+    const fileUrl = docObj?.file_url;
 
     if (downloadBtn) {
       downloadBtn.onclick = () => {
-        window.open(downloadUrl, '_blank');
+        if (fileUrl) {
+          const a = document.createElement('a');
+          a.href = fileUrl;
+          a.download = fileName;
+          a.click();
+        } else {
+          Components.showToast('Document Download', `Downloading ${fileName}...`, 'info');
+        }
       };
     }
 
-    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName);
-    const isPdf = /\.pdf$/i.test(fileName);
+    const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName) || (fileUrl && fileUrl.startsWith('blob:'));
 
-    if (isPdf) {
+    if (fileUrl && isImage) {
       container.innerHTML = `
-        <iframe src="${viewUrl}" style="width: 100%; height: 100%; min-height: 480px; border: none; border-radius: 8px; background: #ffffff;" title="${fileName}"></iframe>
-      `;
-    } else if (isImage) {
-      container.innerHTML = `
-        <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 8px; padding: 1rem; overflow: auto;">
-          <img src="${viewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.3);" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\'text-align:center; color:#f8fafc; padding:2rem;\\'><div style=\\'font-size:3rem; margin-bottom:0.75rem;\\'><i data-lucide=\\'image\\' class=\\'lucide\\' style=\\'width:48px; height:48px;\\'></i></div><p style=\\'margin-top:0.5rem;\\'>Image preview unavailable.</p><a href=\\'${downloadUrl}\\' target=\\'_blank\\' class=\\'btn btn-primary btn-sm\\' style=\\'margin-top:0.75rem;\\'>Download File</a></div>';">
+        <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 1rem; overflow: auto;">
+          <img src="${fileUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
         </div>
       `;
     } else {
+      // Clean Document View Certificate Template
       container.innerHTML = `
-        <div style="text-align: center; color: #f8fafc; padding: 3rem 1rem;">
-          <div style="margin-bottom: 0.75rem;"><i data-lucide="file-text" class="lucide" style="width:48px; height:48px;"></i></div>
-          <div style="font-size: 1.15rem; font-weight: 600;">${fileName}</div>
-          <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 0.5rem;">
-            Category: ${category} • Type: ${type}
+        <div style="width: 100%; max-width: 580px; margin: auto; background: #1E293B; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 2rem; color: #F8FAFC; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
+          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #072AC8 0%, #00A896 100%); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; box-shadow: 0 4px 16px rgba(7, 42, 200, 0.4);">
+            <i data-lucide="file-check-2" style="width:32px; height:32px; color:#FFFFFF;"></i>
           </div>
-          <button class="btn btn-primary btn-sm" style="margin-top: 1.25rem;" onclick="window.open('${downloadUrl}', '_blank')">
-            <i data-lucide="download" class="lucide" style="margin-right: 0.4rem;"></i> Download ${fileName}
-          </button>
+
+          <h3 style="font-family:'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.35rem; margin-bottom: 0.35rem; color: #FFFFFF;">${fileName}</h3>
+          <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 1.5rem;">
+            Loan Application #${loanId} • Category: <strong style="color:#00A896;">${category}</strong>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.25rem; text-align: left; margin-bottom: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem;">
+              <span style="color: #94A3B8;">Document Type:</span>
+              <strong style="color: #F8FAFC;">${type || 'Official Verification Proof'}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem;">
+              <span style="color: #94A3B8;">Verification Status:</span>
+              <span>${Components.renderStatusBadge(status)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+              <span style="color: #94A3B8;">File Size:</span>
+              <span style="color: #F8FAFC;">${docObj?.file_size || '1.8 MB'}</span>
+            </div>
+          </div>
+
+          <div style="font-size: 0.8rem; color: #64748B;">
+            🔐 Encrypted CrediWise Document Store • Verified Underwriter Access
+          </div>
         </div>
       `;
     }

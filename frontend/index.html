@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ApexLoans — Credit & Loan Management System</title>
+  <title>CrediWise — Smart Loans. Wise Choices. Better Futures.</title>
   
   <!-- Premium Subtle Typography (DM Sans & Plus Jakarta Sans) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,65 +18,249 @@
   <!-- Dynamic Moving Attractions Background Canvas -->
   <canvas id="bgCanvas"></canvas>
 
-  <!-- Top Application Header & Navigation Bar -->
+  <!-- Unified Clean Application Master Header -->
   <header class="app-header">
-    <div class="header-left">
-      <div class="brand" onclick="app.navigate('#/')">
-        <div class="brand-icon"><i data-lucide="zap"></i></div>
-        <span>ApexLoans</span>
-      </div>
+    <div class="header-main-bar">
+      <!-- Left: Logo & Core Navigation Buttons -->
+      <div class="header-left-group">
+        <div class="brand" onclick="app.navigate('#/')">
+          <img src="assets/images/crediwise_logo.png" alt="CrediWise Logo" class="brand-logo-img" />
+          <span class="brand-name-text">CrediWise</span>
+        </div>
 
-      <!-- Top-Left Navigation Dropdown Menu -->
-      <div class="nav-dropdown-wrapper" id="navDropdownWrapper">
-        <button type="button" class="nav-dropdown-btn" onclick="app.toggleNavDropdown(event)">
-          <span><i data-lucide="menu"></i> Menu</span>
-          <span class="dropdown-chevron"><i data-lucide="chevron-down"></i></span>
+        <!-- Dedicated Loan Schemes Dropdown Button (Left Aligned) -->
+        <div class="schemes-dropdown-wrapper" id="schemesDropdownWrapper">
+          <button type="button" class="nav-dropdown-btn schemes-btn" onclick="app.toggleSchemesDropdown(event)">
+            <span><i data-lucide="layers"></i> Loan Schemes</span>
+            <span class="dropdown-chevron"><i data-lucide="chevron-down"></i></span>
+          </button>
+          <div class="schemes-dropdown-menu" id="schemesDropdownMenu">
+            <div class="dropdown-section-title">Explore 6 Dedicated Credit Schemes</div>
+            <a href="#/schemes/home-loan" class="dropdown-item" onclick="app.closeSchemesDropdown()">
+              <span class="dropdown-icon"><i data-lucide="home"></i></span>
+              <div>
+                <div class="item-title">Home Loan Page</div>
+                <div class="item-sub">From 8.50% p.a. • Up to 30 yrs</div>
+              </div>
+            </a>
+            <a href="#/schemes/personal-loan" class="dropdown-item" onclick="app.closeSchemesDropdown()">
+              <span class="dropdown-icon"><i data-lucide="user"></i></span>
+              <div>
+                <div class="item-title">Personal Loan Page</div>
+                <div class="item-sub">From 9.50% p.a. • Up to 5 yrs</div>
+              </div>
+            </a>
+            <a href="#/schemes/vehicle-loan" class="dropdown-item" onclick="app.closeSchemesDropdown()">
+              <span class="dropdown-icon"><i data-lucide="car"></i></span>
+              <div>
+                <div class="item-title">Vehicle Loan Page</div>
+                <div class="item-sub">From 8.90% p.a. • Up to 7 yrs</div>
+              </div>
+            </a>
+            <a href="#/schemes/education-loan" class="dropdown-item" onclick="app.closeSchemesDropdown()">
+              <span class="dropdown-icon"><i data-lucide="graduation-cap"></i></span>
+              <div>
+                <div class="item-title">Education Loan Page</div>
+                <div class="item-sub">From 9.15% p.a. • Moratorium incl.</div>
+              </div>
+            </a>
+            <a href="#/schemes/business-loan" class="dropdown-item" onclick="app.closeSchemesDropdown()">
+              <span class="dropdown-icon"><i data-lucide="briefcase"></i></span>
+              <div>
+                <div class="item-title">Business Loan Page</div>
+                <div class="item-sub">From 11.25% p.a. • Up to ₹1 Cr</div>
+              </div>
+            </a>
+            <a href="#/schemes/gold-loan" class="dropdown-item" onclick="app.closeSchemesDropdown()">
+              <span class="dropdown-icon"><i data-lucide="coins"></i></span>
+              <div>
+                <div class="item-title">Gold Loan Page</div>
+                <div class="item-sub">From 8.25% p.a. • Instant Disbursal</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Check Eligibility Button (Left Aligned) -->
+        <button type="button" class="btn btn-primary btn-sm header-elig-btn" onclick="app.navigate('#/eligibility')">
+          <i data-lucide="zap"></i> Check Eligibility
         </button>
-        <div class="nav-dropdown-menu" id="navDropdownMenu">
-          <div class="dropdown-section-title">Navigation & Tools</div>
-          <a href="#/schemes" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon"><i data-lucide="file-text"></i></span>
-            <div>
-              <div class="item-title">Loan Schemes</div>
-              <div class="item-sub">Interest rates & policy rules</div>
-            </div>
-          </a>
-          <a href="#/eligibility" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon"><i data-lucide="calculator"></i></span>
-            <div>
-              <div class="item-title">Eligibility Checker</div>
-              <div class="item-sub">Multi-step FOIR calculator</div>
-            </div>
-          </a>
-
-          <div class="dropdown-divider"></div>
-
-          <div id="dropdownAuthItems"></div>
-        </div>
       </div>
-    </div>
 
-    <div class="header-controls">
-      <!-- System Health & Status Pill -->
-      <button class="api-status-pill" id="apiStatusPill" onclick="app.toggleMockMode()" title="System Operational Status">
-        <span class="status-dot online" id="statusDot"></span>
-        <span id="statusText">System Online</span>
-      </button>
+      <!-- Right: User Account & Profile Controls -->
+      <div class="header-controls">
+        <!-- Unauthenticated Sign In Button (Shown when logged out) -->
+        <button type="button" class="btn btn-dark btn-sm header-login-btn" id="headerLoginBtn" onclick="app.navigate('#/login')" style="display: inline-flex;">
+          <i data-lucide="user"></i> Login
+        </button>
 
-      <!-- Authenticated User Profile Menu -->
-      <div class="user-profile-menu" id="navUserControls" style="display: none;">
-        <div class="avatar" id="headerAvatar">U</div>
-        <div class="user-info">
-          <span class="user-name" id="headerUserName">User Name</span>
-          <span class="user-email" id="headerUserEmail">user@example.com</span>
+        <!-- Authenticated User Profile Avatar Popover Menu (Shown when logged in) -->
+        <div class="user-profile-wrapper" id="navUserControls" style="display: none;">
+          <button type="button" class="profile-avatar-btn" id="headerAvatarBtn" onclick="app.toggleProfileDropdown(event)" title="User Profile">
+            <span id="headerAvatarInitials">U</span>
+          </button>
+
+          <div class="profile-popover-menu" id="userProfileDropdown">
+            <div class="popover-user-info">
+              <div class="popover-avatar" id="popoverAvatar">U</div>
+              <div>
+                <div class="popover-user-name" id="popoverUserName">User Name</div>
+                <div class="popover-user-email" id="popoverUserEmail">user@example.com</div>
+                <span class="popover-role-badge" id="popoverUserRole">Regular User</span>
+              </div>
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <button type="button" class="dropdown-item" id="popoverDashboardBtn" onclick="app.navigateToUserDashboard()">
+              <span class="dropdown-icon"><i data-lucide="layout-dashboard"></i></span>
+              <div>
+                <div class="item-title">My Dashboard</div>
+                <div class="item-sub">Manage applications & loans</div>
+              </div>
+            </button>
+
+            <button type="button" class="dropdown-item logout-item" onclick="app.logout()">
+              <span class="dropdown-icon"><i data-lucide="log-out"></i></span>
+              <div>
+                <div class="item-title" style="color:var(--rose);">Sign Out</div>
+                <div class="item-sub">End current session</div>
+              </div>
+            </button>
+          </div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="app.logout()" title="Log out session">Exit</button>
       </div>
     </div>
   </header>
 
   <!-- Main View Container -->
   <main class="main-container">
+
+    <!-- 0. COMMERCIAL BANKING HOME VIEW (#/ or #/home) -->
+    <section class="view-section" id="viewHome">
+      <!-- Logged-In User Banner Container -->
+      <div id="homeUserWelcomeBanner"></div>
+
+      <!-- Hero Banner (Reference Screenshot Style) -->
+      <div class="home-hero-banner">
+        <div class="hero-text-col">
+          <h1 class="hero-heading">
+            <span class="hero-italic">open</span> to your aspirations<br>
+            <span class="hero-italic">open</span> to your financial growth
+          </h1>
+          <p class="hero-subtext">Guiding you to achieve your credit & financial endeavors with AI-driven personalized loans</p>
+
+          <div class="hero-actions-group" style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+            <button class="btn btn-primary" onclick="app.navigate('#/eligibility')">
+              <i data-lucide="zap"></i> Check AI Eligibility
+            </button>
+            <button class="btn btn-secondary" onclick="app.toggleSchemesDropdown(event)">
+              <i data-lucide="layers"></i> Explore 6 Schemes ▾
+            </button>
+          </div>
+        </div>
+
+        <!-- Featured Home Loan Image Banner (User Uploaded Image) -->
+        <div class="home-hero-image-side">
+          <img src="assets/images/loan_home_banner.jpg" alt="Institutional Banking & Loans" class="home-main-loan-img" onerror="this.src='https://images.unsplash.com/photo-1556742049-0a670fc80789?auto=format&fit=crop&w=800&q=80';" />
+          <div class="hero-img-badge"><i data-lucide="zap"></i> Instant Loan Disbursal</div>
+        </div>
+      </div>
+
+      <!-- Commercial Loan Products Grid -->
+      <div class="home-products-section">
+        <h2 class="section-title"><i data-lucide="award"></i> Prime Loan Products & Rates (6 Credit Schemes)</h2>
+        <div class="home-products-grid">
+
+          <div class="home-prod-card" onclick="app.navigate('#/schemes/home-loan')" style="cursor:pointer;">
+            <div class="prod-badge">Popular</div>
+            <div class="prod-icon"><i data-lucide="home"></i></div>
+            <h3>Home Loan</h3>
+            <div class="prod-rate">Starting at <strong>8.50% p.a.</strong></div>
+            <p class="prod-desc">Tenure up to 30 years with zero prepayment penalties and tax benefits under Section 24.</p>
+            <div class="prod-actions">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.navigate('#/schemes/home-loan');">View Details</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); app.fillSchemeAndApply('home_loan');">Apply Now →</button>
+            </div>
+          </div>
+
+          <div class="home-prod-card" onclick="app.navigate('#/schemes/personal-loan')" style="cursor:pointer;">
+            <div class="prod-badge">Instant Sanction</div>
+            <div class="prod-icon"><i data-lucide="user"></i></div>
+            <h3>Personal Loan</h3>
+            <div class="prod-rate">Starting at <strong>9.50% p.a.</strong></div>
+            <p class="prod-desc">Instant disbursal up to ₹50 Lakhs for home renovation, travel, medical emergencies or wedding.</p>
+            <div class="prod-actions">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.navigate('#/schemes/personal-loan');">View Details</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); app.fillSchemeAndApply('personal_loan');">Apply Now →</button>
+            </div>
+          </div>
+
+          <div class="home-prod-card" onclick="app.navigate('#/schemes/vehicle-loan')" style="cursor:pointer;">
+            <div class="prod-badge">Low Interest</div>
+            <div class="prod-icon"><i data-lucide="car"></i></div>
+            <h3>Vehicle Loan</h3>
+            <div class="prod-rate">Starting at <strong>8.90% p.a.</strong></div>
+            <p class="prod-desc">100% on-road financing for new cars and two-wheelers with flexible tenure options.</p>
+            <div class="prod-actions">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.navigate('#/schemes/vehicle-loan');">View Details</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); app.fillSchemeAndApply('vehicle_loan');">Apply Now →</button>
+            </div>
+          </div>
+
+          <div class="home-prod-card" onclick="app.navigate('#/schemes/education-loan')" style="cursor:pointer;">
+            <div class="prod-badge">Higher Studies</div>
+            <div class="prod-icon"><i data-lucide="graduation-cap"></i></div>
+            <h3>Education Loan</h3>
+            <div class="prod-rate">Starting at <strong>9.15% p.a.</strong></div>
+            <p class="prod-desc">Cover tuition fees and living expenses for Indian and foreign university degree programs.</p>
+            <div class="prod-actions">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.navigate('#/schemes/education-loan');">View Details</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); app.fillSchemeAndApply('education_loan');">Apply Now →</button>
+            </div>
+          </div>
+
+          <div class="home-prod-card" onclick="app.navigate('#/schemes/business-loan')" style="cursor:pointer;">
+            <div class="prod-badge">Higher Limit</div>
+            <div class="prod-icon"><i data-lucide="briefcase"></i></div>
+            <h3>Business Loan</h3>
+            <div class="prod-rate">Starting at <strong>11.25% p.a.</strong></div>
+            <p class="prod-desc">Collateral-free working capital funding up to ₹1 Crore for MSMEs and self-employed professionals.</p>
+            <div class="prod-actions">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.navigate('#/schemes/business-loan');">View Details</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); app.fillSchemeAndApply('business_loan');">Apply Now →</button>
+            </div>
+          </div>
+
+          <div class="home-prod-card" onclick="app.navigate('#/schemes/gold-loan')" style="cursor:pointer;">
+            <div class="prod-badge">Instant Disbursal</div>
+            <div class="prod-icon"><i data-lucide="coins"></i></div>
+            <h3>Gold Loan</h3>
+            <div class="prod-rate">Starting at <strong>7.90% p.a.</strong></div>
+            <p class="prod-desc">Quick cash backed by 18-24K gold ornaments with minimal paperwork and secure vault storage.</p>
+            <div class="prod-actions">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); app.navigate('#/schemes/gold-loan');">View Details</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); app.fillSchemeAndApply('gold_loan');">Apply Now →</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Sticky Commercial Bottom CTA Bar (Axis Bank reference style) -->
+      <div class="home-sticky-bottom-bar">
+        <div class="sticky-bar-content">
+          <div class="sticky-icon"><i data-lucide="zap"></i></div>
+          <div class="sticky-text">
+            <strong>Check your personalized loan eligibility instantly with AI underwriting</strong>
+            <span>Calculate EMIs across 15+ financial parameters in seconds</span>
+          </div>
+          <button class="btn btn-primary" onclick="app.navigate('#/eligibility')">
+            Calculate My Rates Now →
+          </button>
+        </div>
+      </div>
+    </section>
 
     <!-- 1. LOGIN VIEW (#/login) -->
     <section class="view-section" id="viewLogin">
@@ -240,12 +424,12 @@
 
             <div class="form-group">
               <label class="form-label" for="elMonthlyIncome">Monthly Income (₹)</label>
-              <input type="number" id="elMonthlyIncome" class="input-control" value="90000" min="20000" max="5000000" step="5000" required>
+              <input type="number" id="elMonthlyIncome" class="input-control" value="90000" min="1" step="any" required placeholder="Enter monthly income">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="elExistingEmi">Existing Monthly EMIs (₹)</label>
-              <input type="number" id="elExistingEmi" class="input-control" value="8000" min="0" step="1000" required>
+              <input type="number" id="elExistingEmi" class="input-control" value="8000" min="0" step="any" required placeholder="Enter existing EMIs">
             </div>
           </div>
 
@@ -258,7 +442,7 @@
 
             <div class="form-group">
               <label class="form-label" for="elCcOutstanding">Credit Card Outstanding (₹)</label>
-              <input type="number" id="elCcOutstanding" class="input-control" value="15000" min="0" step="1000" required>
+              <input type="number" id="elCcOutstanding" class="input-control" value="15000" min="0" step="any" required placeholder="Enter credit card outstanding">
             </div>
 
             <div class="form-group">
@@ -281,7 +465,7 @@
 
             <div class="form-group">
               <label class="form-label" for="elRequestedAmount">Requested Loan Amount (₹)</label>
-              <input type="number" id="elRequestedAmount" class="input-control" value="500000" min="10000" max="50000000" step="10000" required>
+              <input type="number" id="elRequestedAmount" class="input-control" value="500000" min="1" step="any" required placeholder="e.g. 25000, 500000">
             </div>
           </div>
 
@@ -289,23 +473,18 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="elTenure">Preferred Tenure (Months)</label>
-              <input type="number" id="elTenure" class="input-control" value="36" min="6" max="84" required>
+              <input type="number" id="elTenure" class="input-control" value="36" min="6" max="360" required>
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="elLoanPurpose">Loan Purpose</label>
+              <label class="form-label" for="elLoanPurpose">Loan Purpose (6 Primary Schemes)</label>
               <select id="elLoanPurpose" class="input-control" required>
-                <option value="HOME_RENOVATION">Home Renovation (Personal Loan)</option>
-                <option value="HOME_PURCHASE">Buy a Home (Home Loan)</option>
-                <option value="HOME_CONSTRUCTION">Build a Home (Home Loan)</option>
-                <option value="MEDICAL">Medical Emergency (Medical Loan)</option>
-                <option value="EDUCATION">Education (Education Loan)</option>
-                <option value="TRAVEL">Travel (Personal Loan)</option>
-                <option value="WEDDING">Wedding (Personal Loan)</option>
-                <option value="VEHICLE_PURCHASE">Buy a Vehicle (Vehicle Loan)</option>
-                <option value="BUSINESS">Business (Business Loan)</option>
-                <option value="DEBT_CONSOLIDATION">Debt Consolidation (Debt Consolidation Loan)</option>
-                <option value="OTHER">Other (Personal Loan)</option>
+                <option value="home_loan">Home Loan</option>
+                <option value="personal_loan">Personal Loan</option>
+                <option value="vehicle_loan">Vehicle Loan</option>
+                <option value="education_loan">Education Loan</option>
+                <option value="business_loan">Business Loan</option>
+                <option value="gold_loan">Gold Loan</option>
               </select>
             </div>
 
@@ -476,7 +655,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="applyAmount">Requested Amount (₹)</label>
-              <input type="number" id="applyAmount" class="input-control" placeholder="500000" min="10000" step="5000" required value="500000" oninput="app.recalculateEmiPreview()">
+              <input type="number" id="applyAmount" class="input-control" placeholder="e.g. 25000, 500000" min="1" step="any" required value="500000" oninput="app.recalculateEmiPreview()">
             </div>
 
             <div class="form-group">
@@ -580,7 +759,7 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="adminSanctionAmount">Sanctioned Amount (₹)</label>
-              <input type="number" id="adminSanctionAmount" class="input-control" placeholder="500000" min="10000" step="5000">
+              <input type="number" id="adminSanctionAmount" class="input-control" placeholder="e.g. 25000, 500000" min="1" step="any">
             </div>
             <div class="form-group">
               <label class="form-label" for="adminInterestRate">Offered Interest Rate (% p.a.)</label>
@@ -650,6 +829,13 @@
       </div>
     </div>
   </div>
+
+  <!-- Permanent Floating AI Assistant FAB & Drawer Widget Container -->
+  <button class="chat-fab" id="chatFab" onclick="app.toggleChatWidget()" title="AI Loan Assistant" style="display: flex;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+  </button>
+  
+  <div class="chat-widget-panel" id="chatWidgetContainer" style="display: none;"></div>
 
   <!-- Global Toast Notifications Container -->
   <div class="toast-container" id="toastContainer"></div>
