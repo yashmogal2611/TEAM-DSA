@@ -1339,14 +1339,14 @@ textarea.input-control {
   background: rgba(247, 243, 236, 0.6);
 }
 
-/* Toast Notifications */
+/* Toast Notifications (Positioned at bottom right) */
 .toast-container {
   position: fixed;
-  bottom: 2.25rem;
-  right: 2.25rem;
-  z-index: 2000;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9995;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 0.85rem;
   pointer-events: none;
 }
@@ -2410,7 +2410,7 @@ textarea.input-control {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
-  z-index: 9999;
+  z-index: 10000;
   width: 58px;
   height: 58px;
   border-radius: 50%;
@@ -2423,7 +2423,11 @@ textarea.input-control {
   box-shadow: 0 8px 24px rgba(184, 131, 79, 0.45);
   cursor: pointer;
   animation: floatLevitate 3.2s ease-in-out infinite;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.25s ease;
+  transition: bottom 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.chat-fab.toast-shifted {
+  bottom: 7.8rem !important;
 }
 
 /* Pulsing Aura Glow Ring */

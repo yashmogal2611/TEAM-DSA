@@ -101,7 +101,7 @@ const MOCK_DB = {
         loan_specific_documents: ["Admission Offer Letter", "Fee Structure Breakdown", "Marksheets (10th/12th/Graduation)"],
         collateral_documents: ["Collateral Deed (for loans > ₹7.5 Lakhs)"]
       },
-      source_url: "https://www.vidyalakshmi.co.in/",
+      source_url: "https://pmvidyalaxmi.co.in/",
       last_verified: "2026-08-01"
     },
     {

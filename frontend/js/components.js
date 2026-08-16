@@ -255,7 +255,7 @@ const Components = {
                   <li><i data-lucide="check-circle-2" class="icon-inline emerald"></i> Maximum 5 active running loans across financial institutions.</li>
                 </ul>
                 <div class="rbi-link-wrapper" style="margin-top:1.5rem;">
-                  <a href="${singleScheme.source_url}" target="_blank" rel="noopener" class="scheme-source-link">
+                  <a href="${(singleScheme && (singleScheme.loan_type === 'education_loan' || (singleScheme.source_url && (singleScheme.source_url.includes('vidyalakshmi') || singleScheme.source_url.includes('vidyalaxmi'))))) ? 'https://pmvidyalaxmi.co.in/' : ((singleScheme && singleScheme.source_url) ? singleScheme.source_url : 'https://pmvidyalaxmi.co.in/')}" target="_blank" rel="noopener" class="scheme-source-link">
                     <i data-lucide="external-link"></i> Official Regulatory Policy & Documentation
                   </a>
                 </div>
@@ -550,7 +550,7 @@ const Components = {
         <div class="ai-summary-banner loading">
           <div class="ai-summary-header">
             <span class="ai-badge"><i data-lucide="bot"></i> AI Summary</span>
-            <span class="ai-loading-skeleton">Synthesizing personalized loan insights with Gemini AI...</span>
+            <span class="ai-loading-skeleton">Synthesizing personalized loan insights with CrediWise AI...</span>
           </div>
         </div>
       `;
@@ -571,7 +571,6 @@ const Components = {
       <div class="ai-summary-banner">
         <div class="ai-summary-header">
           <span class="ai-badge"><i data-lucide="bot"></i> AI Executive Summary</span>
-          <span class="ai-model-tag">Gemini-3.6-Flash Engine</span>
         </div>
         <p class="ai-summary-content">${data.ai_summary}</p>
       </div>
@@ -1120,10 +1119,29 @@ const Components = {
     container.appendChild(toast);
     if (window.lucide) window.lucide.createIcons();
 
+    // Dynamically shift chatbot FAB upward cleanly above notification
+    this.updateChatFabOffset();
+
     setTimeout(() => {
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(30px)';
-      setTimeout(() => toast.remove(), 300);
+      setTimeout(() => {
+        toast.remove();
+        this.updateChatFabOffset();
+      }, 300);
     }, 4000);
+  },
+
+  updateChatFabOffset() {
+    const container = document.getElementById('toastContainer');
+    const fab = document.getElementById('chatFab');
+    if (!fab) return;
+
+    const activeToasts = container ? container.querySelectorAll('.toast') : [];
+    if (activeToasts.length > 0) {
+      fab.classList.add('toast-shifted');
+    } else {
+      fab.classList.remove('toast-shifted');
+    }
   }
 };
