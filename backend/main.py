@@ -12,11 +12,21 @@ Includes:
   • /contacts     – Backward compatible contact submissions
 """
 import os
+import sys
 from fastapi import FastAPI, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+
+# Directories
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+UPLOAD_DIR = os.path.join(BACKEND_DIR, "uploads")
+FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend"))
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 try:
     from .schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
@@ -27,7 +37,10 @@ try:
     from .routers.auth_router import router as auth_router
     from .routers.user_router import router as user_router
     from .routers.admin_router import router as admin_router
-except ImportError:
+    from .routers.summarize import router as summarize_router
+    from .routers.explanation import router as explanation_router
+    from .routers.chat import router as chat_router
+except (ImportError, ValueError):
     from schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
     from database import init_db, get_db, LoanSubmission, User
     from auth import hash_password
@@ -36,16 +49,9 @@ except ImportError:
     from routers.auth_router import router as auth_router
     from routers.user_router import router as user_router
     from routers.admin_router import router as admin_router
-
-# Directories
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.join(BACKEND_DIR, "uploads")
-FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend"))
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-from routers.summarize import router as summarize_router #genai
-from routers.explanation import router as explanation_router #genai
-from routers.chat import router as chat_router #genai phase3
+    from routers.summarize import router as summarize_router
+    from routers.explanation import router as explanation_router
+    from routers.chat import router as chat_router
 
 # ── App setup ─────────────────────────────────────────────────
 app = FastAPI(
