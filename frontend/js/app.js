@@ -14,18 +14,15 @@ class ApplicationController {
   }
 
   async init() {
-    // Clear any previous session on startup to ensure we start with no user logged in
-    store.clearSession();
+    // Register global session expiry listener
+    window.addEventListener('auth:expired', () => {
+      Components.showToast('Session Expired', 'Your token expired or is invalid. Please log in again.', 'warning');
+      this.navigate('/login');
+    });
 
     this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
-
-    // Register global session expiry listener for subsequent operations
-    window.addEventListener('auth:expired', () => {
-      Components.showToast('Session Expired', 'Your token expired or is invalid. Please log in again.', 'warning');
-      this.navigate('#/login');
-    });
 
     this.handleRoute();
     this.setupEmiCalculator();
@@ -272,14 +269,14 @@ class ApplicationController {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
             <a href="#/admin-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon"><i data-lucide="shield"></i></span>
+              <span class="dropdown-icon">🛡️</span>
               <div>
                 <div class="item-title">Admin Control Board</div>
                 <div class="item-sub">Underwrite & sanction loans</div>
               </div>
             </a>
             <a href="#/admin-users" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon"><i data-lucide="users"></i></span>
+              <span class="dropdown-icon">👥</span>
               <div>
                 <div class="item-title">User Directory</div>
                 <div class="item-sub">Registered borrowers list</div>
@@ -291,14 +288,14 @@ class ApplicationController {
         if (dropdownAuth) {
           dropdownAuth.innerHTML = `
             <a href="#/user-dashboard" class="dropdown-item" onclick="app.closeNavDropdown()">
-              <span class="dropdown-icon"><i data-lucide="file-text"></i></span>
+              <span class="dropdown-icon">📋</span>
               <div>
                 <div class="item-title">My Applications</div>
                 <div class="item-sub">Track active submissions</div>
               </div>
             </a>
             <a href="javascript:void(0)" class="dropdown-item" onclick="app.closeNavDropdown(); app.showModal('applyLoanModal');">
-              <span class="dropdown-icon"><i data-lucide="plus"></i></span>
+              <span class="dropdown-icon">➕</span>
               <div>
                 <div class="item-title">+ New Application</div>
                 <div class="item-sub">Apply for home, personal, gold loan</div>
@@ -314,14 +311,14 @@ class ApplicationController {
       if (dropdownAuth) {
         dropdownAuth.innerHTML = `
           <a href="#/login" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon"><i data-lucide="lock"></i></span>
+            <span class="dropdown-icon">🔐</span>
             <div>
               <div class="item-title">Sign In</div>
               <div class="item-sub">Log in to your account</div>
             </div>
           </a>
           <a href="#/register" class="dropdown-item" onclick="app.closeNavDropdown()">
-            <span class="dropdown-icon"><i data-lucide="edit-3"></i></span>
+            <span class="dropdown-icon">✍️</span>
             <div>
               <div class="item-title">Create Account</div>
               <div class="item-sub">Register as new borrower</div>
@@ -330,7 +327,6 @@ class ApplicationController {
         `;
       }
     }
-    if (window.lucide) window.lucide.createIcons();
   }
 
   /* ---------------- VIEW LOADERS & API CALLS ---------------- */
@@ -376,7 +372,6 @@ class ApplicationController {
       document.getElementById('userApprovedCount').textContent = approvedCount;
 
       container.innerHTML = Components.renderUserLoansTable(loans);
-      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load applications: ${err.message}</div>`;
     }
@@ -398,7 +393,6 @@ class ApplicationController {
 
       statsContainer.innerHTML = Components.renderAdminStats(stats);
       container.innerHTML = Components.renderAdminLoansTable(loans);
-      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load admin data: ${err.message}</div>`;
     }
@@ -411,7 +405,6 @@ class ApplicationController {
 
     if (!q) {
       container.innerHTML = Components.renderAdminLoansTable(store.adminLoans);
-      if (window.lucide) window.lucide.createIcons();
       return;
     }
 
@@ -423,7 +416,6 @@ class ApplicationController {
     );
 
     container.innerHTML = Components.renderAdminLoansTable(filtered);
-    if (window.lucide) window.lucide.createIcons();
   }
 
   async loadAdminUsers() {
@@ -438,7 +430,6 @@ class ApplicationController {
       store.adminUsers = users;
       store.adminLoans = loans;
       container.innerHTML = Components.renderAdminUsersTable(users, loans);
-      if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load users: ${err.message}</div>`;
     }
@@ -455,17 +446,11 @@ class ApplicationController {
     const isVisible = dropdownRow.style.display !== 'none';
     if (isVisible) {
       dropdownRow.style.display = 'none';
-      if (chevron) {
-        chevron.innerHTML = '<i data-lucide="chevron-down"></i>';
-        if (window.lucide) window.lucide.createIcons();
-      }
+      if (chevron) chevron.textContent = '▼';
       if (userRow) userRow.classList.remove('active-user-expanded');
     } else {
       dropdownRow.style.display = 'table-row';
-      if (chevron) {
-        chevron.innerHTML = '<i data-lucide="chevron-up"></i>';
-        if (window.lucide) window.lucide.createIcons();
-      }
+      if (chevron) chevron.textContent = '▲';
       if (userRow) userRow.classList.add('active-user-expanded');
     }
   }
@@ -539,7 +524,7 @@ class ApplicationController {
   async handleCheckEligibility(event) {
     event.preventDefault();
     const container = document.getElementById('eligibilityResultsContainer');
-    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending"><i data-lucide="zap" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Calculating Personalised Interest Rates & Offers...</div></div>`;
+    container.innerHTML = `<div style="text-align:center; padding:2rem;"><div class="status-badge pending">⚡ Calculating Personalised Interest Rates & Offers...</div></div>`;
 
     const inputs = {
       age: Number(document.getElementById('elAge').value),
@@ -782,7 +767,7 @@ class ApplicationController {
       case 'gold_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="award" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Gold Loan Parameters</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🥇 Gold Loan Parameters</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Gold Weight (Grams)</label>
@@ -804,7 +789,7 @@ class ApplicationController {
       case 'vehicle_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="car" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Vehicle Details</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🚗 Vehicle Details</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Vehicle Type</label>
@@ -825,7 +810,7 @@ class ApplicationController {
       case 'education_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="graduation-cap" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Academic Institution</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🎓 Academic Institution</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Institution / University Name</label>
@@ -843,7 +828,7 @@ class ApplicationController {
       case 'business_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
-            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="building-2" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Business Details</h4>
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);">🏢 Business Details</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label class="form-label">Business Name</label>
@@ -862,7 +847,6 @@ class ApplicationController {
         fieldsContainer.innerHTML = '';
         break;
     }
-    if (window.lucide) window.lucide.createIcons();
   }
 
   fillSchemeAndApply(loanType, recommendedEmi = null) {
@@ -1086,7 +1070,7 @@ class ApplicationController {
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */
 
-  async openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
+  openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
     this.currentReviewLoanId = loanId;
     document.getElementById('modalLoanIdTitle').textContent = `Review Loan Application #${loanId}`;
     document.getElementById('modalApplicantDesc').textContent = `${applicantName} — Requested ${amountStr}`;
@@ -1287,7 +1271,7 @@ class ApplicationController {
 
     try {
       await api.rejectLoan(this.currentReviewLoanId, note);
-      Components.showToast('Application Rejected', `Loan #${this.currentReviewLoanId} status updated to <i data-lucide="x-circle" class="lucide" style="color:var(--rose); margin-right: 0.25rem; vertical-align: -2px;"></i> Rejected.`, 'warning');
+      Components.showToast('Application Rejected', `Loan #${this.currentReviewLoanId} status updated to ❌ Rejected.`, 'warning');
       this.hideModal('reviewLoanModal');
       this.loadAdminDashboard();
     } catch (err) {

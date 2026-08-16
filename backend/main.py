@@ -43,6 +43,10 @@ UPLOAD_DIR = os.path.join(BACKEND_DIR, "uploads")
 FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, "..", "frontend"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+from routers.summarize import router as summarize_router #genai
+from routers.explanation import router as explanation_router #genai
+from routers.chat import router as chat_router #genai phase3
+
 # ── App setup ─────────────────────────────────────────────────
 app = FastAPI(
     title="Loan Management & Underwriting System API",
@@ -77,6 +81,10 @@ if os.path.exists(os.path.join(FRONTEND_DIR, "assets")):
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(admin_router)
+app.include_router(summarize_router) #genai
+app.include_router(explanation_router) #genai
+app.include_router(chat_router) #genai phase3
+
 
 # ── Mount ML Recommendation Engine Router ─────────────────────
 import sys
