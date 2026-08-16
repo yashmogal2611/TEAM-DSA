@@ -7,13 +7,13 @@ const Components = {
     switch (status) {
       case 'pending':
       case 'under_review':
-        return `<span class="status-badge pending">⏳ Under Review</span>`;
+        return `<span class="status-badge pending"><i data-lucide="clock"></i> Under Review</span>`;
       case 'approved':
-        return `<span class="status-badge approved">✅ Approved</span>`;
+        return `<span class="status-badge approved"><i data-lucide="check-circle-2"></i> Approved</span>`;
       case 'rejected':
-        return `<span class="status-badge rejected">❌ Rejected</span>`;
+        return `<span class="status-badge rejected"><i data-lucide="x-circle"></i> Rejected</span>`;
       case 'verified':
-        return `<span class="status-badge approved">✓ Verified</span>`;
+        return `<span class="status-badge approved"><i data-lucide="shield-check"></i> Verified</span>`;
       default:
         return `<span class="status-badge">${status}</span>`;
     }
@@ -71,15 +71,15 @@ const Components = {
     if (!loan) return '—';
     switch (loan.product_type) {
       case 'home_loan':
-        return loan.property_location ? `📍 ${loan.property_location}` : (loan.purpose || 'Residential Property');
+        return loan.property_location ? `<i data-lucide="map-pin"></i> ${loan.property_location}` : (loan.purpose || 'Residential Property');
       case 'vehicle_loan':
-        return loan.vehicle_make_model ? `🚗 ${loan.vehicle_make_model}` : (loan.purpose || 'Vehicle Purchase');
+        return loan.vehicle_make_model ? `<i data-lucide="car"></i> ${loan.vehicle_make_model}` : (loan.purpose || 'Vehicle Purchase');
       case 'business_loan':
-        return loan.business_name ? `🏢 ${loan.business_name}` : (loan.purpose || 'MSME Expansion');
+        return loan.business_name ? `<i data-lucide="building-2"></i> ${loan.business_name}` : (loan.purpose || 'MSME Expansion');
       case 'education_loan':
-        return loan.university_name ? `🎓 ${loan.university_name}` : (loan.purpose || 'Higher Studies');
+        return loan.university_name ? `<i data-lucide="graduation-cap"></i> ${loan.university_name}` : (loan.purpose || 'Higher Studies');
       case 'gold_loan':
-        return loan.gold_weight_grams ? `✨ ${loan.gold_weight_grams}g (${loan.gold_purity_karats || 22}K Gold)` : (loan.purpose || 'Gold Pledge');
+        return loan.gold_weight_grams ? `<i data-lucide="sparkles"></i> ${loan.gold_weight_grams}g (${loan.gold_purity_karats || 22}K Gold)` : (loan.purpose || 'Gold Pledge');
       default:
         return loan.purpose || 'Personal Financing';
     }
@@ -110,18 +110,18 @@ const Components = {
             </div>
 
             <div class="scheme-checklist-box">
-              <div class="chk-header">📋 Required Documents Checklist</div>
+              <div class="chk-header"><i data-lucide="clipboard-list"></i> Required Documents Checklist</div>
               <ul class="chk-list">
-                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li>✓ ${d}</li>`).join('')}
-                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li>✓ ${d}</li>`).join('')}
+                ${(s.document_checklist?.kyc_documents || []).slice(0, 2).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
+                ${(s.document_checklist?.income_documents || []).slice(0, 1).map(d => `<li><i data-lucide="check" class="icon-inline"></i> ${d}</li>`).join('')}
               </ul>
             </div>
 
             <div class="scheme-footer">
               <button class="btn btn-secondary btn-sm" onclick="app.fillSchemeAndApply('${s.loan_type}')">
-                Apply Under Scheme →
+                Apply Under Scheme <i data-lucide="arrow-right"></i>
               </button>
-              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs ↗</a>
+              <a href="${s.source_url}" target="_blank" rel="noopener" class="scheme-source-link">RBI Policy Docs <i data-lucide="external-link"></i></a>
             </div>
           </div>
         `).join('')}
@@ -143,21 +143,21 @@ const Components = {
         <div class="eligibility-results-wrapper">
           <div class="result-status-card rejected-card">
             <div class="status-header">
-              <span class="status-badge rejected">❌ REJECTED</span>
+              <span class="status-badge rejected"><i data-lucide="x-circle"></i> REJECTED</span>
               <span class="request-id-tag">Req ID: #${requestId}</span>
             </div>
             <h2>Application Criteria Assessment Required</h2>
             <p class="rejection-message">${data.message || 'Criteria not met for loan recommendation.'}</p>
             
             <div class="explanation-box" style="margin-top: 1.5rem;">
-              <h4>📋 Policy Criteria Failure Reasons</h4>
+              <h4><i data-lucide="clipboard-list"></i> Policy Criteria Failure Reasons</h4>
               <ul class="reasons-list">
                 ${(explanation.eligibility_reasons || []).map(r => `<li>${r}</li>`).join('')}
               </ul>
             </div>
 
             <div class="advice-box" style="margin-top:1.5rem;">
-              <h4>💡 How to improve your eligibility:</h4>
+              <h4><i data-lucide="lightbulb"></i> How to improve your eligibility:</h4>
               <ul>
                 <li>• Maintain a CIBIL credit score above 600 (preferably 750+ for prime rates).</li>
                 <li>• Pay off existing credit cards to lower your monthly EMI obligations.</li>
@@ -180,7 +180,7 @@ const Components = {
         <!-- Status & System Summary Header -->
         <div class="result-status-card approved-card">
           <div class="status-header">
-            <span class="status-badge approved">✅ APPROVED</span>
+            <span class="status-badge approved"><i data-lucide="check-circle-2"></i> APPROVED</span>
             <span class="request-id-tag">Req ID: #${requestId}</span>
           </div>
           <h2>${data.message || 'Personalised loan offers generated successfully.'}</h2>
@@ -191,7 +191,7 @@ const Components = {
           
           <!-- Risk Summary Card -->
           <div class="ml-summary-card risk-card">
-            <div class="card-title">🛡️ Underwriting Risk Assessment</div>
+            <div class="card-title"><i data-lucide="shield"></i> Underwriting Risk Assessment</div>
             <div class="risk-badge-row">
               <span class="risk-band-pill ${risk.risk_band === 'LOW' ? 'low-risk' : risk.risk_band === 'MEDIUM' ? 'med-risk' : 'high-risk'}">
                 Risk Band: ${risk.risk_band || 'LOW'}
@@ -211,7 +211,7 @@ const Components = {
 
           <!-- Affordability Summary Card -->
           <div class="ml-summary-card afford-card">
-            <div class="card-title">💳 Affordability & FOIR Summary</div>
+            <div class="card-title"><i data-lucide="credit-card"></i> Affordability & FOIR Summary</div>
             <div class="metrics-grid">
               <div class="metric-block">
                 <span class="m-val">${this.formatCurrency(afford.monthly_income)}</span>
@@ -236,7 +236,7 @@ const Components = {
 
         <!-- Recommendations Grid (Rule #6: Rank 1 highlighted as best) -->
         <h2 class="section-title" style="margin-top:2rem;">
-          🏆 Recommended Loan Offers (${recommendations.length})
+          <i data-lucide="trophy"></i> Recommended Loan Offers (${recommendations.length})
         </h2>
 
         <div class="ml-recommendations-grid">
@@ -246,7 +246,7 @@ const Components = {
               <div class="recommendation-card ${isRank1 ? 'rank-1-card' : ''}">
                 ${isRank1 ? `
                   <div class="rank-badge-highlight">
-                    ⭐ RANK #1 — BEST MATCH RECOMMENDATION
+                    <i data-lucide="star"></i> RANK #1 — BEST MATCH RECOMMENDATION
                   </div>
                 ` : `
                   <div class="rank-badge-standard">Rank #${rec.rank}</div>
@@ -301,7 +301,7 @@ const Components = {
 
                 <div class="rec-footer">
                   <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${rec.product_id}', ${rec.monthly_emi})">
-                    Apply for ${rec.lender_name} Offer Now →
+                    Apply for ${rec.lender_name} Offer Now <i data-lucide="arrow-right"></i>
                   </button>
                 </div>
               </div>
@@ -314,7 +314,7 @@ const Components = {
           
           ${(explanation.offer_reasons || []).length > 0 ? `
             <div class="explanation-box offer-reasons-box">
-              <h4>✨ Key Offer Highlights</h4>
+              <h4><i data-lucide="sparkles"></i> Key Offer Highlights</h4>
               <ul class="reasons-list">
                 ${explanation.offer_reasons.map(reason => `<li>${reason}</li>`).join('')}
               </ul>
@@ -323,7 +323,7 @@ const Components = {
 
           ${(explanation.risk_drivers || []).length > 0 ? `
             <div class="explanation-box risk-drivers-box" style="margin-top:1rem;">
-              <h4>📊 Risk Drivers Analysis</h4>
+              <h4><i data-lucide="bar-chart-3"></i> Risk Drivers Analysis</h4>
               <div class="risk-drivers-list">
                 ${explanation.risk_drivers.map(rd => `
                   <div class="risk-driver-item">
@@ -340,7 +340,7 @@ const Components = {
 
           ${(explanation.comparative_reasons || []).length > 0 ? `
             <div class="explanation-box comparative-box" style="margin-top:1rem;">
-              <h4>⚖️ Comparative Analysis</h4>
+              <h4><i data-lucide="scale"></i> Comparative Analysis</h4>
               <ul class="reasons-list">
                 ${explanation.comparative_reasons.map(cr => `<li>• ${cr}</li>`).join('')}
               </ul>
@@ -415,7 +415,7 @@ const Components = {
                   </td>
                   <td>
                     <button class="btn btn-secondary btn-sm" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}')">
-                      📁 Docs (${(loan.documents || []).length || 'Upload'})
+                      <i data-lucide="folder"></i> Docs (${(loan.documents || []).length || 'Upload'})
                     </button>
                   </td>
                 </tr>
@@ -431,28 +431,28 @@ const Components = {
     if (!stats) return '';
     return `
       <div class="kpi-card">
-        <div class="kpi-icon blue">📊</div>
+        <div class="kpi-icon blue"><i data-lucide="bar-chart-3"></i></div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.total_applications}</span>
           <span class="kpi-label">Total Applications</span>
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon amber">⏳</div>
+        <div class="kpi-icon amber"><i data-lucide="clock"></i></div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.pending}</span>
           <span class="kpi-label">Pending Underwriting</span>
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon emerald">✅</div>
+        <div class="kpi-icon emerald"><i data-lucide="check-circle-2"></i></div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.approved}</span>
           <span class="kpi-label">Sanctioned & Approved</span>
         </div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-icon rose">❌</div>
+        <div class="kpi-icon rose"><i data-lucide="x-circle"></i></div>
         <div class="kpi-details">
           <span class="kpi-value">${stats.rejected}</span>
           <span class="kpi-label">Rejected Applications</span>
@@ -523,7 +523,7 @@ const Components = {
                         Review & Sanction
                       </button>
                       <button class="btn btn-sm btn-secondary" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}', true)">
-                        📁 Verify Docs
+                        <i data-lucide="folder"></i> Verify Docs
                       </button>
                     </div>
                   </td>
@@ -579,13 +579,13 @@ const Components = {
                 <td>
                   <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                     <button type="button" class="btn btn-sm btn-outline-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.openDocumentPreviewModal(${loanId}, ${docId}, '${encodeURIComponent(fileName)}', '${category}', '${type}', '${status}')" title="Inspect / View Document">
-                      👁️ View
+                      <i data-lucide="eye"></i> View
                     </button>
                     ${isAdmin ? `
-                      <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document">✓ Verify</button>
-                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document">✕ Reject</button>
+                      <button type="button" class="btn btn-sm btn-success" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'verified')" title="Verify Document"><i data-lucide="check"></i> Verify</button>
+                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.verifyDocumentAction(${loanId}, ${docId}, 'rejected')" title="Reject Document"><i data-lucide="x"></i> Reject</button>
                     ` : `
-                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.deleteDocumentAction(${loanId}, ${docId})">Delete</button>
+                      <button type="button" class="btn btn-sm btn-danger" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="app.deleteDocumentAction(${loanId}, ${docId})"><i data-lucide="trash-2"></i> Delete</button>
                     `}
                   </div>
                 </td>
@@ -629,7 +629,7 @@ const Components = {
                     <td>${u.phone || 'N/A'}</td>
                     <td>
                       <span class="status-badge ${u.is_admin ? 'approved' : 'pending'}">
-                        ${u.is_admin ? '🛡️ Administrator' : '👤 Borrower'}
+                        ${u.is_admin ? '<i data-lucide="shield"></i> Administrator' : '<i data-lucide="user"></i> Borrower'}
                       </span>
                     </td>
                     <td>${this.formatDate(u.created_at)}</td>
@@ -640,7 +640,7 @@ const Components = {
                     </td>
                     <td>
                       <button type="button" class="btn btn-secondary btn-sm user-expand-btn" onclick="app.toggleUserLoansDropdown(${u.id}, event)">
-                        📂 View Loans (${userLoans.length}) <span class="chevron-icon" id="user-chevron-${u.id}">▼</span>
+                        <i data-lucide="folder-open"></i> View Loans (${userLoans.length}) <span class="chevron-icon" id="user-chevron-${u.id}"><i data-lucide="chevron-down"></i></span>
                       </button>
                     </td>
                   </tr>
@@ -651,7 +651,7 @@ const Components = {
                       <div class="user-loans-dropdown-container">
                         <div class="user-loans-dropdown-header">
                           <div class="dropdown-header-title">
-                            💳 Loan Facilities & Applications for <strong>${u.full_name}</strong> (#${u.id})
+                            <i data-lucide="credit-card"></i> Loan Facilities & Applications for <strong>${u.full_name}</strong> (#${u.id})
                           </div>
                           <div class="dropdown-header-subtitle">
                             Total Applications: ${userLoans.length} | Approved & Active: ${approvedCount}
@@ -660,7 +660,7 @@ const Components = {
 
                         ${userLoans.length === 0 ? `
                           <div class="no-loans-alert">
-                            ℹ️ No loan applications or credit facilities acquired by this borrower yet.
+                            <i data-lucide="info"></i> No loan applications or credit facilities acquired by this borrower yet.
                           </div>
                         ` : `
                           <div class="user-loans-cards-grid">
@@ -699,17 +699,17 @@ const Components = {
 
                                 ${loan.admin_note ? `
                                   <div class="user-loan-admin-note">
-                                    <strong>📝 Underwriter Remarks:</strong> ${loan.admin_note}
+                                    <strong><i data-lucide="pencil"></i> Underwriter Remarks:</strong> ${loan.admin_note}
                                   </div>
                                 ` : ''}
 
                                 ${loan.documents && loan.documents.length > 0 ? `
                                   <div class="user-loan-docs-section">
-                                    <div class="docs-title">📎 Attached Supporting Documents (${loan.documents.length}):</div>
+                                    <div class="docs-title"><i data-lucide="paperclip"></i> Attached Supporting Documents (${loan.documents.length}):</div>
                                     <div class="docs-chip-list">
                                       ${loan.documents.map(d => `
                                         <a href="${api.getDocumentViewUrl(loan.id, d.doc_id || d.id)}" target="_blank" class="doc-view-chip ${d.status || d.verification_status}">
-                                          📄 ${d.file_name || d.original_filename || d.doc_type} (${d.status || d.verification_status || 'uploaded'})
+                                          <i data-lucide="file"></i> ${d.file_name || d.original_filename || d.doc_type} (${d.status || d.verification_status || 'uploaded'})
                                         </a>
                                       `).join('')}
                                     </div>
@@ -719,7 +719,7 @@ const Components = {
                                 <div class="user-loan-card-footer">
                                   <span class="applied-date">Submitted: ${this.formatDate(loan.applied_at)}</span>
                                   <button type="button" class="btn btn-secondary btn-xs" onclick="app.reviewLoan(${loan.id})">
-                                    Review Application →
+                                    Review Application <i data-lucide="arrow-right"></i>
                                   </button>
                                 </div>
                               </div>
@@ -752,6 +752,7 @@ const Components = {
     `;
 
     container.appendChild(toast);
+    if (window.lucide) window.lucide.createIcons();
 
     setTimeout(() => {
       toast.style.opacity = '0';

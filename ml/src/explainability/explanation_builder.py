@@ -90,7 +90,7 @@ class ExplanationBuilder:
         if eligibility_result.is_eligible:
             return ["You meet all eligibility criteria for a personal loan."]
         return [
-            f"❌ {r}" for r in (eligibility_result.failed_rules or [])
+            f"<i data-lucide='x-circle' class='lucide' style='color:var(--rose); margin-right: 0.4rem;'></i> {r}" for r in (eligibility_result.failed_rules or [])
         ] + [eligibility_result.reason]
 
     # ── Risk drivers ──────────────────────────────────────────────────────────
@@ -159,23 +159,23 @@ class ExplanationBuilder:
         offer = scored_offer.offer
 
         if scored_offer.need_match_score >= 0.95:
-            reasons.append(f"✅ Covers your full requested amount of ₹{offer.offer_amount:,.0f}.")
+            reasons.append(f"<i data-lucide='check' class='lucide' style='color:var(--emerald); margin-right: 0.4rem;'></i> Covers your full requested amount of ₹{offer.offer_amount:,.0f}.")
         elif scored_offer.need_match_score >= 0.80:
-            reasons.append(f"✅ Covers {scored_offer.need_match_score:.0%} of your requested amount.")
+            reasons.append(f"<i data-lucide='check' class='lucide' style='color:var(--emerald); margin-right: 0.4rem;'></i> Covers {scored_offer.need_match_score:.0%} of your requested amount.")
 
         if scored_offer.cost_score >= 0.80:
-            reasons.append(f"✅ Low total interest cost of ₹{offer.total_interest:,.0f}.")
+            reasons.append(f"<i data-lucide='check' class='lucide' style='color:var(--emerald); margin-right: 0.4rem;'></i> Low total interest cost of ₹{offer.total_interest:,.0f}.")
 
         if scored_offer.affordability_score >= 0.60:
             reasons.append(
-                f"✅ EMI of ₹{offer.monthly_emi:,.0f}/month is comfortably within your budget."
+                f"<i data-lucide='check' class='lucide' style='color:var(--emerald); margin-right: 0.4rem;'></i> EMI of ₹{offer.monthly_emi:,.0f}/month is comfortably within your budget."
             )
 
         if risk_result.risk_band == "LOW":
-            reasons.append("✅ Your strong credit profile qualifies you for competitive rates.")
+            reasons.append("<i data-lucide='check' class='lucide' style='color:var(--emerald); margin-right: 0.4rem;'></i> Your strong credit profile qualifies you for competitive rates.")
 
         if scored_offer.tenure_preference_score >= 0.90:
-            reasons.append(f"✅ Tenure of {offer.tenure_months} months matches your preference.")
+            reasons.append(f"<i data-lucide='check' class='lucide' style='color:var(--emerald); margin-right: 0.4rem;'></i> Tenure of {offer.tenure_months} months matches your preference.")
 
         return reasons[:_EXP.get("positive_reasons_limit", 5)]
 
