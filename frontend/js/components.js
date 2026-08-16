@@ -110,12 +110,14 @@ const Components = {
           </div>
         </div>
         
-        <!-- Welcome Hero Banner Image Box -->
+        <!-- Welcome Hero Banner Feature Card -->
         <div class="welcome-banner-img-box">
-          <img src="https://images.unsplash.com/photo-1556742049-0a670fc80789?auto=format&fit=crop&w=800&q=80" alt="Banking Dashboard Banner" class="welcome-banner-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-          <div class="welcome-banner-placeholder" style="display:none;">
-            <i data-lucide="building-2"></i>
-            <span>ApexLoans Institutional Banking Services</span>
+          <div class="crediwise-intel-badge-card">
+            <div class="intel-badge-header">
+              <span class="intel-sparkle-icon"><i data-lucide="sparkles"></i></span>
+              <span class="intel-brand-title">CrediWise Intelligence</span>
+            </div>
+            <div class="intel-badge-subtitle">Smart loan recommendations, tailored to your financial goals.</div>
           </div>
         </div>
       </div>

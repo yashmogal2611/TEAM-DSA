@@ -3245,19 +3245,58 @@ textarea.input-control {
 }
 
 .welcome-banner-img-box {
-  width: 280px;
-  height: 110px;
+  min-width: 290px;
+  max-width: 340px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   position: relative;
-  box-shadow: var(--shadow-sm);
-  background: var(--bg-secondary);
+  background: linear-gradient(135deg, rgba(7, 42, 200, 0.05) 0%, rgba(0, 168, 150, 0.08) 100%);
+  border: 1px solid rgba(7, 42, 200, 0.12);
+  padding: 1.15rem;
+  box-shadow: 0 10px 25px rgba(7, 42, 200, 0.06);
 }
 
-.welcome-banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.crediwise-intel-badge-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.intel-badge-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.intel-sparkle-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #072AC8 0%, #00A896 100%);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 12px rgba(7, 42, 200, 0.25);
+  flex-shrink: 0;
+}
+
+.intel-brand-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 800;
+  font-size: 1.05rem;
+  background: linear-gradient(135deg, #072AC8 0%, #00A896 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.intel-badge-subtitle {
+  font-size: 0.825rem;
+  color: #64748B;
+  line-height: 1.45;
+  font-weight: 500;
 }
 
 /* Individual Loan Detail Page & Filter Toolbar */
