@@ -47,7 +47,30 @@ class ApplicationController {
       if (profileWrapper && !profileWrapper.contains(e.target) && avatarBtn && !avatarBtn.contains(e.target)) {
         profileWrapper.classList.remove('open');
       }
+
+      if (e.target && e.target.classList.contains('modal-backdrop')) {
+        this.hideModal(e.target.id);
+      }
     });
+  }
+
+  showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  hideModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
   }
 
   toggleNavDropdown(event) {
@@ -917,8 +940,32 @@ class ApplicationController {
     }
 
     try {
-      await api.applyLoan(loanData);
-      Components.showToast('Application Submitted', 'Your loan application is now Under Review (⏳ pending).', 'success');
+      const newLoan = await api.applyLoan(loanData);
+
+      // Upload attached verification documents if files selected
+      const docInputs = [
+        { id: 'applyDocKyc', category: 'kyc' },
+        { id: 'applyDocIncome', category: 'income' },
+        { id: 'applyDocBank', category: 'bank' },
+        { id: 'applyDocCollateral', category: 'collateral' }
+      ];
+
+      for (const item of docInputs) {
+        const inputEl = document.getElementById(item.id);
+        if (inputEl && inputEl.files && inputEl.files.length > 0) {
+          const file = inputEl.files[0];
+          const formData = new FormData();
+          formData.append('doc_category', item.category);
+          formData.append('file', file);
+          try {
+            await api.uploadDocument(newLoan.id, formData);
+          } catch (docErr) {
+            console.warn(`Failed to upload ${item.category} document:`, docErr);
+          }
+        }
+      }
+
+      Components.showToast('Application Submitted', 'Your loan application and attached verification documents have been submitted successfully.', 'success');
       this.hideModal('applyLoanModal');
       event.target.reset();
       this.navigate('#/user-dashboard');
@@ -1088,6 +1135,38 @@ class ApplicationController {
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */
 
+  async reviewLoan(loanId) {
+    const targetId = Number(loanId);
+    let loan = (store.adminLoans || []).find(l => Number(l.id) === targetId);
+    if (!loan && typeof MOCK_DB !== 'undefined' && MOCK_DB.loans) {
+      loan = MOCK_DB.loans.find(l => Number(l.id) === targetId);
+    }
+    if (!loan) {
+      try {
+        loan = await api.getLoanDetails(loanId);
+      } catch (e) {}
+    }
+    if (loan) {
+      this.openReviewModal(
+        loan.id,
+        loan.applicant_name || 'Applicant',
+        Components.formatCurrency(loan.requested_amount),
+        loan.requested_amount,
+        loan.sanctioned_amount || loan.requested_amount,
+        loan.interest_rate_offered || 10.5
+      );
+    } else {
+      this.openReviewModal(
+        loanId,
+        'Applicant',
+        'Requested Amount',
+        500000,
+        500000,
+        10.5
+      );
+    }
+  }
+
   async openReviewModal(loanId, applicantName, amountStr, reqAmount = 500000, sanctionedAmt = 500000, rate = 10.5) {
     this.currentReviewLoanId = loanId;
     document.getElementById('modalLoanIdTitle').textContent = `Review Loan Application #${loanId}`;
@@ -1147,6 +1226,44 @@ class ApplicationController {
 
     this.showModal('reviewLoanModal');
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  async handleApproveLoan() {
+    if (!this.currentReviewLoanId) return;
+    const loanId = this.currentReviewLoanId;
+    const sanctionedAmount = Number(document.getElementById('adminSanctionAmount')?.value || 0);
+    const interestRate = Number(document.getElementById('adminInterestRate')?.value || 10.5);
+    const adminNote = document.getElementById('adminNoteInput')?.value || '';
+
+    try {
+      await api.approveLoan(loanId, {
+        sanctioned_amount: sanctionedAmount,
+        interest_rate_offered: interestRate,
+        admin_note: adminNote
+      });
+      Components.showToast('Loan Approved', `Loan Application #${loanId} has been approved successfully.`, 'success');
+      this.hideModal('reviewLoanModal');
+      if (typeof this.loadAdminUsersDashboard === 'function') this.loadAdminUsersDashboard();
+      if (typeof this.loadAdminDashboard === 'function') this.loadAdminDashboard();
+    } catch (err) {
+      Components.showToast('Approval Failed', err.message, 'error');
+    }
+  }
+
+  async handleRejectLoan() {
+    if (!this.currentReviewLoanId) return;
+    const loanId = this.currentReviewLoanId;
+    const adminNote = document.getElementById('adminNoteInput')?.value || '';
+
+    try {
+      await api.rejectLoan(loanId, adminNote);
+      Components.showToast('Loan Rejected', `Loan Application #${loanId} has been rejected.`, 'info');
+      this.hideModal('reviewLoanModal');
+      if (typeof this.loadAdminUsersDashboard === 'function') this.loadAdminUsersDashboard();
+      if (typeof this.loadAdminDashboard === 'function') this.loadAdminDashboard();
+    } catch (err) {
+      Components.showToast('Rejection Failed', err.message, 'error');
+    }
   }
 
   /* ---------------- DOCUMENT PREVIEW & INSPECTION ---------------- */
@@ -1305,12 +1422,25 @@ class ApplicationController {
 
   showModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) modal.classList.add('active');
+    if (modal) {
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      modal.style.opacity = '1';
+      modal.style.visibility = 'visible';
+      document.body.style.overflow = 'hidden';
+      if (window.lucide) window.lucide.createIcons();
+    }
   }
 
   hideModal(modalId) {
     const modal = document.getElementById(modalId);
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('active');
+      modal.style.display = 'none';
+      modal.style.opacity = '0';
+      modal.style.visibility = 'hidden';
+      document.body.style.overflow = '';
+    }
   }
 
   logout() {
@@ -1347,6 +1477,8 @@ class ApplicationController {
 }
 
 let app;
+window.app = null;
 document.addEventListener('DOMContentLoaded', () => {
   app = new ApplicationController();
+  window.app = app;
 });

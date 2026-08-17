@@ -1086,11 +1086,11 @@ const Components = {
                                 ` : ''}
 
                                 <div class="user-loan-card-footer">
-                                  <span class="applied-date">Submitted: ${this.formatDate(loan.applied_at)}</span>
-                                  <button type="button" class="btn btn-secondary btn-xs" onclick="app.reviewLoan(${loan.id})">
-                                    Review Application <i data-lucide="arrow-right"></i>
-                                  </button>
-                                </div>
+                                   <span class="applied-date">Submitted: ${this.formatDate(loan.applied_at)}</span>
+                                   <button type="button" class="btn btn-primary btn-sm" onclick="(window.app || app).reviewLoan(${loan.id})" style="font-size: 0.78rem; padding: 0.4rem 0.85rem; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                                     Review Application <i data-lucide="arrow-right" style="width:14px; height:14px;"></i>
+                                   </button>
+                                 </div>
                               </div>
                             `).join('')}
                           </div>
