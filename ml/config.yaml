@@ -23,7 +23,7 @@ validation:
     max: 50000000
   preferred_tenure_months:
     min: 6
-    max: 84
+    max: 360
 
 eligibility:
   min_age: 21

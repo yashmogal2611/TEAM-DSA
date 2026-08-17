@@ -14,6 +14,8 @@ except ImportError:
     from schemas import UserRegister, UserLogin, Token, UserOut
     from auth import hash_password, verify_password, create_access_token, get_current_user
 
+from sqlalchemy import func
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
@@ -21,16 +23,17 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/register", response_model=UserOut, status_code=201)
 def register(payload: UserRegister, db: Session = Depends(get_db)):
     """Create a new regular user account."""
-    existing = db.query(User).filter(User.email == payload.email).first()
+    clean_email = payload.email.strip().lower()
+    existing = db.query(User).filter(func.lower(func.trim(User.email)) == clean_email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already registered. Please login instead.",
         )
     user = User(
-        full_name=payload.full_name,
-        email=payload.email,
-        phone=payload.phone,
+        full_name=payload.full_name.strip(),
+        email=clean_email,
+        phone=payload.phone.strip() if payload.phone else None,
         hashed_password=hash_password(payload.password),
         is_admin=False,
     )
@@ -47,7 +50,8 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     Authenticate with email + password.
     Returns a JWT bearer token.  is_admin tells the client which UI to show.
     """
-    user = db.query(User).filter(User.email == payload.email).first()
+    clean_email = payload.email.strip().lower() if payload.email else ""
+    user = db.query(User).filter(func.lower(func.trim(User.email)) == clean_email).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
