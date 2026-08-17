@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -100,15 +100,39 @@ class LoanResponse(BaseModel):
 # User & Auth Schemas
 # ──────────────────────────────────────────────────────────────
 class UserRegister(BaseModel):
-    full_name: str = Field(..., min_length=2)
-    email: str = Field(..., description="Unique user email")
+    full_name: str = Field(..., min_length=1)
+    email: str = Field(..., min_length=3, description="Unique user email")
     phone: Optional[str] = None
     password: str = Field(..., min_length=6)
 
+    @field_validator("email")
+    @classmethod
+    def validate_email_format(cls, v: str) -> str:
+        s = (v or "").strip().lower()
+        if not s or "@" not in s or "." not in s.split("@")[-1]:
+            raise ValueError("Invalid email format")
+        return s
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        s = (v or "").strip()
+        if not s:
+            raise ValueError("Full name cannot be empty")
+        return s
+
 
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_login(cls, v: str) -> str:
+        s = (v or "").strip().lower()
+        if not s:
+            raise ValueError("Email cannot be empty")
+        return s
 
 
 class Token(BaseModel):

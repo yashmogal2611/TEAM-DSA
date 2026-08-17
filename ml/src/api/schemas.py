@@ -29,13 +29,31 @@ class IncomeType(str, Enum):
 
 
 class LoanPurpose(str, Enum):
+    PERSONAL_LOAN = "PERSONAL_LOAN"
+    HOME_LOAN = "HOME_LOAN"
+    VEHICLE_LOAN = "VEHICLE_LOAN"
+    EDUCATION_LOAN = "EDUCATION_LOAN"
+    BUSINESS_LOAN = "BUSINESS_LOAN"
+    GOLD_LOAN = "GOLD_LOAN"
+    AUTO_LOAN = "AUTO_LOAN"
     HOME_RENOVATION = "HOME_RENOVATION"
+    HOME_PURCHASE = "HOME_PURCHASE"
+    HOME_CONSTRUCTION = "HOME_CONSTRUCTION"
     MEDICAL = "MEDICAL"
+    MEDICAL_LOAN = "MEDICAL_LOAN"
     EDUCATION = "EDUCATION"
     TRAVEL = "TRAVEL"
     WEDDING = "WEDDING"
     DEBT_CONSOLIDATION = "DEBT_CONSOLIDATION"
+    DEBT_CONSOLIDATION_LOAN = "DEBT_CONSOLIDATION_LOAN"
     BUSINESS = "BUSINESS"
+    BUSINESS_EXPANSION = "BUSINESS_EXPANSION"
+    WORKING_CAPITAL = "WORKING_CAPITAL"
+    EQUIPMENT_PURCHASE = "EQUIPMENT_PURCHASE"
+    VEHICLE_PURCHASE = "VEHICLE_PURCHASE"
+    TWO_WHEELER = "TWO_WHEELER"
+    FOUR_WHEELER_NEW = "FOUR_WHEELER_NEW"
+    FOUR_WHEELER_USED = "FOUR_WHEELER_USED"
     CONSUMER_DURABLES = "CONSUMER_DURABLES"
     OTHER = "OTHER"
 
@@ -81,12 +99,13 @@ class LoanRecommendationRequest(BaseModel):
         if isinstance(v, str):
             clean = v.strip().lower()
             mapping = {
-                "home_loan": "HOME_RENOVATION",
-                "personal_loan": "OTHER",
-                "vehicle_loan": "CONSUMER_DURABLES",
-                "gold_loan": "OTHER",
-                "education_loan": "EDUCATION",
-                "business_loan": "BUSINESS",
+                "home_loan": "HOME_LOAN",
+                "personal_loan": "PERSONAL_LOAN",
+                "vehicle_loan": "VEHICLE_LOAN",
+                "gold_loan": "GOLD_LOAN",
+                "education_loan": "EDUCATION_LOAN",
+                "business_loan": "BUSINESS_LOAN",
+                "auto_loan": "VEHICLE_LOAN",
             }
             if clean in mapping:
                 return mapping[clean]

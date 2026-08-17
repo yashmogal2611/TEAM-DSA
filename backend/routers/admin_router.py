@@ -108,8 +108,9 @@ def get_loan_details(
 
 # ──────────────────────────────────────────────────────────────
 # 2. Underwriting Decisions (Approve, Reject, Status Update)
-# ──────────────────────────────────────────────────────────────
 @router.patch("/loans/{loan_id}/status", response_model=LoanApplicationOut)
+@router.put("/loans/{loan_id}/status", response_model=LoanApplicationOut)
+@router.post("/loans/{loan_id}/status", response_model=LoanApplicationOut)
 def update_loan_status(
     loan_id: int,
     payload: AdminLoanUpdate,
@@ -124,7 +125,8 @@ def update_loan_status(
     if not loan:
         raise HTTPException(status_code=404, detail=f"Loan application #{loan_id} not found.")
 
-    loan.status = payload.status
+    if payload.status:
+        loan.status = payload.status
     if payload.admin_note is not None:
         loan.admin_note = payload.admin_note
     if payload.sanctioned_amount is not None:

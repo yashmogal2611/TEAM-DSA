@@ -81,6 +81,29 @@ _INTENT_PATTERNS: List[Tuple[str, List[str]]] = [
         r"installment",
         r"monthly emi",
     ]),
+    # Interest rate / Pricing on recommended loan
+    ("interest_rate", [
+        r"my interest rate",
+        r"what is (the|my) interest rate",
+        r"what interest rate",
+        r"interest rate (on|for) (this|the|my) loan",
+        r"rate offered",
+        r"offered interest rate",
+        r"personalised.*rate",
+        r"personalized.*rate",
+        r"rate of interest",
+    ]),
+    # Risk band / Summary
+    ("risk_band", [
+        r"my risk band",
+        r"what is my risk",
+        r"risk band",
+        r"risk level",
+        r"risk score",
+        r"risk category",
+        r"how risky am i",
+        r"probability of default",
+    ]),
     # Credit score
     ("credit_score", [
         r"credit score",
@@ -383,6 +406,54 @@ def _respond_affordability(context: Dict[str, Any]) -> str:
         )
 
 
+def _respond_interest_rate(context: Dict[str, Any]) -> str:
+    offer = _top_offer(context)
+    if offer is None:
+        return SAFE_UNAVAILABLE
+
+    rate = offer.get("personalised_rate_pct")
+    if rate is None:
+        return SAFE_UNAVAILABLE
+
+    name = offer.get("product_name", "your recommended loan")
+    lender = offer.get("lender_name", "the lender")
+
+    parts = [
+        f"Based on your LoanLens recommendation, the interest rate for "
+        f"{name} from {lender} is {rate:.1f}% (or {rate}% p.a.)."
+    ]
+    parts.append(
+        "Final interest rates and terms are subject to lender verification and underwriting criteria."
+    )
+    return " ".join(parts)
+
+
+def _respond_risk_band(context: Dict[str, Any]) -> str:
+    risk_info = context.get("risk")
+    if not risk_info:
+        return (
+            "Your risk profile was evaluated as part of the LoanLens assessment. "
+            "Refer to your detailed recommendation breakdown for full risk insights."
+        )
+
+    band = str(risk_info.get("risk_band", "LOW")).upper()
+    score = risk_info.get("risk_score")
+    pd = risk_info.get("probability_of_default")
+
+    parts = [
+        f"Based on your LoanLens evaluation, your risk band is {band}."
+    ]
+    if score is not None:
+        parts.append(f"Your calculated risk score is {score:.2f}.")
+    if pd is not None:
+        parts.append(f"The estimated probability of default is {pd:.2%}.")
+    
+    parts.append(
+        f"A {band} risk classification helps qualify your profile for competitive interest rates and tailored loan terms."
+    )
+    return " ".join(parts)
+
+
 def _respond_approval_safety(_context: Dict[str, Any]) -> str:
     return APPROVAL_SAFETY
 
@@ -395,6 +466,8 @@ _HANDLERS = {
     "ranking": _respond_ranking,
     "comparison": _respond_comparison,
     "emi": _respond_emi,
+    "interest_rate": _respond_interest_rate,
+    "risk_band": _respond_risk_band,
     "credit_score": _respond_credit_score,
     "eligibility": _respond_eligibility,
     "suitability": _respond_suitability,

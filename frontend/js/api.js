@@ -343,26 +343,58 @@ class ApiClient {
       const riskBand = creditScore >= 750 ? "LOW" : creditScore >= 670 ? "MEDIUM" : "HIGH";
       const riskScore = Number((1 - defaultProb).toFixed(4));
 
-      // Generate Lender Product recommendations
-      const lenders = [
-        { name: "HDFC Bank", code: "HDFC", rateOffset: 0.0 },
-        { name: "ICICI Bank", code: "ICICI", rateOffset: 0.25 },
-        { name: "Axis Bank", code: "AXIS", rateOffset: 0.50 }
-      ];
+      // Generate Category-Tailored Lender Product recommendations
+      const SCHEME_LENDERS_MAP = {
+        home_loan: [
+          { name: "State Bank of India", code: "SBI", prodName: "SBI Regular Home Loan", baseRate: 8.50, feePct: 0.35 },
+          { name: "HDFC Bank", code: "HDFC", prodName: "HDFC Reach Home Loan", baseRate: 8.65, feePct: 0.50 },
+          { name: "LIC Housing Finance", code: "LIC", prodName: "LIC Griha Siddhi Home Loan", baseRate: 8.70, feePct: 0.25 }
+        ],
+        education_loan: [
+          { name: "State Bank of India", code: "SBI", prodName: "SBI Student Education Loan", baseRate: 8.15, feePct: 0.0 },
+          { name: "HDFC Credila", code: "HDFC_CREDILA", prodName: "HDFC Credila Higher Education Loan", baseRate: 8.95, feePct: 1.0 },
+          { name: "Bank of Baroda", code: "BOB", prodName: "BOB Baroda Vidya Education Loan", baseRate: 8.85, feePct: 0.5 }
+        ],
+        vehicle_loan: [
+          { name: "State Bank of India", code: "SBI", prodName: "SBI Car & Vehicle Loan", baseRate: 8.75, feePct: 0.5 },
+          { name: "ICICI Bank", code: "ICICI", prodName: "ICICI Bank Auto Finance", baseRate: 8.85, feePct: 0.5 },
+          { name: "Kotak Mahindra Bank", code: "KOTAK", prodName: "Kotak Drive Auto Loan", baseRate: 8.90, feePct: 0.75 }
+        ],
+        gold_loan: [
+          { name: "Muthoot Finance", code: "MUTHOOT", prodName: "Muthoot Gold Power Loan", baseRate: 9.00, feePct: 0.5 },
+          { name: "State Bank of India", code: "SBI", prodName: "SBI Gold Loan Scheme", baseRate: 9.15, feePct: 0.25 },
+          { name: "HDFC Bank", code: "HDFC", prodName: "HDFC Sampoorna Gold Loan", baseRate: 9.30, feePct: 0.5 }
+        ],
+        business_loan: [
+          { name: "State Bank of India", code: "SBI", prodName: "SBI SME Business Growth Loan", baseRate: 11.50, feePct: 1.0 },
+          { name: "HDFC Bank", code: "HDFC", prodName: "HDFC Business Enterprise Loan", baseRate: 11.75, feePct: 1.5 },
+          { name: "MUDRA", code: "MUDRA", prodName: "MUDRA Tarun Scheme", baseRate: 11.00, feePct: 0.5 }
+        ],
+        personal_loan: [
+          { name: "HDFC Bank", code: "HDFC", prodName: "HDFC Express Personal Loan", baseRate: 10.50, feePct: 1.5 },
+          { name: "State Bank of India", code: "SBI", prodName: "SBI Xpress Credit", baseRate: 10.75, feePct: 1.0 },
+          { name: "ICICI Bank", code: "ICICI", prodName: "ICICI Instant Personal Loan", baseRate: 10.99, feePct: 1.5 }
+        ]
+      };
+
+      const normPurpose = (purpose || "personal_loan").toLowerCase();
+      const matchedKey = Object.keys(SCHEME_LENDERS_MAP).find(k => normPurpose.includes(k.replace('_loan', ''))) || 'personal_loan';
+      const lenders = SCHEME_LENDERS_MAP[matchedKey] || SCHEME_LENDERS_MAP.personal_loan;
 
       const recommendations = lenders.map((lender, index) => {
-        const baseRate = 10.5 + lender.rateOffset;
-        const personalizedRate = Number((baseRate - (creditScore >= 780 ? 0.6 : creditScore >= 720 ? 0.2 : 0)).toFixed(2));
+        const baseRate = lender.baseRate;
+        const discount = creditScore >= 780 ? 0.6 : creditScore >= 720 ? 0.2 : 0;
+        const personalizedRate = Number((Math.max(6.0, baseRate - discount)).toFixed(2));
         const r = personalizedRate / 12 / 100;
         const monthlyEmi = Number(((requestedAmt * r * Math.pow(1 + r, tenure)) / (Math.pow(1 + r, tenure) - 1)).toFixed(2));
-        const feePct = 1.5;
+        const feePct = lender.feePct;
         const feeAmount = Math.round(requestedAmt * (feePct / 100));
         const totalRepayment = Number((monthlyEmi * tenure + feeAmount).toFixed(2));
         const totalInterest = Number((totalRepayment - requestedAmt - feeAmount).toFixed(2));
 
         return {
-          product_id: `${lender.code}_${purpose.substring(0, 4)}_${String(index + 1).padStart(2, '0')}`,
-          product_name: `${lender.name} ${purpose.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} Loan`,
+          product_id: `${lender.code}_${matchedKey.substring(0, 4).toUpperCase()}_${String(index + 1).padStart(2, '0')}`,
+          product_name: lender.prodName,
           lender_name: lender.name,
           offer_amount: requestedAmt,
           tenure_months: tenure,
