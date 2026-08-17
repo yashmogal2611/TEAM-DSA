@@ -28,35 +28,36 @@ class ApiClient {
     const isMock = CONFIG.getMockMode();
 
     if (!isMock) {
+      let response;
       try {
         const headers = options.isFormData
           ? { ...(options.auth !== false ? { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` } : {}) }
           : { ...this.getHeaders(options.auth !== false), ...options.headers };
 
-        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        response = await fetch(`${this.baseUrl}${endpoint}`, {
           ...options,
           headers
         });
-
-        if (response.status === 401) {
-          this.handleUnauthorized();
-          const errData = await response.json().catch(() => ({ detail: 'Unauthorized' }));
-          throw new Error(errData.detail || 'Unauthorized (401)');
-        }
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || data.message || `HTTP error ${response.status}`);
-        }
-        return data;
-      } catch (err) {
-        console.warn('Backend connection failed. Operating in Mock Mode fallback.', err);
+      } catch (networkErr) {
+        console.warn('Backend network connection failed. Operating in Mock Mode fallback.', networkErr);
         CONFIG.setMockMode(true);
-        if (typeof window !== 'undefined' && window.app && window.app.updateApiStatusPill) {
-          window.app.updateApiStatusPill();
+        if (typeof window !== 'undefined' && window.app && window.app.updateStatusPill) {
+          window.app.updateStatusPill();
         }
         return this.mockRequest(endpoint, options);
       }
+
+      if (response.status === 401) {
+        this.handleUnauthorized();
+        const errData = await response.json().catch(() => ({ detail: 'Unauthorized' }));
+        throw new Error(errData.detail || 'Unauthorized (401)');
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `HTTP error ${response.status}`);
+      }
+      return data;
     } else {
       return this.mockRequest(endpoint, options);
     }
@@ -72,12 +73,25 @@ class ApiClient {
    * Simulated Server logic mirroring FastAPI backend specification
    */
   async mockRequest(endpoint, options = {}) {
-    await new Promise(r => setTimeout(r, 200)); // 200ms latency simulation
+    await new Promise(r => setTimeout(r, 100)); // 100ms latency simulation
     const method = (options.method || 'GET').toUpperCase();
     const body = options.body && typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
 
-    const currentUser = MOCK_DB.users.find(u => token && token.includes(`user_${u.id}`));
+    let currentUser = null;
+    if (token) {
+      const match = token.match(/user_(\d+)(?:_|$)/);
+      if (match) {
+        const uid = parseInt(match[1], 10);
+        currentUser = MOCK_DB.users.find(u => u.id === uid);
+      }
+    }
+    if (!currentUser && typeof store !== 'undefined' && store.user) {
+      currentUser = MOCK_DB.users.find(u => 
+        (store.user.id && u.id === store.user.id) || 
+        (store.user.email && u.email && u.email.toLowerCase() === store.user.email.toLowerCase())
+      );
+    }
 
     // 1. Health Check GET /health & ML Health GET /api/v1/health
     if (endpoint === '/health' || endpoint === '/api/v1/health') {
@@ -178,8 +192,9 @@ class ApiClient {
       if (existing) {
         throw new Error('Email already registered (400)');
       }
+      const maxId = MOCK_DB.users.reduce((max, u) => Math.max(max, u.id || 0), 0);
       const newUser = {
-        id: MOCK_DB.users.length + 1,
+        id: Math.max(maxId + 1, 100),
         full_name: body.full_name,
         email: body.email,
         phone: body.phone,
