@@ -712,18 +712,7 @@ const Components = {
   },
 
   renderUserLoansTable(loans) {
-    if (!loans || loans.length === 0) {
-      return `
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          <h3>No Loan Applications Found</h3>
-          <p>You haven't submitted any loan applications yet.</p>
-          <button class="btn btn-primary btn-sm" onclick="app.showModal('applyLoanModal')" style="margin-top:1rem;">
-            + Apply For A Loan
-          </button>
-        </div>
-      `;
-    }
+    const hasLoans = loans && loans.length > 0;
 
     return `
       <div class="table-card">
@@ -741,7 +730,7 @@ const Components = {
               </tr>
             </thead>
             <tbody>
-              ${loans.map(loan => `
+              ${hasLoans ? loans.map(loan => `
                 <tr>
                   <td>
                     <strong>#${loan.id}</strong>
@@ -777,7 +766,22 @@ const Components = {
                     </button>
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="7" style="text-align:center; padding: 3rem 1.5rem;">
+                    <div style="max-width: 400px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 0.6rem;">
+                      <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--surface-secondary, #f4f4f6); display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                        <i data-lucide="folder-open" style="width:22px; height:22px;"></i>
+                      </div>
+                      <h4 style="margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-primary);">No Active Loan Applications</h4>
+                      <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">You haven't submitted any loan applications yet.</p>
+                      <button class="btn btn-primary btn-sm" onclick="app.showModal('applyLoanModal')" style="margin-top: 0.4rem;">
+                        + Apply For A Loan
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>

@@ -77,15 +77,29 @@ class ApiClient {
     const method = (options.method || 'GET').toUpperCase();
     const body = options.body && typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
-
-    let currentUser = null;
     if (token) {
-      const match = token.match(/user_(\d+)(?:_|$)/);
-      if (match) {
-        const uid = parseInt(match[1], 10);
-        currentUser = MOCK_DB.users.find(u => u.id === uid);
+      // 1. Primary: Check logged-in user stored in active session
+      try {
+        const storedUser = JSON.parse(localStorage.getItem(CONFIG.USER_KEY));
+        if (storedUser && storedUser.id) {
+          currentUser = MOCK_DB.users.find(u => u.id === storedUser.id || (u.email && storedUser.email && u.email.toLowerCase() === storedUser.email.toLowerCase())) || storedUser;
+          if (!MOCK_DB.users.some(u => u.id === currentUser.id)) {
+            MOCK_DB.users.push(currentUser);
+            MOCK_DB.save();
+          }
+        }
+      } catch (e) {}
+
+      // 2. Fallback: Parse user ID from mock token using regex matching
+      if (!currentUser) {
+        const tokenMatch = token.match(/user_(\d+)(?:_|$)/);
+        const currentUserId = tokenMatch ? parseInt(tokenMatch[1], 10) : null;
+        if (currentUserId) {
+          currentUser = MOCK_DB.users.find(u => u.id === currentUserId) || null;
+        }
       }
     }
+
     if (!currentUser && typeof store !== 'undefined' && store.user) {
       currentUser = MOCK_DB.users.find(u => 
         (store.user.id && u.id === store.user.id) || 
@@ -524,7 +538,7 @@ class ApiClient {
     // 9. User: My Loans GET /loans/my
     if (endpoint === '/loans/my' && method === 'GET') {
       if (!currentUser) throw new Error('Not logged in (401)');
-      return MOCK_DB.loans.filter(l => l.user_id === currentUser.id);
+      return MOCK_DB.loans.filter(l => l.user_id === currentUser.id || (l.applicant_email && currentUser.email && l.applicant_email.toLowerCase() === currentUser.email.toLowerCase()));
     }
 
     // 10. Single Loan Details GET /loans/{id}

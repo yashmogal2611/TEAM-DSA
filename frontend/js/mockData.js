@@ -630,7 +630,20 @@ const MOCK_DB = {
   ],
 
   init() {
-    this.save();
+    try {
+      const stored = localStorage.getItem('loan_app_mock_db');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.users && Array.isArray(parsed.users)) this.users = parsed.users;
+        if (parsed.loans && Array.isArray(parsed.loans)) this.loans = parsed.loans;
+        if (parsed.documents && Array.isArray(parsed.documents)) this.documents = parsed.documents;
+      } else {
+        this.save();
+      }
+    } catch (e) {
+      console.warn('Failed to load mock DB from localStorage:', e);
+      this.save();
+    }
   },
 
   save() {
@@ -641,3 +654,5 @@ const MOCK_DB = {
     }));
   }
 };
+
+MOCK_DB.init();

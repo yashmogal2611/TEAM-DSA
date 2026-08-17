@@ -482,6 +482,7 @@ class ApplicationController {
     };
 
     try {
+      store.clearSession();
       const res = await api.login(credentials);
       localStorage.setItem(CONFIG.TOKEN_KEY, res.access_token);
 
@@ -517,6 +518,7 @@ class ApplicationController {
     };
 
     try {
+      store.clearSession();
       const user = await api.register(userData);
       Components.showToast('Account Created!', 'Registration successful. Logging you in...', 'success');
 
