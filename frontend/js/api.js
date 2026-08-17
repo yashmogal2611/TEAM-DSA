@@ -28,36 +28,35 @@ class ApiClient {
     const isMock = CONFIG.getMockMode();
 
     if (!isMock) {
-      let response;
       try {
         const headers = options.isFormData
           ? { ...(options.auth !== false ? { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` } : {}) }
           : { ...this.getHeaders(options.auth !== false), ...options.headers };
 
-        response = await fetch(`${this.baseUrl}${endpoint}`, {
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
           ...options,
           headers
         });
-      } catch (networkErr) {
-        console.warn('Backend network connection failed. Operating in Mock Mode fallback.', networkErr);
+
+        if (response.status === 401) {
+          this.handleUnauthorized();
+          const errData = await response.json().catch(() => ({ detail: 'Unauthorized' }));
+          throw new Error(errData.detail || 'Unauthorized (401)');
+        }
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || data.message || `HTTP error ${response.status}`);
+        }
+        return data;
+      } catch (err) {
+        console.warn('Backend connection failed. Operating in Mock Mode fallback.', err);
         CONFIG.setMockMode(true);
-        if (typeof window !== 'undefined' && window.app && window.app.updateStatusPill) {
-          window.app.updateStatusPill();
+        if (typeof window !== 'undefined' && window.app && window.app.updateApiStatusPill) {
+          window.app.updateApiStatusPill();
         }
         return this.mockRequest(endpoint, options);
       }
-
-      if (response.status === 401) {
-        this.handleUnauthorized();
-        const errData = await response.json().catch(() => ({ detail: 'Unauthorized' }));
-        throw new Error(errData.detail || 'Unauthorized (401)');
-      }
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.detail || data.message || `HTTP error ${response.status}`);
-      }
-      return data;
     } else {
       return this.mockRequest(endpoint, options);
     }
@@ -73,10 +72,12 @@ class ApiClient {
    * Simulated Server logic mirroring FastAPI backend specification
    */
   async mockRequest(endpoint, options = {}) {
-    await new Promise(r => setTimeout(r, 100)); // 100ms latency simulation
+    await new Promise(r => setTimeout(r, 200)); // 200ms latency simulation
     const method = (options.method || 'GET').toUpperCase();
     const body = options.body && typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
     const token = localStorage.getItem(CONFIG.TOKEN_KEY);
+    let currentUser = null;
+
     if (token) {
       // 1. Primary: Check logged-in user stored in active session
       try {
@@ -90,21 +91,14 @@ class ApiClient {
         }
       } catch (e) {}
 
-      // 2. Fallback: Parse user ID from mock token using regex matching
+      // 2. Fallback: Parse user ID from mock token using exact regex matching
       if (!currentUser) {
-        const tokenMatch = token.match(/user_(\d+)(?:_|$)/);
+        const tokenMatch = token.match(/user_(\d+)_mock_token/);
         const currentUserId = tokenMatch ? parseInt(tokenMatch[1], 10) : null;
         if (currentUserId) {
           currentUser = MOCK_DB.users.find(u => u.id === currentUserId) || null;
         }
       }
-    }
-
-    if (!currentUser && typeof store !== 'undefined' && store.user) {
-      currentUser = MOCK_DB.users.find(u => 
-        (store.user.id && u.id === store.user.id) || 
-        (store.user.email && u.email && u.email.toLowerCase() === store.user.email.toLowerCase())
-      );
     }
 
     // 1. Health Check GET /health & ML Health GET /api/v1/health
@@ -166,8 +160,8 @@ class ApiClient {
     // 1e. GenAI Phase 2: POST /summarize
     if (endpoint === '/summarize' && method === 'POST') {
       const topRec = body?.top_recommendations?.[0];
-      const name = topRec?.name || 'Top Ranked Institutional Lender';
-      const rate = topRec?.interest_rate || 8.5;
+      const name = topRec?.name || 'HDFC Bank Personal Loan';
+      const rate = topRec?.interest_rate || 9.5;
       return {
         ai_summary: `Your top recommendation from ${name} offers competitive rates starting at ${rate}% per annum. Based on your financial profile, this product provides optimal affordability with maximum sanctioned limit.`
       };
@@ -176,21 +170,17 @@ class ApiClient {
     // 1f. GenAI Phase 3: POST /chat
     if (endpoint === '/chat' && method === 'POST') {
       const q = (body?.question || '').toLowerCase();
-      const topRec = body?.recommendation_context?.top_recommendations?.[0] || body?.recommendation_context?.recommendations?.[0];
-      const topName = topRec?.lender_name || topRec?.name || 'Top Ranked Lender';
-      const topRate = topRec?.personalised_rate || topRec?.interest_rate || 8.5;
-
-      let answer = `Based on your credit assessment, our AI underwriting system recommends ${topName} as your best option.`;
+      let answer = "Based on your credit assessment, our AI underwriting system recommends comparing top offers based on total interest cost and monthly EMI affordability.";
       let source = "gemini";
 
-      if (q.includes('rank') || q.includes('best') || q.includes('first') || q.includes('why') || q.includes('top') || q.includes('lender') || q.includes('bank')) {
-        answer = `${topName} is ranked #1 because it offers the lowest personalised interest rate (${topRate}% p.a.) and the highest composite suitability score for your selected loan parameters.`;
+      if (q.includes('rank') || q.includes('best') || q.includes('first') || q.includes('hdfc') || q.includes('why')) {
+        answer = "HDFC Bank is ranked #1 because it offers the lowest personalised interest rate (9.5% p.a.) and the highest composite suitability score for your credit profile.";
       } else if (q.includes('emi') || q.includes('reduce') || q.includes('lower')) {
         answer = "You can lower your monthly EMI by choosing a longer tenure (e.g. 48 or 60 months) or prepaying existing credit card outstanding balances.";
       } else if (q.includes('doc') || q.includes('paper') || q.includes('require')) {
         answer = "Standard document requirements include PAN Card, Aadhaar Card, last 3 months salary slips, and 6 months bank statement.";
       } else if (q.includes('score') || q.includes('credit') || q.includes('cibil')) {
-        answer = "Your credit score profile places you in a favorable risk band, unlocking prime rate discounts across our partner lenders.";
+        answer = "Your credit score is 780, placing you in the Low Risk band, which unlocks prime rate discounts across all partner lenders.";
       }
 
       return {
@@ -206,9 +196,8 @@ class ApiClient {
       if (existing) {
         throw new Error('Email already registered (400)');
       }
-      const maxId = MOCK_DB.users.reduce((max, u) => Math.max(max, u.id || 0), 0);
       const newUser = {
-        id: Math.max(maxId + 1, 100),
+        id: MOCK_DB.users.length + 1,
         full_name: body.full_name,
         email: body.email,
         phone: body.phone,
@@ -354,78 +343,26 @@ class ApiClient {
       const riskBand = creditScore >= 750 ? "LOW" : creditScore >= 670 ? "MEDIUM" : "HIGH";
       const riskScore = Number((1 - defaultProb).toFixed(4));
 
-      // Generate Lender Product recommendations tailored by purpose and credit profile
-      let lendersPool = [];
-      const p = (purpose || 'personal_loan').toLowerCase();
+      // Generate Lender Product recommendations
+      const lenders = [
+        { name: "HDFC Bank", code: "HDFC", rateOffset: 0.0 },
+        { name: "ICICI Bank", code: "ICICI", rateOffset: 0.25 },
+        { name: "Axis Bank", code: "AXIS", rateOffset: 0.50 }
+      ];
 
-      if (p === 'home_loan') {
-        lendersPool = [
-          { name: "State Bank of India (SBI)", code: "SBI", baseRate: 8.50, feePct: 0.35 },
-          { name: "HDFC Bank", code: "HDFC", baseRate: 8.65, feePct: 0.50 },
-          { name: "ICICI Bank", code: "ICICI", baseRate: 8.75, feePct: 0.50 },
-          { name: "Axis Bank", code: "AXIS", baseRate: 8.85, feePct: 0.75 }
-        ];
-      } else if (p === 'vehicle_loan') {
-        lendersPool = [
-          { name: "Tata Capital", code: "TATA", baseRate: 8.75, feePct: 1.0 },
-          { name: "ICICI Bank Auto", code: "ICICI", baseRate: 8.90, feePct: 1.25 },
-          { name: "State Bank of India (SBI)", code: "SBI", baseRate: 9.10, feePct: 0.75 },
-          { name: "HDFC Bank", code: "HDFC", baseRate: 9.20, feePct: 1.0 }
-        ];
-      } else if (p === 'education_loan') {
-        lendersPool = [
-          { name: "State Bank of India (SBI)", code: "SBI", baseRate: 8.15, feePct: 0.0 },
-          { name: "HDFC Credila", code: "HDFC", baseRate: 8.95, feePct: 1.0 },
-          { name: "Canara Bank", code: "CANARA", baseRate: 9.15, feePct: 0.5 },
-          { name: "ICICI Bank", code: "ICICI", baseRate: 9.40, feePct: 1.0 }
-        ];
-      } else if (p === 'business_loan') {
-        lendersPool = [
-          { name: "Bajaj Finserv MSME", code: "BAJAJ", baseRate: 11.25, feePct: 2.0 },
-          { name: "HDFC Bank Business", code: "HDFC", baseRate: 11.50, feePct: 1.75 },
-          { name: "ICICI Bank", code: "ICICI", baseRate: 11.75, feePct: 2.0 },
-          { name: "Kotak Mahindra Bank", code: "KOTAK", baseRate: 12.00, feePct: 2.25 }
-        ];
-      } else if (p === 'gold_loan') {
-        lendersPool = [
-          { name: "Muthoot Finance", code: "MUTHOOT", baseRate: 7.90, feePct: 0.25 },
-          { name: "Manappuram Finance", code: "MANAPPURAM", baseRate: 8.10, feePct: 0.50 },
-          { name: "State Bank of India (SBI)", code: "SBI", baseRate: 8.25, feePct: 0.50 },
-          { name: "HDFC Bank Gold", code: "HDFC", baseRate: 8.50, feePct: 0.75 }
-        ];
-      } else {
-        // Personal Loan
-        if (creditScore >= 780) {
-          lendersPool = [
-            { name: "Kotak Mahindra Bank", code: "KOTAK", baseRate: 10.25, feePct: 1.5 },
-            { name: "HDFC Bank", code: "HDFC", baseRate: 10.49, feePct: 1.5 },
-            { name: "ICICI Bank", code: "ICICI", baseRate: 10.75, feePct: 2.0 },
-            { name: "Axis Bank", code: "AXIS", baseRate: 10.99, feePct: 1.5 }
-          ];
-        } else {
-          lendersPool = [
-            { name: "State Bank of India (SBI)", code: "SBI", baseRate: 10.85, feePct: 1.0 },
-            { name: "HDFC Bank", code: "HDFC", baseRate: 11.20, feePct: 1.5 },
-            { name: "Tata Capital", code: "TATA", baseRate: 11.50, feePct: 1.75 },
-            { name: "Bajaj Finserv", code: "BAJAJ", baseRate: 11.90, feePct: 2.0 }
-          ];
-        }
-      }
-
-      const recommendations = lendersPool.map((lender, index) => {
-        const baseRate = lender.baseRate;
-        const discount = (creditScore >= 780 ? 0.5 : creditScore >= 720 ? 0.2 : 0);
-        const personalizedRate = Number(Math.max(6.5, baseRate - discount).toFixed(2));
+      const recommendations = lenders.map((lender, index) => {
+        const baseRate = 10.5 + lender.rateOffset;
+        const personalizedRate = Number((baseRate - (creditScore >= 780 ? 0.6 : creditScore >= 720 ? 0.2 : 0)).toFixed(2));
         const r = personalizedRate / 12 / 100;
         const monthlyEmi = Number(((requestedAmt * r * Math.pow(1 + r, tenure)) / (Math.pow(1 + r, tenure) - 1)).toFixed(2));
-        const feePct = lender.feePct;
+        const feePct = 1.5;
         const feeAmount = Math.round(requestedAmt * (feePct / 100));
         const totalRepayment = Number((monthlyEmi * tenure + feeAmount).toFixed(2));
         const totalInterest = Number((totalRepayment - requestedAmt - feeAmount).toFixed(2));
 
         return {
-          product_id: `${lender.code}_${p.substring(0, 4)}_${String(index + 1).padStart(2, '0')}`,
-          product_name: `${lender.name} ${p.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())}`,
+          product_id: `${lender.code}_${purpose.substring(0, 4)}_${String(index + 1).padStart(2, '0')}`,
+          product_name: `${lender.name} ${purpose.replace('_', ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase())} Loan`,
           lender_name: lender.name,
           offer_amount: requestedAmt,
           tenure_months: tenure,
@@ -442,7 +379,7 @@ class ApiClient {
             risk_fit: riskScore,
             cost: Number((1.0 - (index * 0.05)).toFixed(4)),
             tenure_preference: 1.0,
-            composite: Number((0.95 - (index * 0.04)).toFixed(4))
+            composite: Number((0.92 - (index * 0.04)).toFixed(4))
           },
           rank: index + 1
         };

@@ -14,7 +14,10 @@ class ApplicationController {
   }
 
   async init() {
-    await this.updateStatusPill();
+    // Clear any previous session on startup to ensure we start with no user logged in
+    store.clearSession();
+
+    this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
     store.subscribe(() => this.renderHeader());
 
@@ -114,29 +117,29 @@ class ApplicationController {
     }
   }
 
-  async updateStatusPill() {
+  updateStatusPill() {
+    const isMock = CONFIG.getMockMode();
     const statusPill = document.getElementById('apiStatusPill');
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
 
     if (!statusPill) return;
 
-    try {
-      // Test real health endpoint with quick timeout
-      const res = await fetch(`${api.baseUrl}/health`).then(r => r.json());
-      if (res && res.status === 'ok') {
-        CONFIG.setMockMode(false);
-        if (statusDot) statusDot.className = 'status-dot online';
-        if (statusText) statusText.textContent = 'Core Services Active';
-        return;
-      }
-    } catch (e) {
-      // Backend offline, fallback to mock mode
+    if (isMock) {
+      statusDot.className = 'status-dot online';
+      statusText.textContent = 'System Online';
+    } else {
+      api.checkHealth()
+        .then(() => {
+          statusDot.className = 'status-dot online';
+          statusText.textContent = 'Core Services Active';
+        })
+        .catch(() => {
+          statusDot.className = 'status-dot online';
+          statusText.textContent = 'System Active';
+          CONFIG.setMockMode(true);
+        });
     }
-
-    CONFIG.setMockMode(true);
-    if (statusDot) statusDot.className = 'status-dot online';
-    if (statusText) statusText.textContent = 'Demo Mode Active';
   }
 
   toggleMockMode() {
