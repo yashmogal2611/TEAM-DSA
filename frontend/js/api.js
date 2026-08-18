@@ -831,6 +831,9 @@ class ApiClient {
   }
 
   getDocuments(loanId) {
+    if (this.isBankAdminSession && this.isBankAdminSession()) {
+      return this.request(`/admin/loans/${loanId}/documents`);
+    }
     return this.request(`/loans/${loanId}/documents`);
   }
 
@@ -865,7 +868,7 @@ class ApiClient {
   verifyDocument(loanId, docId, status = 'verified', note = '') {
     return this.request(`/admin/loans/${loanId}/documents/${docId}/verify`, {
       method: 'PATCH',
-      body: JSON.stringify({ status, verification_note: note })
+      body: JSON.stringify({ verification_status: status, status, verification_note: note })
     });
   }
 

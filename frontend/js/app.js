@@ -1150,10 +1150,10 @@ class ApplicationController {
 
       // Upload attached verification documents if files selected
       const docInputs = [
-        { id: 'applyDocKyc', category: 'kyc' },
-        { id: 'applyDocIncome', category: 'income' },
-        { id: 'applyDocBank', category: 'bank' },
-        { id: 'applyDocCollateral', category: 'collateral' }
+        { id: 'applyDocKyc', category: 'kyc', type: 'PAN / Aadhaar KYC' },
+        { id: 'applyDocIncome', category: 'income', type: 'Salary Slips / ITR' },
+        { id: 'applyDocBank', category: 'bank', type: '6-Month Bank Statement' },
+        { id: 'applyDocCollateral', category: 'collateral', type: 'Collateral / Asset Deed' }
       ];
 
       for (const item of docInputs) {
@@ -1162,11 +1162,12 @@ class ApplicationController {
           const file = inputEl.files[0];
           const formData = new FormData();
           formData.append('doc_category', item.category);
+          formData.append('doc_type', item.type);
           formData.append('file', file);
           try {
             await api.uploadDocument(newLoan.id, formData);
           } catch (docErr) {
-            console.warn(`Failed to upload ${item.category} document:`, docErr);
+            console.error(`Failed to upload ${item.category} document:`, docErr);
           }
         }
       }
@@ -1297,6 +1298,7 @@ class ApplicationController {
 
     const formData = new FormData();
     formData.append('doc_category', categorySelect.value);
+    formData.append('doc_type', categorySelect.options[categorySelect.selectedIndex]?.text?.replace(/—.*$/g, '').trim() || categorySelect.value);
     formData.append('file', fileInput.files[0]);
 
     try {
@@ -1612,9 +1614,11 @@ class ApplicationController {
     const container = document.getElementById('docViewerFrameContainer');
     const downloadBtn = document.getElementById('btnDownloadDocFromPreview');
 
-    // Find actual doc in MOCK_DB
+    // Find actual doc in MOCK_DB or API URL
     const docObj = (typeof MOCK_DB !== 'undefined' && MOCK_DB.documents) ? MOCK_DB.documents.find(d => (d.doc_id === validDocId || d.id === validDocId)) : null;
-    const fileUrl = docObj?.file_url;
+    let fileUrl = docObj?.file_url;
+    const downloadUrl = api.getDocumentDownloadUrl ? api.getDocumentDownloadUrl(loanId, validDocId) : `/admin/loans/${loanId}/documents/${validDocId}/download`;
+    const viewUrl = api.getDocumentViewUrl ? api.getDocumentViewUrl(loanId, validDocId) : `/admin/loans/${loanId}/documents/${validDocId}/view`;
 
     if (downloadBtn) {
       downloadBtn.onclick = () => {
@@ -1624,7 +1628,7 @@ class ApplicationController {
           a.download = fileName;
           a.click();
         } else {
-          Components.showToast('Document Download', `Downloading ${fileName}...`, 'info');
+          window.open(downloadUrl, '_blank');
         }
       };
     }
