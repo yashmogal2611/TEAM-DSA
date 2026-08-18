@@ -42,11 +42,21 @@ External change note (see CHANGELOG.md):
 """
 
 from fastapi import APIRouter, HTTPException
-
-from genai.chatbot.chatbot import ChatResponse, chat
-from genai.explanation import generate_shap_explanation
-from genai.schemas import LoanRecommendationResponse
 from pydantic import BaseModel
+
+try:
+    from ..genai.chatbot.chatbot import ChatResponse, chat
+    from ..genai.explanation import generate_shap_explanation
+    from ..genai.schemas import LoanRecommendationResponse
+except (ImportError, ValueError):
+    try:
+        from genai.chatbot.chatbot import ChatResponse, chat
+        from genai.explanation import generate_shap_explanation
+        from genai.schemas import LoanRecommendationResponse
+    except Exception:
+        from backend.genai.chatbot.chatbot import ChatResponse, chat
+        from backend.genai.explanation import generate_shap_explanation
+        from backend.genai.schemas import LoanRecommendationResponse
 
 
 router = APIRouter(prefix="/chat", tags=["GenAI"])

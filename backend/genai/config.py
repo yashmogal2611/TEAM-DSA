@@ -15,4 +15,4 @@ MIN_SHAP_IMPORTANCE = 0.01
 
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_MODEL = "gemini-3.5-flash-lite"

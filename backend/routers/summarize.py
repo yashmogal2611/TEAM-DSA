@@ -1,9 +1,14 @@
 from typing import List
-
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from genai.summarizer import summarize_recommendations
+try:
+    from ..genai.summarizer import summarize_recommendations
+except (ImportError, ValueError):
+    try:
+        from genai.summarizer import summarize_recommendations
+    except Exception:
+        from backend.genai.summarizer import summarize_recommendations
 
 
 router = APIRouter(prefix="/summarize", tags=["GenAI"])

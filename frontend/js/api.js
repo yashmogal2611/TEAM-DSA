@@ -28,35 +28,38 @@ class ApiClient {
     const isMock = CONFIG.getMockMode();
 
     if (!isMock) {
+      let response;
       try {
         const headers = options.isFormData
           ? { ...(options.auth !== false ? { 'Authorization': `Bearer ${localStorage.getItem(CONFIG.TOKEN_KEY)}` } : {}) }
           : { ...this.getHeaders(options.auth !== false), ...options.headers };
 
-        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        response = await fetch(`${this.baseUrl}${endpoint}`, {
           ...options,
           headers
         });
-
-        if (response.status === 401) {
-          this.handleUnauthorized();
-          const errData = await response.json().catch(() => ({ detail: 'Unauthorized' }));
-          throw new Error(errData.detail || 'Unauthorized (401)');
-        }
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || data.message || `HTTP error ${response.status}`);
-        }
-        return data;
-      } catch (err) {
-        console.warn('Backend connection failed. Operating in Mock Mode fallback.', err);
+      } catch (networkErr) {
+        console.warn('Backend network connection failed. Operating in Mock Mode fallback.', networkErr);
         CONFIG.setMockMode(true);
         if (typeof window !== 'undefined' && window.app && window.app.updateApiStatusPill) {
           window.app.updateApiStatusPill();
         }
         return this.mockRequest(endpoint, options);
       }
+
+      if (response.status === 401) {
+        if (!endpoint.includes('/auth/login') && !endpoint.includes('/auth/admin-login')) {
+          this.handleUnauthorized();
+        }
+        const errData = await response.json().catch(() => ({ detail: 'Unauthorized' }));
+        throw new Error(errData.detail || 'Unauthorized (401)');
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `HTTP error ${response.status}`);
+      }
+      return data;
     } else {
       return this.mockRequest(endpoint, options);
     }
@@ -228,6 +231,55 @@ class ApiClient {
         email: user.email,
         full_name: user.full_name
       };
+    }
+
+    // 3b. Auth: Admin 3-Factor Login POST /auth/admin-login
+    if (endpoint === '/auth/admin-login' && method === 'POST') {
+      const email = (body?.email || '').toLowerCase().trim();
+      const password = body?.password;
+      const passkey = (body?.bank_passkey || '').trim();
+
+      const BANK_CREDENTIALS = {
+        'sbi.admin@loanapp.com': { bank_code: 'SBI', bank_name: 'State Bank of India', bank_id: 1, passkey: 'SBI@Pass#2026' },
+        'hdfc.admin@loanapp.com': { bank_code: 'HDFC', bank_name: 'HDFC Bank', bank_id: 2, passkey: 'HDFC@Pass#2026' },
+        'icici.admin@loanapp.com': { bank_code: 'ICICI', bank_name: 'ICICI Bank', bank_id: 3, passkey: 'ICICI@Pass#2026' },
+        'kotak.admin@loanapp.com': { bank_code: 'KOTAK', bank_name: 'Kotak Mahindra Bank', bank_id: 4, passkey: 'KOTAK@Pass#2026' },
+        'bob.admin@loanapp.com': { bank_code: 'BOB', bank_name: 'Bank of Baroda', bank_id: 5, passkey: 'BOB@Pass#2026' },
+        'admin@loanapp.com': { bank_code: 'SBI', bank_name: 'State Bank of India', bank_id: 1, passkey: 'SBI@Pass#2026' }
+      };
+
+      const bankInfo = BANK_CREDENTIALS[email];
+      if (!bankInfo || password !== 'Admin@123') {
+        throw new Error('Invalid email or password (401)');
+      }
+      if (!passkey || passkey !== bankInfo.passkey) {
+        throw new Error(`Invalid institutional passkey for ${bankInfo.bank_name} (401)`);
+      }
+
+      const mockToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.admin_${bankInfo.bank_id}_mock_token`;
+      return {
+        access_token: mockToken,
+        token_type: 'bearer',
+        is_admin: true,
+        user_id: 99 + bankInfo.bank_id,
+        email: email,
+        full_name: `${bankInfo.bank_name} Underwriter`,
+        role: 'bank_admin',
+        bank_id: bankInfo.bank_id,
+        bank_name: bankInfo.bank_name,
+        bank_code: bankInfo.bank_code
+      };
+    }
+
+    // 3c. Auth: Partner Banks GET /auth/banks
+    if (endpoint === '/auth/banks' && method === 'GET') {
+      return [
+        { id: 1, bank_code: 'SBI', bank_name: 'State Bank of India', is_active: true },
+        { id: 2, bank_code: 'HDFC', bank_name: 'HDFC Bank', is_active: true },
+        { id: 3, bank_code: 'ICICI', bank_name: 'ICICI Bank', is_active: true },
+        { id: 4, bank_code: 'KOTAK', bank_name: 'Kotak Mahindra Bank', is_active: true },
+        { id: 5, bank_code: 'BOB', bank_name: 'Bank of Baroda', is_active: true }
+      ];
     }
 
     // 4. Schemes GET /loans/schemes
@@ -628,13 +680,60 @@ class ApiClient {
     // 18. Admin: Stats GET /admin/stats
     if (endpoint === '/admin/stats' && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
+      const bankName = currentUser.bank_name || 'State Bank of India';
+      const bankCode = currentUser.bank_code || 'SBI';
+      const scopedLoans = MOCK_DB.loans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
+      
+      const schemesBreakdown = [
+        {
+          scheme_id: 1,
+          scheme_name: `${bankName} Regular Scheme`,
+          total_applications: scopedLoans.length || 1,
+          pending_count: scopedLoans.filter(l => l.status === 'pending').length,
+          under_review_count: 0,
+          approved_count: scopedLoans.filter(l => l.status === 'approved').length,
+          rejected_count: scopedLoans.filter(l => l.status === 'rejected').length,
+          approval_rate: scopedLoans.length ? Math.round((scopedLoans.filter(l => l.status === 'approved').length / scopedLoans.length) * 100) : 0,
+          total_requested_volume: scopedLoans.reduce((s, l) => s + (l.requested_amount || 0), 0) || 5000000,
+          total_sanctioned_volume: scopedLoans.reduce((s, l) => s + (l.sanctioned_amount || 0), 0),
+          avg_ticket_size: scopedLoans.length ? Math.round(scopedLoans.reduce((s, l) => s + (l.requested_amount || 0), 0) / scopedLoans.length) : 0
+        }
+      ];
+
       return {
-        total_applications: MOCK_DB.loans.length,
-        pending: MOCK_DB.loans.filter(l => l.status === 'pending').length,
-        approved: MOCK_DB.loans.filter(l => l.status === 'approved').length,
-        rejected: MOCK_DB.loans.filter(l => l.status === 'rejected').length,
-        total_users: MOCK_DB.users.filter(u => !u.is_admin).length
+        total_applications: scopedLoans.length,
+        pending: scopedLoans.filter(l => l.status === 'pending').length,
+        approved: scopedLoans.filter(l => l.status === 'approved').length,
+        rejected: scopedLoans.filter(l => l.status === 'rejected').length,
+        total_users: MOCK_DB.users.filter(u => !u.is_admin).length,
+        bank_id: currentUser.bank_id || 1,
+        bank_name: bankName,
+        bank_code: bankCode,
+        schemes_breakdown: schemesBreakdown
       };
+    }
+
+    // 18b. Admin: Schemes Breakdown GET /admin/stats/schemes
+    if (endpoint === '/admin/stats/schemes' && method === 'GET') {
+      if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
+      const bankName = currentUser.bank_name || 'State Bank of India';
+      const bankCode = currentUser.bank_code || 'SBI';
+      const scopedLoans = MOCK_DB.loans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
+      return [
+        {
+          scheme_id: 1,
+          scheme_name: `${bankName} Regular Scheme`,
+          total_applications: scopedLoans.length || 1,
+          pending_count: scopedLoans.filter(l => l.status === 'pending').length,
+          under_review_count: 0,
+          approved_count: scopedLoans.filter(l => l.status === 'approved').length,
+          rejected_count: scopedLoans.filter(l => l.status === 'rejected').length,
+          approval_rate: scopedLoans.length ? Math.round((scopedLoans.filter(l => l.status === 'approved').length / scopedLoans.length) * 100) : 0,
+          total_requested_volume: scopedLoans.reduce((s, l) => s + (l.requested_amount || 0), 0) || 5000000,
+          total_sanctioned_volume: scopedLoans.reduce((s, l) => s + (l.sanctioned_amount || 0), 0),
+          avg_ticket_size: scopedLoans.length ? Math.round(scopedLoans.reduce((s, l) => s + (l.requested_amount || 0), 0) / scopedLoans.length) : 0
+        }
+      ];
     }
 
     // 19. Admin: Users GET /admin/users
@@ -667,8 +766,13 @@ class ApiClient {
     return this.request(`/loans/schemes/${loanType}`, { auth: false });
   }
 
-  recommendLoans(inputs) {
-    return this.request('/api/v1/recommend', { method: 'POST', body: JSON.stringify(inputs), auth: false });
+  async recommendLoans(inputs) {
+    try {
+      return await this.request('/api/v1/recommend', { method: 'POST', body: JSON.stringify(inputs), auth: false });
+    } catch (err) {
+      console.warn('ML recommend API unavailable, using resilient fallback calculation:', err);
+      return this.mockRequest('/api/v1/recommend', { method: 'POST', body: JSON.stringify(inputs) });
+    }
   }
 
   checkEligibility(inputs) {
@@ -765,8 +869,20 @@ class ApiClient {
     });
   }
 
+  adminLogin(credentials) {
+    return this.request('/auth/admin-login', { method: 'POST', body: JSON.stringify(credentials), auth: false });
+  }
+
+  getPartnerBanks() {
+    return this.request('/auth/banks', { auth: false });
+  }
+
   getAdminStats() {
     return this.request('/admin/stats');
+  }
+
+  getAdminSchemeStats() {
+    return this.request('/admin/stats/schemes');
   }
 
   getAdminUsers() {

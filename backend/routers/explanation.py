@@ -1,10 +1,15 @@
 from fastapi import APIRouter, HTTPException
 
-from genai.explanation import generate_shap_explanation
-from genai.schemas import (
-    ExplanationOutput,
-    LoanRecommendationResponse,
-)
+try:
+    from ..genai.explanation import generate_shap_explanation
+    from ..genai.schemas import ExplanationOutput, LoanRecommendationResponse
+except (ImportError, ValueError):
+    try:
+        from genai.explanation import generate_shap_explanation
+        from genai.schemas import ExplanationOutput, LoanRecommendationResponse
+    except Exception:
+        from backend.genai.explanation import generate_shap_explanation
+        from backend.genai.schemas import ExplanationOutput, LoanRecommendationResponse
 
 
 router = APIRouter(

@@ -32,26 +32,45 @@ try:
     from .schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
     from .database import init_db, get_db, LoanSubmission, User
     from .auth import hash_password
-
-    # Routers
     from .routers.auth_router import router as auth_router
     from .routers.user_router import router as user_router
     from .routers.admin_router import router as admin_router
-    from .routers.summarize import router as summarize_router
-    from .routers.explanation import router as explanation_router
-    from .routers.chat import router as chat_router
 except (ImportError, ValueError):
     from schemas import LoanRequest, LoanResponse, RecommendationItem, ExplanationFactor
     from database import init_db, get_db, LoanSubmission, User
     from auth import hash_password
-
-    # Routers
     from routers.auth_router import router as auth_router
     from routers.user_router import router as user_router
     from routers.admin_router import router as admin_router
-    from routers.summarize import router as summarize_router
-    from routers.explanation import router as explanation_router
-    from routers.chat import router as chat_router
+
+# Optional GenAI routers
+summarize_router = None
+explanation_router = None
+chat_router = None
+
+try:
+    from .routers.summarize import router as summarize_router
+except Exception:
+    try:
+        from routers.summarize import router as summarize_router
+    except Exception:
+        pass
+
+try:
+    from .routers.explanation import router as explanation_router
+except Exception:
+    try:
+        from routers.explanation import router as explanation_router
+    except Exception:
+        pass
+
+try:
+    from .routers.chat import router as chat_router
+except Exception:
+    try:
+        from routers.chat import router as chat_router
+    except Exception:
+        pass
 
 # ── App setup ─────────────────────────────────────────────────
 app = FastAPI(
@@ -83,13 +102,18 @@ if os.path.exists(os.path.join(FRONTEND_DIR, "js")):
 if os.path.exists(os.path.join(FRONTEND_DIR, "assets")):
     app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="assets")
 
-# ── Register routers ──────────────────────────────────────────
+# ── Register core routers ─────────────────────────────────────
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(admin_router)
-app.include_router(summarize_router) #genai
-app.include_router(explanation_router) #genai
-app.include_router(chat_router) #genai phase3
+
+# Optional GenAI routers
+if summarize_router:
+    app.include_router(summarize_router)
+if explanation_router:
+    app.include_router(explanation_router)
+if chat_router:
+    app.include_router(chat_router)
 
 
 # ── Mount ML Recommendation Engine Router ─────────────────────

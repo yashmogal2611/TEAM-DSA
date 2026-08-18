@@ -14,8 +14,10 @@ class ApplicationController {
   }
 
   async init() {
-    // Clear any previous session on startup to ensure we start with no user logged in
+    // Clear any previous session on startup to ensure fresh state
     store.clearSession();
+    localStorage.removeItem('loan_app_mock_mode');
+    localStorage.removeItem('crediwise_use_mock');
 
     this.updateStatusPill();
     window.addEventListener('hashchange', () => this.handleRoute());
@@ -408,7 +410,11 @@ class ApplicationController {
   async loadAdminDashboard(statusFilter = '') {
     const container = document.getElementById('adminLoansContainer');
     const statsContainer = document.getElementById('adminStatsContainer');
-    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading underwriting applications...</div></div>`;
+    const schemesContainer = document.getElementById('adminSchemesContainer');
+    const headingEl = document.getElementById('adminDashboardHeading');
+    const badgeEl = document.getElementById('adminBankBadge');
+    
+    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading bank underwriting queue...</div></div>`;
 
     try {
       const [stats, loans] = await Promise.all([
@@ -419,11 +425,30 @@ class ApplicationController {
       store.adminStats = stats;
       store.adminLoans = loans;
 
+      // Update bank scoped branding with official bank logo
+      if (stats && stats.bank_name) {
+        const logoContainer = document.getElementById('adminBankLogoContainer');
+        if (logoContainer) {
+          logoContainer.innerHTML = Components.getBankLogoHtml(stats.bank_name, 42);
+        }
+        if (headingEl) {
+          headingEl.textContent = `${stats.bank_name} Underwriting Portal`;
+        }
+      }
+
+      // Render KPIs
       statsContainer.innerHTML = Components.renderAdminStats(stats);
+      
+      // Render Per-Scheme Breakdown
+      if (schemesContainer && stats.schemes_breakdown) {
+        schemesContainer.innerHTML = Components.renderAdminSchemeStats(stats.schemes_breakdown, stats.bank_name);
+      }
+
+      // Render Applications Table
       container.innerHTML = Components.renderAdminLoansTable(loans);
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
-      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load admin data: ${err.message}</div>`;
+      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load bank admin data: ${err.message}</div>`;
     }
   }
 
@@ -502,20 +527,44 @@ class ApplicationController {
     btn.disabled = true;
     btn.textContent = 'Authenticating...';
 
-    const credentials = {
-      email: document.getElementById('loginEmail').value.trim(),
-      password: document.getElementById('loginPassword').value
-    };
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const passkey = (document.getElementById('loginBankPasskey')?.value || '').trim();
+
+    const credentials = { email, password };
+    if (passkey) {
+      credentials.bank_passkey = passkey;
+    }
 
     try {
       store.clearSession();
-      const res = await api.login(credentials);
+      let res;
+      
+      // If passkey is provided or email indicates an admin account, try 3-factor admin login
+      if (passkey || email.toLowerCase().includes('admin')) {
+        try {
+          res = await api.adminLogin({ email, password, bank_passkey: passkey });
+        } catch (adminErr) {
+          // If admin login failed due to missing passkey or other, fallback to regular login only if not explicitly admin
+          if (!passkey && !email.toLowerCase().includes('.admin@')) {
+            res = await api.login(credentials);
+          } else {
+            throw adminErr;
+          }
+        }
+      } else {
+        res = await api.login(credentials);
+      }
+
       localStorage.setItem(CONFIG.TOKEN_KEY, res.access_token);
 
       const profile = await api.getMe();
+      if (res.bank_name) profile.bank_name = res.bank_name;
+      if (res.bank_code) profile.bank_code = res.bank_code;
       store.setSession(res.access_token, profile);
 
-      Components.showToast('Login Successful', `Welcome back, ${profile.full_name}!`, 'success');
+      const welcomeTitle = res.is_admin ? `${res.bank_name || 'Bank'} Underwriter Portal` : 'Login Successful';
+      Components.showToast(welcomeTitle, `Welcome back, ${profile.full_name}!`, 'success');
 
       if (res.is_admin) {
         this.navigate('#/admin-dashboard');
@@ -523,7 +572,7 @@ class ApplicationController {
         this.navigate('#/user-dashboard');
       }
     } catch (err) {
-      Components.showToast('Login Failed', err.message, 'error');
+      Components.showToast('Authentication Failed', err.message, 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -801,9 +850,47 @@ class ApplicationController {
 
   handleSchemeCategoryChange(loanType) {
     const fieldsContainer = document.getElementById('dynamicCategoryFields');
+    const purposeInput = document.getElementById('applyPurpose');
+
+    const defaultPurposes = {
+      'home_loan': 'Residential Property Purchase / Construction',
+      'personal_loan': 'Personal Financial Requirements / Lifestyle Expenses',
+      'vehicle_loan': 'Vehicle Purchase / Auto Financing',
+      'education_loan': 'Higher Studies / Tuition & Academic Fees',
+      'business_loan': 'Business Expansion / Working Capital Support',
+      'gold_loan': 'Short-term Liquidity / Emergency Financial Needs'
+    };
+
+    if (purposeInput && defaultPurposes[loanType]) {
+      purposeInput.value = defaultPurposes[loanType];
+    }
+
     if (!fieldsContainer) return;
 
     switch (loanType) {
+      case 'home_loan':
+        fieldsContainer.innerHTML = `
+          <div class="dynamic-field-box">
+            <h4 style="margin-bottom:0.75rem; color:var(--accent-primary);"><i data-lucide="home" class="lucide" style="color:var(--accent-primary); margin-right:0.4rem;"></i> Property Specifications</h4>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Property Type</label>
+                <select id="applyPropertyType" class="input-control">
+                  <option value="apartment">Ready Apartment / Flat</option>
+                  <option value="under_construction">Under-Construction Project</option>
+                  <option value="independent_house">Independent Villa / House</option>
+                  <option value="plot_purchase">Residential Plot + Construction</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Estimated Property Value (₹)</label>
+                <input type="number" id="applyPropertyValue" class="input-control" value="6500000" min="100000" step="any" required>
+              </div>
+            </div>
+          </div>
+        `;
+        break;
+
       case 'gold_loan':
         fieldsContainer.innerHTML = `
           <div class="dynamic-field-box">
@@ -890,20 +977,104 @@ class ApplicationController {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  fillSchemeAndApply(loanType, recommendedEmi = null) {
+  fillSchemeAndApply(loanType, recommendedEmi = null, bankName = null, schemeName = null) {
     if (!store.token) {
       Components.showToast('Login Required', 'Please sign in or register to submit a loan application.', 'info');
       this.navigate('#/login');
       return;
     }
 
+    // Comprehensive category normalization matching product IDs and scheme types
+    let normalizedCategory = 'personal_loan';
+    const l = (loanType || '').toLowerCase();
+    if (l.includes('home') || l.includes('_hl_') || l.includes('housing') || l.includes('property') || l.includes('mortgage')) {
+      normalizedCategory = 'home_loan';
+    } else if (l.includes('veh') || l.includes('car') || l.includes('auto') || l.includes('_vl_') || l.includes('wheel')) {
+      normalizedCategory = 'vehicle_loan';
+    } else if (l.includes('edu') || l.includes('student') || l.includes('vidya') || l.includes('_el_') || l.includes('academic')) {
+      normalizedCategory = 'education_loan';
+    } else if (l.includes('bus') || l.includes('msme') || l.includes('sme') || l.includes('mudra') || l.includes('_bl_') || l.includes('working_capital')) {
+      normalizedCategory = 'business_loan';
+    } else if (l.includes('gold') || l.includes('_gl_')) {
+      normalizedCategory = 'gold_loan';
+    } else {
+      normalizedCategory = 'personal_loan';
+    }
+
     const select = document.getElementById('applyProductType');
     if (select) {
-      select.value = loanType;
-      this.handleSchemeCategoryChange(loanType);
+      select.value = normalizedCategory;
+      this.handleSchemeCategoryChange(normalizedCategory);
+    }
+
+    // Pre-fill target bank & scheme if provided
+    if (bankName) {
+      const bankSelect = document.getElementById('applyBankName');
+      if (bankSelect) {
+        let matched = false;
+        for (let opt of bankSelect.options) {
+          if (opt.value.toLowerCase().trim() === bankName.toLowerCase().trim() ||
+              opt.value.toLowerCase().includes(bankName.toLowerCase()) ||
+              bankName.toLowerCase().includes(opt.value.toLowerCase())) {
+            bankSelect.value = opt.value;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          const opt = new Option(bankName, bankName, true, true);
+          bankSelect.add(opt);
+          bankSelect.value = bankName;
+        }
+      }
+    }
+
+    if (schemeName) {
+      const schemeInput = document.getElementById('applySchemeName');
+      if (schemeInput) schemeInput.value = schemeName;
+    }
+
+    // Auto-sync input fields from active calculator context if available
+    const elAmount = document.getElementById('elRequestedAmount');
+    if (elAmount && elAmount.value) {
+      const applyAmt = document.getElementById('applyAmount');
+      if (applyAmt) applyAmt.value = elAmount.value;
+    }
+
+    const elTenure = document.getElementById('elTenure');
+    if (elTenure && elTenure.value) {
+      const applyTen = document.getElementById('applyTenure');
+      if (applyTen) applyTen.value = elTenure.value;
+    }
+
+    const elMonthly = document.getElementById('elMonthlyIncome');
+    if (elMonthly && elMonthly.value) {
+      const applyInc = document.getElementById('applyIncome');
+      if (applyInc) applyInc.value = Number(elMonthly.value) * 12;
+    }
+
+    const elCredit = document.getElementById('elCreditScore');
+    if (elCredit && elCredit.value) {
+      const applyCibil = document.getElementById('applyCreditScore');
+      if (applyCibil) applyCibil.value = elCredit.value;
+    }
+
+    const elEmp = document.getElementById('elEmployment');
+    if (elEmp && elEmp.value) {
+      const applyEmp = document.getElementById('applyEmployment');
+      if (applyEmp) applyEmp.value = elEmp.value.toLowerCase();
     }
 
     this.showModal('applyLoanModal');
+  }
+
+  handleApplyBankChange(bankName) {
+    const schemeInput = document.getElementById('applySchemeName');
+    const prodSelect = document.getElementById('applyProductType');
+    if (schemeInput && prodSelect) {
+      const pName = prodSelect.options[prodSelect.selectedIndex]?.text || 'Regular Scheme';
+      schemeInput.value = `${bankName} ${pName}`;
+    }
   }
 
   async handleApplyLoan(event) {
@@ -913,9 +1084,13 @@ class ApplicationController {
     btn.textContent = 'Submitting Application...';
 
     const loanType = document.getElementById('applyProductType').value;
+    const bankName = document.getElementById('applyBankName')?.value || 'State Bank of India';
+    const schemeName = document.getElementById('applySchemeName')?.value || `${bankName} Regular Scheme`;
 
     const loanData = {
       product_type: loanType,
+      bank_name: bankName,
+      scheme_name: schemeName,
       requested_amount: Number(document.getElementById('applyAmount').value),
       tenure_months: Number(document.getElementById('applyTenure').value),
       annual_income: Number(document.getElementById('applyIncome').value),
@@ -1124,13 +1299,132 @@ class ApplicationController {
   }
 
   fillDemoUser() {
+    const userBtn = document.getElementById('btnRoleUser');
+    const sysBtn = document.getElementById('btnRoleSystem');
+    if (userBtn) userBtn.classList.add('active');
+    if (sysBtn) sysBtn.classList.remove('active');
+
     document.getElementById('loginEmail').value = 'ravi@example.com';
     document.getElementById('loginPassword').value = 'MyPass@123';
+    
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+    if (bankSelectContainer) bankSelectContainer.style.display = 'none';
+
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    if (passkeyContainer) passkeyContainer.style.display = 'none';
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    if (passkeyInput) passkeyInput.value = '';
   }
 
   fillDemoAdmin() {
-    document.getElementById('loginEmail').value = 'admin@loanapp.com';
-    document.getElementById('loginPassword').value = 'Admin@123';
+    const userBtn = document.getElementById('btnRoleUser');
+    const sysBtn = document.getElementById('btnRoleSystem');
+    if (userBtn) userBtn.classList.remove('active');
+    if (sysBtn) sysBtn.classList.add('active');
+
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+    if (bankSelectContainer) bankSelectContainer.style.display = 'block';
+
+    const bankSelector = document.getElementById('loginBankSelector');
+    const selectedBank = bankSelector ? bankSelector.value : 'SBI';
+    this.fillDemoBankAdmin(selectedBank);
+  }
+
+  handleBankSelectChange(bankCode) {
+    this.fillDemoBankAdmin(bankCode);
+  }
+
+  fillDemoBankAdmin(bankCode = 'SBI') {
+    const code = bankCode.toUpperCase();
+    const bankEmails = {
+      'SBI': 'sbi.admin@loanapp.com',
+      'HDFC': 'hdfc.admin@loanapp.com',
+      'ICICI': 'icici.admin@loanapp.com',
+      'AXIS': 'axis.admin@loanapp.com',
+      'KOTAK': 'kotak.admin@loanapp.com',
+      'BOB': 'bob.admin@loanapp.com',
+      'UNION': 'union.admin@loanapp.com',
+      'TATA': 'tata.admin@loanapp.com',
+      'BAJAJ': 'bajaj.admin@loanapp.com',
+      'MUTHOOT': 'muthoot.admin@loanapp.com',
+      'LIC': 'lic.admin@loanapp.com'
+    };
+    const bankPasskeys = {
+      'SBI': 'SBI@Pass#2026',
+      'HDFC': 'HDFC@Pass#2026',
+      'ICICI': 'ICICI@Pass#2026',
+      'AXIS': 'AXIS@Pass#2026',
+      'KOTAK': 'KOTAK@Pass#2026',
+      'BOB': 'BOB@Pass#2026',
+      'UNION': 'UNION@Pass#2026',
+      'TATA': 'TATA@Pass#2026',
+      'BAJAJ': 'BAJAJ@Pass#2026',
+      'MUTHOOT': 'MUTHOOT@Pass#2026',
+      'LIC': 'LIC@Pass#2026'
+    };
+
+    const emailInput = document.getElementById('loginEmail');
+    const passInput = document.getElementById('loginPassword');
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    const bankSelector = document.getElementById('loginBankSelector');
+
+    if (bankSelector) bankSelector.value = code;
+    if (emailInput) emailInput.value = bankEmails[code] || `${code.toLowerCase()}.admin@loanapp.com`;
+    if (passInput) passInput.value = 'Admin@123';
+    if (passkeyContainer) passkeyContainer.style.display = 'block';
+    if (passkeyInput) passkeyInput.value = bankPasskeys[code] || `${code}@Pass#2026`;
+  }
+
+  checkLoginEmailRole(email = '') {
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+    const bankSelector = document.getElementById('loginBankSelector');
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    
+    const lower = (email || '').toLowerCase().trim();
+    if (lower.includes('admin') || lower.includes('.admin@')) {
+      if (passkeyContainer) passkeyContainer.style.display = 'block';
+      if (bankSelectContainer) bankSelectContainer.style.display = 'block';
+
+      let matchedBank = 'SBI';
+      if (lower.includes('hdfc')) matchedBank = 'HDFC';
+      else if (lower.includes('icici')) matchedBank = 'ICICI';
+      else if (lower.includes('axis')) matchedBank = 'AXIS';
+      else if (lower.includes('kotak')) matchedBank = 'KOTAK';
+      else if (lower.includes('bob')) matchedBank = 'BOB';
+      else if (lower.includes('union')) matchedBank = 'UNION';
+      else if (lower.includes('tata')) matchedBank = 'TATA';
+      else if (lower.includes('bajaj')) matchedBank = 'BAJAJ';
+      else if (lower.includes('muthoot')) matchedBank = 'MUTHOOT';
+      else if (lower.includes('lic')) matchedBank = 'LIC';
+      else if (lower.includes('sbi') || lower === 'admin@loanapp.com') matchedBank = 'SBI';
+
+      if (bankSelector) bankSelector.value = matchedBank;
+      
+      const bankPasskeys = {
+        'SBI': 'SBI@Pass#2026',
+        'HDFC': 'HDFC@Pass#2026',
+        'ICICI': 'ICICI@Pass#2026',
+        'AXIS': 'AXIS@Pass#2026',
+        'KOTAK': 'KOTAK@Pass#2026',
+        'BOB': 'BOB@Pass#2026',
+        'UNION': 'UNION@Pass#2026',
+        'TATA': 'TATA@Pass#2026',
+        'BAJAJ': 'BAJAJ@Pass#2026',
+        'MUTHOOT': 'MUTHOOT@Pass#2026',
+        'LIC': 'LIC@Pass#2026'
+      };
+      if (passkeyInput) {
+        passkeyInput.value = bankPasskeys[matchedBank] || 'SBI@Pass#2026';
+      }
+      if (hintEl) {
+        hintEl.innerHTML = `🔑 Active Bank: <strong>${matchedBank}</strong> | Passkey: <code style="color:var(--accent-primary);">${bankPasskeys[matchedBank]}</code>`;
+      }
+    } else {
+      if (passkeyContainer) passkeyContainer.style.display = 'none';
+      if (bankSelectContainer) bankSelectContainer.style.display = 'none';
+    }
   }
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */

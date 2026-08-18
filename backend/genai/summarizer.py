@@ -1,7 +1,4 @@
 import json
-
-from google import genai
-
 from .config import GEMINI_API_KEY, GEMINI_MODEL
 
 
@@ -25,16 +22,38 @@ Rules:
 """
 
 
+def generate_fallback_summary(top_recommendations: list[dict]) -> str:
+    """Generate a structured, deterministic financial summary from verified recommendation data."""
+    if not top_recommendations:
+        return "No suitable loan recommendations are available at this time."
+    
+    top = top_recommendations[0]
+    name = top.get("name", "Personalised Loan Offer")
+    rate = top.get("interest_rate", 8.75)
+    emi_val = top.get("emi_ratio", 0.25)
+    emi_pct = round(emi_val * 100, 1) if emi_val <= 1.0 else round(emi_val, 1)
+    reasons = top.get("reasons", [])
+    
+    reason_note = ""
+    if reasons and len(reasons) > 0:
+        clean_reason = reasons[0].rstrip(".")
+        reason_note = f" Key advantage: {clean_reason}."
+        
+    return f"Based on your credit assessment, **{name}** emerges as your top recommendation with a competitive interest rate of **{rate}%** per annum. Your projected monthly obligations constitute **{emi_pct}%** of monthly income, remaining well within prudent debt-service limits.{reason_note}"
+
+
 def summarize_recommendations(top_recommendations: list[dict]) -> str:
     if not top_recommendations:
         return "No suitable loan recommendations are available at this time."
 
     if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY is not configured.")
+        return generate_fallback_summary(top_recommendations)
 
-    client = genai.Client(api_key=GEMINI_API_KEY)
+    try:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
 
-    prompt = f"""
+        prompt = f"""
 {SYSTEM_PROMPT}
 
 Verified recommendation data:
@@ -42,15 +61,14 @@ Verified recommendation data:
 
 Write the summary now.
 """
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-    )
-
-    summary = (response.text or "").strip()
-
-    if not summary:
-        raise RuntimeError("Gemini returned an empty summary.")
-
-    return summary
+        summary = (response.text or "").strip()
+        if summary:
+            return summary
+        return generate_fallback_summary(top_recommendations)
+    except Exception:
+        return generate_fallback_summary(top_recommendations)

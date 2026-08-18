@@ -76,6 +76,8 @@ class RecommendationScorer:
         max_interest = max(o.total_interest for o in offers) or 1.0
         min_interest = min(o.total_interest for o in offers)
 
+        primary_preference = str(customer_data.get("primary_preference") or "LOWEST_EMI").upper()
+
         scored = []
         for offer in offers:
             s = self._score_offer(
@@ -86,6 +88,7 @@ class RecommendationScorer:
                 max_affordable_emi=max_affordable_emi,
                 max_interest=max_interest,
                 min_interest=min_interest,
+                primary_preference=primary_preference,
             )
             scored.append(s)
 
@@ -101,6 +104,7 @@ class RecommendationScorer:
         max_affordable_emi: float,
         max_interest: float,
         min_interest: float,
+        primary_preference: str = "LOWEST_EMI",
     ) -> ScoredOffer:
 
         # 1. Need match: how close is offer amount to requested amount?
@@ -124,12 +128,25 @@ class RecommendationScorer:
         tenure_diff = abs(offer.tenure_months - preferred_tenure)
         tenure_score = max(0.0, 1.0 - tenure_diff / max(preferred_tenure, 1))
 
+        # Dynamic preference-based weights
+        pref = primary_preference.upper()
+        if pref in ("LOWEST_EMI", "LOWEST_MONTHLY_EMI"):
+            weights = {"need_match": 0.15, "affordability": 0.45, "risk_fit": 0.10, "cost": 0.25, "tenure_preference": 0.05}
+        elif pref in ("SHORTEST_TENURE", "MINIMUM_TENURE"):
+            weights = {"need_match": 0.10, "affordability": 0.15, "risk_fit": 0.10, "cost": 0.20, "tenure_preference": 0.45}
+        elif pref in ("LOWEST_TOTAL_COST", "HIGHEST_RETURN", "MAX_SAVINGS"):
+            weights = {"need_match": 0.15, "affordability": 0.20, "risk_fit": 0.10, "cost": 0.45, "tenure_preference": 0.10}
+        elif pref in ("REQUIRED_AMOUNT", "MAX_LOAN_AMOUNT"):
+            weights = {"need_match": 0.45, "affordability": 0.25, "risk_fit": 0.10, "cost": 0.15, "tenure_preference": 0.05}
+        else:
+            weights = _W
+
         composite = (
-            _W["need_match"] * need_match
-            + _W["affordability"] * affordability
-            + _W["risk_fit"] * risk_fit
-            + _W["cost"] * cost_score
-            + _W["tenure_preference"] * tenure_score
+            weights["need_match"] * need_match
+            + weights["affordability"] * affordability
+            + weights["risk_fit"] * risk_fit
+            + weights["cost"] * cost_score
+            + weights["tenure_preference"] * tenure_score
         )
 
         return ScoredOffer(

@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.orm import Session
 
 try:
-    from ..database import LoanApplication, LoanDocument, LoanSchemeRule, User, get_db
+    from ..database import LoanApplication, LoanDocument, LoanSchemeRule, User, Bank, get_db
     from ..schemas import (
         LoanApplicationCreate,
         LoanApplicationOut,
@@ -27,7 +27,7 @@ try:
     from ..auth import get_current_user
     from ..eligibility_engine import rank_and_evaluate_all_loans, evaluate_loan_eligibility
 except ImportError:
-    from database import LoanApplication, LoanDocument, LoanSchemeRule, User, get_db
+    from database import LoanApplication, LoanDocument, LoanSchemeRule, User, Bank, get_db
     from schemas import (
         LoanApplicationCreate,
         LoanApplicationOut,
@@ -144,6 +144,27 @@ def apply_for_loan(
     data_dict["product_type"] = p_type
     data_dict["user_id"] = current_user.id
     data_dict["status"] = "pending"
+
+    # ── Bank & Scheme Resolution ──────────────────────────────
+    target_bank = None
+    if payload.bank_id:
+        target_bank = db.query(Bank).filter(Bank.id == payload.bank_id).first()
+    elif payload.bank_name:
+        b_name_search = payload.bank_name.strip()
+        target_bank = db.query(Bank).filter(
+            (Bank.bank_name.ilike(f"%{b_name_search}%")) |
+            (Bank.bank_code.ilike(f"%{b_name_search}%"))
+        ).first()
+
+    if not target_bank:
+        # Default to SBI if not specified
+        target_bank = db.query(Bank).filter(Bank.is_active == True).first()
+
+    if target_bank:
+        data_dict["bank_id"] = target_bank.id
+        data_dict["bank_name"] = target_bank.bank_name
+        if not data_dict.get("scheme_name"):
+            data_dict["scheme_name"] = f"{target_bank.bank_name} {p_type.replace('_', ' ').title()}"
 
     if eval_res:
         data_dict["eligibility_status"] = eval_res["eligibility_status"]

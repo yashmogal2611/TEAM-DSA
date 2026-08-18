@@ -51,6 +51,24 @@ class LoanSubmission(Base):
 
 
 # ──────────────────────────────────────────────────────────────
+# Bank Entities (Multi-Tenant Institutions)
+# ──────────────────────────────────────────────────────────────
+class Bank(Base):
+    __tablename__ = "banks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bank_code = Column(String(32), unique=True, nullable=False, index=True) # e.g. "SBI", "HDFC", "ICICI"
+    bank_name = Column(String(128), nullable=False)                         # e.g. "State Bank of India"
+    passkey_hash = Column(String(255), nullable=False)                      # Hashed tenant passkey (cross-checked on login)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    admins = relationship("User", back_populates="assigned_bank")
+    applications = relationship("LoanApplication", back_populates="bank")
+
+
+# ──────────────────────────────────────────────────────────────
 # User Accounts
 # ──────────────────────────────────────────────────────────────
 class User(Base):
@@ -62,6 +80,12 @@ class User(Base):
     phone = Column(String, nullable=True)
     hashed_password = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False)
+    role = Column(String(32), default="borrower") # "borrower" | "bank_admin" | "super_admin"
+    
+    # Multi-tenant scoping: Bank Admin binding
+    assigned_bank_id = Column(Integer, ForeignKey("banks.id"), nullable=True, index=True)
+    assigned_bank = relationship("Bank", back_populates="admins")
+
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -127,6 +151,13 @@ class LoanApplication(Base):
     # Applicant relationship
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     applicant = relationship("User", back_populates="loan_applications")
+
+    # ── Explicit Bank & Scheme Binding (Multi-Tenant Segregation) ─
+    bank_id = Column(Integer, ForeignKey("banks.id"), nullable=True, index=True)
+    bank_name = Column(String(128), nullable=True, index=True)   # Snapshot name e.g. "State Bank of India"
+    scheme_id = Column(Integer, nullable=True)                   # Linked scheme id
+    scheme_name = Column(String(128), nullable=True, index=True) # Snapshot scheme e.g. "SBI Regular Home Loan"
+    bank = relationship("Bank", back_populates="applications")
 
     # Core Consumer Input Fields
     product_type = Column(String, nullable=False, index=True) # personal_loan, home_loan, vehicle_loan, education_loan, business_loan, gold_loan
@@ -246,33 +277,197 @@ class LoanDocument(Base):
 # ──────────────────────────────────────────────────────────────
 # DB Helpers & Seeds
 # ──────────────────────────────────────────────────────────────
+def _migrate_sqlite_columns():
+    """Ensure newly added columns exist in existing SQLite database tables."""
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        # Check users table
+        try:
+            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            existing_user_cols = [r[1] for r in res]
+            if "assigned_bank_id" not in existing_user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN assigned_bank_id INTEGER REFERENCES banks(id)"))
+            if "role" not in existing_user_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(32) DEFAULT 'borrower'"))
+        except Exception as e:
+            print(f"[WARN] User table migration check: {e}")
+
+        # Check loan_applications table
+        try:
+            res = conn.execute(text("PRAGMA table_info(loan_applications)")).fetchall()
+            existing_loan_cols = [r[1] for r in res]
+            if "bank_id" not in existing_loan_cols:
+                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN bank_id INTEGER REFERENCES banks(id)"))
+            if "bank_name" not in existing_loan_cols:
+                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN bank_name VARCHAR(128)"))
+            if "scheme_id" not in existing_loan_cols:
+                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN scheme_id INTEGER"))
+            if "scheme_name" not in existing_loan_cols:
+                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN scheme_name VARCHAR(128)"))
+        except Exception as e:
+            print(f"[WARN] LoanApplication table migration check: {e}")
+        conn.commit()
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _migrate_sqlite_columns()
     seed_default_schemes()
-    seed_default_admin()
+    seed_default_banks_and_admins()
 
 
-def seed_default_admin():
-    """Create default system admin and demo borrower accounts if not present."""
+def seed_default_banks_and_admins():
+    """Create default partner banks with passkeys, bank-scoped admin accounts, and demo borrowers."""
     import bcrypt as _bcrypt
     from sqlalchemy import func
     db = SessionLocal()
     try:
-        # 1. Admin Account
+        # 1. Seed Partner Banks
+        banks_data = [
+            {
+                "bank_code": "SBI",
+                "bank_name": "State Bank of India",
+                "passkey": "SBI@Pass#2026",
+                "admin_email": "sbi.admin@loanapp.com",
+                "admin_name": "SBI Underwriting Admin",
+                "admin_phone": "9811100001",
+            },
+            {
+                "bank_code": "HDFC",
+                "bank_name": "HDFC Bank",
+                "passkey": "HDFC@Pass#2026",
+                "admin_email": "hdfc.admin@loanapp.com",
+                "admin_name": "HDFC Underwriting Admin",
+                "admin_phone": "9811100002",
+            },
+            {
+                "bank_code": "ICICI",
+                "bank_name": "ICICI Bank",
+                "passkey": "ICICI@Pass#2026",
+                "admin_email": "icici.admin@loanapp.com",
+                "admin_name": "ICICI Underwriting Admin",
+                "admin_phone": "9811100003",
+            },
+            {
+                "bank_code": "AXIS",
+                "bank_name": "Axis Bank",
+                "passkey": "AXIS@Pass#2026",
+                "admin_email": "axis.admin@loanapp.com",
+                "admin_name": "Axis Bank Underwriting Admin",
+                "admin_phone": "9811100004",
+            },
+            {
+                "bank_code": "KOTAK",
+                "bank_name": "Kotak Mahindra Bank",
+                "passkey": "KOTAK@Pass#2026",
+                "admin_email": "kotak.admin@loanapp.com",
+                "admin_name": "Kotak Underwriting Admin",
+                "admin_phone": "9811100005",
+            },
+            {
+                "bank_code": "BOB",
+                "bank_name": "Bank of Baroda",
+                "passkey": "BOB@Pass#2026",
+                "admin_email": "bob.admin@loanapp.com",
+                "admin_name": "BOB Underwriting Admin",
+                "admin_phone": "9811100006",
+            },
+            {
+                "bank_code": "UNION",
+                "bank_name": "Union Bank of India",
+                "passkey": "UNION@Pass#2026",
+                "admin_email": "union.admin@loanapp.com",
+                "admin_name": "Union Bank Underwriting Admin",
+                "admin_phone": "9811100007",
+            },
+            {
+                "bank_code": "TATA",
+                "bank_name": "Tata Capital",
+                "passkey": "TATA@Pass#2026",
+                "admin_email": "tata.admin@loanapp.com",
+                "admin_name": "Tata Capital Admin",
+                "admin_phone": "9811100008",
+            },
+            {
+                "bank_code": "BAJAJ",
+                "bank_name": "Bajaj Finance",
+                "passkey": "BAJAJ@Pass#2026",
+                "admin_email": "bajaj.admin@loanapp.com",
+                "admin_name": "Bajaj Finance Admin",
+                "admin_phone": "9811100009",
+            },
+            {
+                "bank_code": "MUTHOOT",
+                "bank_name": "Muthoot Finance",
+                "passkey": "MUTHOOT@Pass#2026",
+                "admin_email": "muthoot.admin@loanapp.com",
+                "admin_name": "Muthoot Gold Finance Admin",
+                "admin_phone": "9811100010",
+            },
+            {
+                "bank_code": "LIC",
+                "bank_name": "LIC Housing Finance",
+                "passkey": "LIC@Pass#2026",
+                "admin_email": "lic.admin@loanapp.com",
+                "admin_name": "LIC Housing Finance Underwriting Admin",
+                "admin_phone": "9811100011",
+            },
+        ]
+
+        bank_entities = {}
+        for b_info in banks_data:
+            existing_bank = db.query(Bank).filter(func.upper(Bank.bank_code) == b_info["bank_code"].upper()).first()
+            if not existing_bank:
+                p_hash = _bcrypt.hashpw(b_info["passkey"].encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+                bank_obj = Bank(
+                    bank_code=b_info["bank_code"],
+                    bank_name=b_info["bank_name"],
+                    passkey_hash=p_hash,
+                    is_active=True
+                )
+                db.add(bank_obj)
+                db.flush()
+                bank_entities[b_info["bank_code"]] = bank_obj
+            else:
+                bank_entities[b_info["bank_code"]] = existing_bank
+
+            # Seed specific bank admin user
+            existing_b_admin = db.query(User).filter(func.lower(User.email) == b_info["admin_email"].lower()).first()
+            if not existing_b_admin:
+                pw_hash = _bcrypt.hashpw("Admin@123".encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
+                b_admin = User(
+                    full_name=b_info["admin_name"],
+                    email=b_info["admin_email"].lower(),
+                    phone=b_info["admin_phone"],
+                    hashed_password=pw_hash,
+                    is_admin=True,
+                    role="bank_admin",
+                    assigned_bank_id=bank_entities[b_info["bank_code"]].id,
+                    is_active=True
+                )
+                db.add(b_admin)
+
+        # 2. Legacy / Global Default Admin (Assigned to SBI by default)
+        sbi_bank = bank_entities.get("SBI")
         existing_admin = db.query(User).filter(func.lower(User.email) == "admin@loanapp.com").first()
         if not existing_admin:
             hashed = _bcrypt.hashpw("Admin@123".encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
             admin = User(
-                full_name="System Admin",
+                full_name="System Admin (SBI)",
                 email="admin@loanapp.com",
                 phone="9999999999",
                 hashed_password=hashed,
                 is_admin=True,
+                role="bank_admin",
+                assigned_bank_id=sbi_bank.id if sbi_bank else None,
                 is_active=True
             )
             db.add(admin)
+        elif existing_admin and not existing_admin.assigned_bank_id and sbi_bank:
+            existing_admin.assigned_bank_id = sbi_bank.id
+            existing_admin.role = "bank_admin"
 
-        # 2. Demo Borrower (Ravi Kumar)
+        # 3. Demo Borrower (Ravi Kumar)
         existing_ravi = db.query(User).filter(func.lower(User.email) == "ravi@example.com").first()
         if not existing_ravi:
             hashed_ravi = _bcrypt.hashpw("MyPass@123".encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
@@ -282,13 +477,32 @@ def seed_default_admin():
                 phone="9812345678",
                 hashed_password=hashed_ravi,
                 is_admin=False,
+                role="borrower",
                 is_active=True
             )
             db.add(ravi)
 
+        # 4. Backfill existing loan applications without bank_id to matching banks
+        existing_apps = db.query(LoanApplication).filter(LoanApplication.bank_id == None).all()
+        for app in existing_apps:
+            if app.bank_name:
+                for b_code, b_obj in bank_entities.items():
+                    if b_obj.bank_name.lower() in app.bank_name.lower() or b_code.lower() in app.bank_name.lower():
+                        app.bank_id = b_obj.id
+                        break
+            if not app.bank_id and sbi_bank:
+                app.bank_id = sbi_bank.id
+                app.bank_name = sbi_bank.bank_name
+                if not app.scheme_name:
+                    app.scheme_name = f"{sbi_bank.bank_code} Regular Loan"
+
         db.commit()
     finally:
         db.close()
+
+
+def seed_default_admin():
+    seed_default_banks_and_admins()
 
 
 def get_db():

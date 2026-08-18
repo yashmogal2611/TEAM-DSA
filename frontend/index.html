@@ -273,23 +273,47 @@
 
           <!-- Quick Demo Credentials Fill -->
           <div class="demo-credentials-box">
-            <h4><i data-lucide="lightbulb"></i> Quick Demo Credentials</h4>
-            <div>Select a role to auto-fill test credentials:</div>
-            <div class="demo-btns">
-              <button type="button" class="btn-demo-fill" onclick="app.fillDemoUser()"><i data-lucide="user"></i> Regular User</button>
-              <button type="button" class="btn-demo-fill" onclick="app.fillDemoAdmin()"><i data-lucide="shield"></i> System Admin</button>
+            <h4><i data-lucide="shield-check"></i> Quick Demo Access</h4>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Select role to pre-fill test credentials:</div>
+            <div class="demo-btns" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
+              <button type="button" class="btn-demo-fill" id="btnRoleUser" onclick="app.fillDemoUser()"><i data-lucide="user"></i> User Login</button>
+              <button type="button" class="btn-demo-fill" id="btnRoleSystem" onclick="app.fillDemoAdmin()"><i data-lucide="shield"></i> System Login</button>
             </div>
           </div>
 
           <form id="loginForm" onsubmit="app.handleLogin(event)">
+            <!-- Bank Institution Selector (Visible for System Admin Login) -->
+            <div class="form-group" id="loginBankSelectContainer" style="display:none;">
+              <label class="form-label" for="loginBankSelector">Select Bank Institution</label>
+              <select id="loginBankSelector" class="input-control" onchange="app.handleBankSelectChange(this.value)">
+                <option value="SBI">State Bank of India (SBI)</option>
+                <option value="HDFC">HDFC Bank</option>
+                <option value="ICICI">ICICI Bank</option>
+                <option value="AXIS">Axis Bank</option>
+                <option value="KOTAK">Kotak Mahindra Bank</option>
+                <option value="BOB">Bank of Baroda</option>
+                <option value="UNION">Union Bank of India</option>
+                <option value="TATA">Tata Capital</option>
+                <option value="BAJAJ">Bajaj Finance</option>
+                <option value="MUTHOOT">Muthoot Finance</option>
+                <option value="LIC">LIC Housing Finance</option>
+              </select>
+            </div>
+
             <div class="form-group">
               <label class="form-label" for="loginEmail">Email Address</label>
-              <input type="email" id="loginEmail" class="input-control" placeholder="name@example.com" required value="ravi@example.com">
+              <input type="email" id="loginEmail" class="input-control" placeholder="name@example.com" required value="ravi@example.com" oninput="app.checkLoginEmailRole(this.value)">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="loginPassword">Password</label>
               <input type="password" id="loginPassword" class="input-control" placeholder="••••••••" required value="MyPass@123">
+            </div>
+
+            <!-- Bank Passkey Input (Dynamic for Bank Administrators) -->
+            <div class="form-group" id="loginPasskeyContainer" style="display:none;">
+              <label class="form-label" for="loginBankPasskey">Bank Institutional Passkey (3-Factor Required)</label>
+              <input type="password" id="loginBankPasskey" class="input-control" placeholder="e.g. SBI@Pass#2026" autocomplete="off">
             </div>
 
             <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem;">
@@ -573,8 +597,10 @@
     <section class="view-section" id="viewAdminDashboard">
       <div class="dashboard-header">
         <div class="dashboard-title">
-          <h1>Admin Control Panel</h1>
-          <p>Review incoming applicant requests, verify documents, set interest rates, and issue sanction letters.</p>
+          <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.25rem;">
+            <span id="adminBankLogoContainer" style="display:inline-flex; align-items:center;"></span>
+            <h1 id="adminDashboardHeading" style="margin:0;">Bank Underwriting Portal</h1>
+          </div>
         </div>
         <a href="#/admin-users" class="btn btn-secondary">
           <i data-lucide="users"></i> Registered Users Directory
@@ -584,10 +610,13 @@
       <!-- Admin System KPIs -->
       <div class="kpi-grid" id="adminStatsContainer"></div>
 
+      <!-- Per-Scheme Summary Section -->
+      <div id="adminSchemesContainer" style="margin-bottom: 2rem;"></div>
+
       <!-- Admin Search & Filter Toolbar -->
       <div class="admin-toolbar">
         <div class="tab-filters">
-          <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Applications</button>
+          <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Bank Applications</button>
           <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)"><i data-lucide="clock"></i> Pending Review</button>
           <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)"><i data-lucide="check-circle"></i> Approved</button>
           <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)"><i data-lucide="x-circle"></i> Rejected</button>
@@ -629,6 +658,34 @@
       <form id="applyLoanForm" onsubmit="app.handleApplyLoan(event)">
         <div class="modal-body">
           
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" for="applyBankName">Target Lending Institution</label>
+              <select id="applyBankName" class="input-control" onchange="app.handleApplyBankChange(this.value)">
+                <option value="State Bank of India">State Bank of India (SBI)</option>
+                <option value="HDFC Bank">HDFC Bank</option>
+                <option value="ICICI Bank">ICICI Bank</option>
+                <option value="Axis Bank">Axis Bank</option>
+                <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                <option value="Bank of Baroda">Bank of Baroda</option>
+                <option value="Union Bank of India">Union Bank of India</option>
+                <option value="Tata Capital">Tata Capital</option>
+                <option value="Bajaj Finance">Bajaj Finance</option>
+                <option value="Muthoot Finance">Muthoot Finance</option>
+                <option value="LIC Housing Finance">LIC Housing Finance</option>
+                <option value="PNB Housing Finance">PNB Housing Finance</option>
+                <option value="HDFC Credila">HDFC Credila</option>
+                <option value="MUDRA (Govt. Scheme)">MUDRA (Govt. Scheme)</option>
+                <option value="KreditBee">KreditBee</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="applySchemeName">Scheme Product Name</label>
+              <input type="text" id="applySchemeName" class="input-control" placeholder="e.g. SBI Regular Home Loan" value="SBI Regular Home Loan">
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="applyProductType">Loan Scheme Category</label>

@@ -122,13 +122,41 @@ class UserRegister(BaseModel):
         return s
 
 
+# ──────────────────────────────────────────────────────────────
+# Bank & Multi-Tenant Scoping Schemas
+# ──────────────────────────────────────────────────────────────
+class BankOut(BaseModel):
+    id: int
+    bank_code: str
+    bank_name: str
+    is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
 class UserLogin(BaseModel):
     email: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
+    bank_passkey: Optional[str] = None # Optional passkey for dual-path login
 
     @field_validator("email")
     @classmethod
     def validate_email_login(cls, v: str) -> str:
+        s = (v or "").strip().lower()
+        if not s:
+            raise ValueError("Email cannot be empty")
+        return s
+
+
+class BankAdminLogin(BaseModel):
+    email: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+    bank_passkey: str = Field(..., min_length=1, description="Institutional passkey assigned to the admin's bank")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email_admin_login(cls, v: str) -> str:
         s = (v or "").strip().lower()
         if not s:
             raise ValueError("Email cannot be empty")
@@ -142,6 +170,10 @@ class Token(BaseModel):
     user_id: int
     email: str
     full_name: str
+    bank_id: Optional[int] = None
+    bank_name: Optional[str] = None
+    bank_code: Optional[str] = None
+    role: Optional[str] = "borrower"
 
 
 class UserOut(BaseModel):
@@ -150,6 +182,9 @@ class UserOut(BaseModel):
     email: str
     phone: Optional[str] = None
     is_admin: bool
+    role: Optional[str] = "borrower"
+    assigned_bank_id: Optional[int] = None
+    bank_name: Optional[str] = None
     is_active: bool
     created_at: datetime
 
@@ -286,6 +321,12 @@ class EligibilityCheckResponse(BaseModel):
 # Loan Application Creation & Output
 # ──────────────────────────────────────────────────────────────
 class LoanApplicationCreate(BaseModel):
+    # Specific Bank & Scheme Binding (From ML Recommendation or Selected Scheme)
+    bank_id: Optional[int] = None
+    bank_name: Optional[str] = None
+    scheme_id: Optional[int] = None
+    scheme_name: Optional[str] = None
+
     product_type: str = Field(..., description="personal_loan | home_loan | vehicle_loan | education_loan | business_loan | gold_loan")
     requested_amount: float = Field(..., gt=0)
     tenure_months: int = Field(..., gt=0)
@@ -355,6 +396,12 @@ class LoanApplicationOut(BaseModel):
     applicant_name: Optional[str] = None
     applicant_email: Optional[str] = None
     applicant_phone: Optional[str] = None
+
+    # Bank Scoped Metadata
+    bank_id: Optional[int] = None
+    bank_name: Optional[str] = None
+    scheme_id: Optional[int] = None
+    scheme_name: Optional[str] = None
 
     product_type: str
     requested_amount: float
@@ -441,7 +488,23 @@ class AdminLoanUpdate(BaseModel):
     interest_rate_offered: Optional[float] = None
 
 
+class SchemeStatItem(BaseModel):
+    scheme_name: str
+    total_applications: int
+    pending_count: int
+    under_review_count: int
+    approved_count: int
+    rejected_count: int
+    approval_rate: float
+    total_requested_volume: float
+    total_sanctioned_volume: float
+    avg_ticket_size: float
+
+
 class AdminStats(BaseModel):
+    bank_id: Optional[int] = None
+    bank_name: Optional[str] = None
+    bank_code: Optional[str] = None
     total_applications: int
     pending: int
     under_review: int
@@ -452,3 +515,4 @@ class AdminStats(BaseModel):
     applications_by_type: Dict[str, int]
     total_requested_volume: float
     total_approved_volume: float
+    schemes_breakdown: List[SchemeStatItem] = []

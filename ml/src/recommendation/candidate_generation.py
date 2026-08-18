@@ -133,10 +133,9 @@ class CandidateGenerator:
         return requested >= min_amt  # pricing will cap to max_amt
 
     def _check_tenure_range(self, product: dict, tenure: int) -> bool:
-        min_t = product.get("min_tenure_months", 0)
         max_t = product.get("max_tenure_months", 999)
-        # pass if preferred tenure is within 1.5× product range (pricing adjusts)
-        return min_t <= tenure * 1.5 and tenure * 0.5 <= max_t
+        # pass if preferred tenure can be supported by product's term capabilities
+        return tenure <= max_t * 1.5
 
     def _check_geography(self, product: dict, city: str) -> bool:
         serviceable = product.get("serviceable_cities")

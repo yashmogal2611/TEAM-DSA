@@ -112,7 +112,13 @@ class PricingEngine:
             preferred_tenure = customer_data.get("preferred_tenure_months", 36)
             max_tenure = product.get("max_tenure_months", 84)
             min_tenure = product.get("min_tenure_months", 6)
-            tenure = int(min(max(preferred_tenure, min_tenure), max_tenure))
+            pref = str(customer_data.get("primary_preference") or "LOWEST_EMI").upper()
+
+            if pref in ("SHORTEST_TENURE", "MINIMUM_TENURE"):
+                # Offer the most accelerated repayment schedule supported by the product
+                tenure = int(min(max(min_tenure, preferred_tenure), min_tenure if min_tenure >= preferred_tenure else preferred_tenure))
+            else:
+                tenure = int(min(max(preferred_tenure, min_tenure), max_tenure))
 
             # ── Rate ──────────────────────────────────────────────────────────
             base_rate = float(product.get("base_interest_rate", 12.0))

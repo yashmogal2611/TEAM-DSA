@@ -3,6 +3,28 @@
  * ApexLoans — Soft & Subtle Aesthetic Beige Palette
  */
 const Components = {
+  getBankLogoHtml(bankName, height = 24) {
+    if (!bankName) return '';
+    const b = bankName.toLowerCase();
+    let logoFile = '';
+    if (b.includes('state bank') || b.includes('sbi')) logoFile = '/assets/images/banks/sbi_logo.png';
+    else if (b.includes('hdfc')) logoFile = '/assets/images/banks/hdfc_logo.png';
+    else if (b.includes('icici')) logoFile = '/assets/images/banks/icici_logo.png';
+    else if (b.includes('axis')) logoFile = '/assets/images/banks/axis_logo.png';
+    else if (b.includes('kotak')) logoFile = '/assets/images/banks/kotak_logo.png';
+    else if (b.includes('baroda') || b.includes('bob')) logoFile = '/assets/images/banks/bob_logo.png';
+    else if (b.includes('union') || b.includes('ubi')) logoFile = '/assets/images/banks/union_logo.png';
+    else if (b.includes('tata')) logoFile = '/assets/images/banks/tata_logo.png';
+    else if (b.includes('bajaj')) logoFile = '/assets/images/banks/bajaj_logo.png';
+    else if (b.includes('muthoot')) logoFile = '/assets/images/banks/muthoot_logo.png';
+    else if (b.includes('lic')) logoFile = '/assets/images/banks/lic_logo.png';
+
+    if (logoFile) {
+      return `<img src="${logoFile}" alt="${bankName}" style="height:${height}px; max-width:120px; object-fit:contain; vertical-align:middle; margin-right:6px; border-radius:4px; background:#fff; padding:2px 6px; border:1px solid rgba(0,0,0,0.07); box-shadow:0 1px 2px rgba(0,0,0,0.03);">`;
+    }
+    return `<span class="badge" style="background:var(--accent-primary); color:#fff; font-size:0.75rem; margin-right:6px; padding:2px 6px; border-radius:4px;"><i data-lucide="building-2" style="width:12px; height:12px; vertical-align:middle;"></i></span>`;
+  },
+
   renderStatusBadge(status) {
     switch (status) {
       case 'pending':
@@ -440,9 +462,12 @@ const Components = {
                   <div class="rank-badge-standard">Rank #${rec.rank}</div>
                 `}
 
-                <div class="rec-header">
-                  <div class="lender-tag">${rec.lender_name}</div>
-                  <h3>${rec.product_name}</h3>
+                <div class="rec-header" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+                  ${this.getBankLogoHtml(rec.lender_name, 32)}
+                  <div style="flex:1;">
+                    <div class="lender-tag" style="margin:0;">${rec.lender_name}</div>
+                    <h3 style="margin:0.2rem 0 0 0; font-size:1.1rem;">${rec.product_name}</h3>
+                  </div>
                 </div>
 
                 <div class="financial-hero-box">
@@ -488,7 +513,7 @@ const Components = {
                 ` : ''}
 
                 <div class="rec-footer">
-                  <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${rec.product_id}', ${rec.monthly_emi})">
+                  <button class="btn btn-primary btn-full" onclick="app.fillSchemeAndApply('${rec.product_id}', ${rec.monthly_emi}, '${(rec.lender_name || '').replace(/'/g, "\\'")}', '${(rec.product_name || '').replace(/'/g, "\\'")}')">
                     Apply for ${rec.lender_name} Offer Now →
                   </button>
                 </div>
@@ -823,11 +848,75 @@ const Components = {
     `;
   },
 
+  renderAdminSchemeStats(schemes, bankName = '') {
+    if (!schemes || schemes.length === 0) return '';
+    return `
+      <div class="card" style="margin-bottom: 1.5rem; background: var(--surface-card); border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden;">
+        <div style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(2, 132, 199, 0.03);">
+          <div>
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+              <i data-lucide="layers" style="width: 18px; height: 18px; color: var(--accent-primary);"></i>
+              <span>${bankName ? bankName + ' — ' : ''}Per-Scheme Portfolio Breakdown</span>
+            </h3>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+              Volume metrics, approval rates, and underwriting exposure per financial scheme.
+            </div>
+          </div>
+          <span class="badge" style="background: rgba(2, 132, 199, 0.1); color: var(--accent-primary); font-weight: 600;">
+            ${schemes.length} Active Scheme${schemes.length > 1 ? 's' : ''}
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Scheme Name</th>
+                <th>Total Apps</th>
+                <th>Under Review</th>
+                <th>Approved</th>
+                <th>Rejected</th>
+                <th>Approval Rate</th>
+                <th>Requested Volume</th>
+                <th>Sanctioned Volume</th>
+                <th>Avg Ticket Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${schemes.map(s => `
+                <tr>
+                  <td>
+                    <strong>${s.scheme_name}</strong>
+                  </td>
+                  <td><span class="badge" style="font-weight: 700;">${s.total_applications}</span></td>
+                  <td><span style="color: var(--amber); font-weight: 600;">${s.pending_count + (s.under_review_count || 0)}</span></td>
+                  <td><span style="color: var(--emerald); font-weight: 700;">${s.approved_count}</span></td>
+                  <td><span style="color: var(--rose); font-weight: 600;">${s.rejected_count}</span></td>
+                  <td>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                      <div style="flex:1; height:6px; background:var(--border-color); border-radius:3px; overflow:hidden; min-width:50px;">
+                        <div style="width:${s.approval_rate}%; height:100%; background:var(--emerald);"></div>
+                      </div>
+                      <span style="font-size:0.8rem; font-weight:700; color:var(--emerald);">${s.approval_rate}%</span>
+                    </div>
+                  </td>
+                  <td><strong>${this.formatCurrency(s.total_requested_volume)}</strong></td>
+                  <td><strong style="color: var(--emerald);">${this.formatCurrency(s.total_sanctioned_volume)}</strong></td>
+                  <td><span style="color: var(--text-secondary); font-size: 0.85rem;">${s.avg_ticket_size > 0 ? this.formatCurrency(s.avg_ticket_size) : '—'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  },
+
   renderAdminLoansTable(loans) {
     if (!loans || loans.length === 0) {
       return `
         <div class="empty-state">
           <h3>No Applications Match Search / Filter</h3>
+          <p>No applications found in this bank's scoped underwriting queue.</p>
         </div>
       `;
     }
@@ -840,7 +929,7 @@ const Components = {
               <tr>
                 <th>ID & Date</th>
                 <th>Applicant Profile</th>
-                <th>Scheme & Details</th>
+                <th>Scheme & Institution</th>
                 <th>Financial Metrics</th>
                 <th>Income & Credit</th>
                 <th>Status & Offer</th>
@@ -860,8 +949,11 @@ const Components = {
                     <div style="font-size:0.725rem; color:var(--text-secondary); text-transform:capitalize;">${(loan.employment_type || '').replace('_', ' ')}</div>
                   </td>
                   <td>
-                    <span class="product-tag">${this.formatProductType(loan.product_type)}</span>
-                    <div style="font-size:0.775rem; color:var(--text-secondary); margin-top:0.25rem;">${this.formatCategoryDetails(loan)}</div>
+                    <div style="display:flex; flex-direction:column; gap:0.2rem;">
+                      ${loan.bank_name ? `<span class="badge badge-primary" style="font-size:0.7rem; align-self:flex-start;">${loan.bank_name}</span>` : ''}
+                      <div style="font-weight:600; font-size:0.85rem; color:var(--text-primary);">${loan.scheme_name || this.formatProductType(loan.product_type)}</div>
+                      <div style="font-size:0.75rem; color:var(--text-muted);">${this.formatCategoryDetails(loan)}</div>
+                    </div>
                   </td>
                   <td>
                     <div>Req: <strong>${this.formatCurrency(loan.requested_amount)}</strong></div>
