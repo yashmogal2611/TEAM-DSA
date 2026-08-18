@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator, model_validator
 from enum import Enum
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -216,8 +216,17 @@ class DocumentOut(BaseModel):
 
 
 class DocumentVerifyPayload(BaseModel):
-    verification_status: str = Field(..., pattern="^(verified|rejected|pending)$")
+    verification_status: Optional[str] = Field(None, pattern="^(verified|rejected|pending|under_review)$")
+    status: Optional[str] = None
     verification_note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def resolve_status(self):
+        if not self.verification_status and self.status:
+            self.verification_status = self.status
+        if not self.verification_status:
+            self.verification_status = "verified"
+        return self
 
 
 # ──────────────────────────────────────────────────────────────

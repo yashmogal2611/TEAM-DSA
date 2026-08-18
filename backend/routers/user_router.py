@@ -220,8 +220,8 @@ def get_loan_application_detail(
 @router.post("/{loan_id}/documents", response_model=DocumentOut, status_code=201)
 async def upload_loan_document(
     loan_id: int,
-    doc_category: str = Form(..., description="kyc | income | bank | loan_specific | collateral | co_applicant | other"),
-    doc_type: str = Form(..., description="pan_card | aadhaar | salary_slip | bank_statement | etc."),
+    doc_category: str = Form("kyc", description="kyc | income | bank | loan_specific | collateral | co_applicant | other"),
+    doc_type: Optional[str] = Form(None, description="pan_card | aadhaar | salary_slip | bank_statement | etc."),
     verification_note: Optional[str] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -240,6 +240,17 @@ async def upload_loan_document(
     # Target directory structure: uploads/{user_id}/{loan_id}/
     user_loan_dir = os.path.join(UPLOAD_BASE_DIR, str(current_user.id), str(loan_id))
     os.makedirs(user_loan_dir, exist_ok=True)
+
+    if not doc_type:
+        type_defaults = {
+            "kyc": "kyc_id_proof",
+            "income": "income_salary_slip",
+            "bank": "bank_statement_6m",
+            "collateral": "collateral_deed",
+            "loan_specific": "scheme_document",
+            "co_applicant": "co_applicant_kyc",
+        }
+        doc_type = type_defaults.get((doc_category or "").lower(), "document")
 
     original_filename = file.filename or "document.pdf"
     file_ext = os.path.splitext(original_filename)[1]
@@ -289,6 +300,38 @@ def list_loan_documents(
 
     docs = db.query(LoanDocument).filter(LoanDocument.loan_application_id == loan_id).all()
     return [_to_doc_out(d) for d in docs]
+
+
+@router.get("/{loan_id}/documents/{doc_id}/download")
+def download_user_loan_document(
+    loan_id: int,
+    doc_id: int,
+    db: Session = Depends(get_db),
+):
+    """Download document file."""
+    doc = db.query(LoanDocument).filter(
+        LoanDocument.id == doc_id,
+        LoanDocument.loan_application_id == loan_id
+    ).first()
+    if not doc or not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Document file not found.")
+
+    media_type = doc.mime_type or "application/octet-stream"
+    return FileResponse(
+        path=doc.file_path,
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{doc.original_filename}"'}
+    )
+
+
+@router.get("/{loan_id}/documents/{doc_id}/view")
+def view_user_loan_document(
+    loan_id: int,
+    doc_id: int,
+    db: Session = Depends(get_db),
+):
+    """In-browser preview for documents."""
+    return download_user_loan_document(loan_id=loan_id, doc_id=doc_id, db=db)
 
 
 @router.delete("/{loan_id}/documents/{doc_id}", status_code=204)
