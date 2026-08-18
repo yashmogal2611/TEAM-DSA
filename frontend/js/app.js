@@ -588,7 +588,7 @@ class ApplicationController {
       if (res.is_admin) {
         this.navigate('#/admin-dashboard');
       } else {
-        this.navigate('#/user-dashboard');
+        this.navigate('#/home');
       }
     } catch (err) {
       Components.showToast('Authentication Failed', err.message, 'error');
@@ -614,13 +614,13 @@ class ApplicationController {
     try {
       store.clearSession();
       const user = await api.register(userData);
-      Components.showToast('Account Created!', 'Registration successful. Logging you in...', 'success');
+      Components.showToast('Account Created!', 'Registration successful. Welcome to CrediWise.', 'success');
 
       const loginRes = await api.login({ email: userData.email, password: userData.password });
       localStorage.setItem(CONFIG.TOKEN_KEY, loginRes.access_token);
       store.setSession(loginRes.access_token, user);
       
-      this.navigate('#/user-dashboard');
+      this.navigate('#/home');
     } catch (err) {
       Components.showToast('Registration Error', err.message, 'error');
     } finally {
@@ -1099,8 +1099,20 @@ class ApplicationController {
   async handleApplyLoan(event) {
     event.preventDefault();
     const btn = event.target.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Submitting Application...';
+
+    // Compulsory Verification Documents Check
+    const kycFile = document.getElementById('applyDocKyc')?.files?.[0];
+    const incomeFile = document.getElementById('applyDocIncome')?.files?.[0];
+
+    if (!kycFile || !incomeFile) {
+      Components.showToast('Compulsory Documents Missing', 'Uploading verification documents (KYC Proof & Income Proof) is mandatory to submit a new loan application.', 'warning');
+      btn.disabled = false;
+      btn.textContent = originalText;
+      return;
+    }
 
     const loanType = document.getElementById('applyProductType').value;
     const bankName = document.getElementById('applyBankName')?.value || 'State Bank of India';
