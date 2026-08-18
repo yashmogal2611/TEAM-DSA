@@ -3689,5 +3689,118 @@ textarea.input-control {
   border-bottom-right-radius: 16px;
 }
 
+/* ==========================================================================
+   HOMEPAGE PRIME LOAN PRODUCTS GRID — 3 CARDS PER ROW x 2 ROWS
+   ========================================================================== */
+
+.home-products-section {
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.home-products-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 1.5rem !important;
+  margin-top: 1.25rem !important;
+}
+
+.home-prod-card {
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-color, #E2E8F0);
+  border-radius: 16px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.home-prod-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -6px rgba(184, 131, 79, 0.18);
+  border-color: var(--accent-primary, #B8834F);
+}
+
+.home-prod-card .prod-badge {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  background: var(--accent-light, #F7EFE4);
+  color: var(--accent-primary, #B8834F);
+  border: 1px solid rgba(184, 131, 79, 0.2);
+}
+
+.home-prod-card .prod-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(184, 131, 79, 0.08);
+  color: var(--accent-primary, #B8834F);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.home-prod-card h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #1E293B);
+  margin-bottom: 0.35rem;
+}
+
+.home-prod-card .prod-rate {
+  font-size: 0.85rem;
+  color: var(--text-muted, #64748B);
+  margin-bottom: 0.75rem;
+}
+
+.home-prod-card .prod-rate strong {
+  color: var(--emerald, #2D7D53);
+  font-weight: 700;
+}
+
+.home-prod-card p.prod-desc {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary, #475569);
+  margin-bottom: 1.25rem;
+  flex: 1;
+}
+
+.home-prod-card .prod-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: auto;
+}
+
+.home-prod-card .prod-actions .btn {
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+}
+
+@media (max-width: 1024px) {
+  .home-products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-products-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 
 
