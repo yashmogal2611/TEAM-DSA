@@ -278,18 +278,37 @@ class ApplicationController {
       
       const initials = (user.full_name || 'U').trim().split(/\s+/).map(n => n[0]).join('').toUpperCase().substring(0, 2);
       
+      const headerAvatarBtn = document.getElementById('headerAvatarBtn');
       const headerInitials = document.getElementById('headerAvatarInitials');
       const popAvatar = document.getElementById('popoverAvatar');
       const popName = document.getElementById('popoverUserName');
       const popEmail = document.getElementById('popoverUserEmail');
       const popRole = document.getElementById('popoverUserRole');
 
-      if (headerInitials) headerInitials.textContent = initials;
-      if (popAvatar) popAvatar.textContent = initials;
+      const bankLogoUrl = (user.is_admin || user.bank_name) 
+        ? Components.getBankLogoUrl(user.bank_name || user.full_name || user.email) 
+        : '';
+
+      if (bankLogoUrl) {
+        if (headerAvatarBtn) headerAvatarBtn.classList.add('has-logo');
+        if (popAvatar) popAvatar.classList.add('has-logo');
+        if (headerInitials) {
+          headerInitials.innerHTML = `<img src="${bankLogoUrl}" alt="Bank Logo">`;
+        }
+        if (popAvatar) {
+          popAvatar.innerHTML = `<img src="${bankLogoUrl}" alt="Bank Logo">`;
+        }
+      } else {
+        if (headerAvatarBtn) headerAvatarBtn.classList.remove('has-logo');
+        if (popAvatar) popAvatar.classList.remove('has-logo');
+        if (headerInitials) headerInitials.textContent = initials;
+        if (popAvatar) popAvatar.textContent = initials;
+      }
+
       if (popName) popName.textContent = user.full_name;
       if (popEmail) popEmail.textContent = user.email;
       if (popRole) {
-        popRole.textContent = user.is_admin ? 'System Administrator' : 'Verified Borrower';
+        popRole.textContent = user.is_admin ? (user.bank_name ? `${user.bank_name} Admin` : 'System Administrator') : 'Verified Borrower';
         popRole.className = `popover-role-badge ${user.is_admin ? 'admin' : 'user'}`;
       }
 

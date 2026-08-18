@@ -315,6 +315,20 @@ h1, h2, h3, h4, h5, h6, .brand span, .btn {
   box-shadow: 0 6px 18px rgba(7, 42, 200, 0.35);
 }
 
+.profile-avatar-btn.has-logo {
+  background: #FFFFFF;
+  padding: 3px;
+  border: 1.5px solid rgba(7, 42, 200, 0.18);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.profile-avatar-btn.has-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
 .profile-popover-menu {
   position: absolute;
   top: calc(100% + 12px);
@@ -353,6 +367,20 @@ h1, h2, h3, h4, h5, h6, .brand span, .btn {
   justify-content: center;
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(7, 42, 200, 0.2);
+}
+
+.popover-avatar.has-logo {
+  background: #FFFFFF;
+  padding: 4px;
+  border: 1.5px solid rgba(7, 42, 200, 0.18);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.popover-avatar.has-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
 .popover-user-name {

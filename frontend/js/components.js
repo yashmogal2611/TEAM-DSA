@@ -25,6 +25,23 @@ const Components = {
     return `<span class="badge" style="background:var(--accent-primary); color:#fff; font-size:0.75rem; margin-right:6px; padding:2px 6px; border-radius:4px;"><i data-lucide="building-2" style="width:12px; height:12px; vertical-align:middle;"></i></span>`;
   },
 
+  getBankLogoUrl(bankName) {
+    if (!bankName) return '';
+    const b = bankName.toLowerCase();
+    if (b.includes('state bank') || b.includes('sbi')) return '/assets/images/banks/sbi_logo.png';
+    if (b.includes('hdfc')) return '/assets/images/banks/hdfc_logo.png';
+    if (b.includes('icici')) return '/assets/images/banks/icici_logo.png';
+    if (b.includes('axis')) return '/assets/images/banks/axis_logo.png';
+    if (b.includes('kotak')) return '/assets/images/banks/kotak_logo.png';
+    if (b.includes('baroda') || b.includes('bob')) return '/assets/images/banks/bob_logo.png';
+    if (b.includes('union') || b.includes('ubi')) return '/assets/images/banks/union_logo.png';
+    if (b.includes('tata')) return '/assets/images/banks/tata_logo.png';
+    if (b.includes('bajaj')) return '/assets/images/banks/bajaj_logo.png';
+    if (b.includes('muthoot')) return '/assets/images/banks/muthoot_logo.png';
+    if (b.includes('lic')) return '/assets/images/banks/lic_logo.png';
+    return '';
+  },
+
   renderStatusBadge(status) {
     switch (status) {
       case 'pending':
