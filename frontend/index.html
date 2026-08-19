@@ -274,10 +274,11 @@
           <!-- Quick Demo Credentials Fill -->
           <div class="demo-credentials-box">
             <h4><i data-lucide="shield-check"></i> Quick Demo Access</h4>
-            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Select role to pre-fill test credentials:</div>
-            <div class="demo-btns" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
-              <button type="button" class="btn-demo-fill" id="btnRoleUser" onclick="app.fillDemoUser()"><i data-lucide="user"></i> User Login</button>
-              <button type="button" class="btn-demo-fill" id="btnRoleSystem" onclick="app.fillDemoAdmin()"><i data-lucide="shield"></i> System Login</button>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Select role to pre-fill credentials:</div>
+            <div class="demo-btns" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem;">
+              <button type="button" class="btn-demo-fill active" id="btnRoleUser" onclick="app.fillDemoUser()"><i data-lucide="user"></i> Borrower</button>
+              <button type="button" class="btn-demo-fill" id="btnRoleBank" onclick="app.fillDemoBankAdmin('SBI')"><i data-lucide="landmark"></i> Bank Admin</button>
+              <button type="button" class="btn-demo-fill" id="btnRoleSystem" onclick="app.fillDemoSystemAdmin()"><i data-lucide="shield"></i> System Admin</button>
             </div>
           </div>
 
