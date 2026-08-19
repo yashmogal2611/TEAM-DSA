@@ -841,8 +841,11 @@ class ApiClient {
     return this.request(`/loans/${loanId}/documents/${docId}`, { method: 'DELETE' });
   }
 
-  getAdminLoans(status = '') {
-    const query = status ? `?status=${status}` : '';
+  getAdminLoans(status = '', bankName = '') {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (bankName && bankName.toUpperCase() !== 'ALL') params.append('bank_name', bankName);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/loans${query}`);
   }
 
@@ -880,8 +883,11 @@ class ApiClient {
     return this.request('/auth/banks', { auth: false });
   }
 
-  getAdminStats() {
-    return this.request('/admin/stats');
+  getAdminStats(bankName = '') {
+    const params = new URLSearchParams();
+    if (bankName && bankName.toUpperCase() !== 'ALL') params.append('bank_name', bankName);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/admin/stats${query}`);
   }
 
   getAdminSchemeStats() {

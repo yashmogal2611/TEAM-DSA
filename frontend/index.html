@@ -615,16 +615,35 @@
       <div id="adminSchemesContainer" style="margin-bottom: 2rem;"></div>
 
       <!-- Admin Search & Filter Toolbar -->
-      <div class="admin-toolbar">
+      <div class="admin-toolbar" style="display:flex; flex-wrap:wrap; gap:1rem; justify-content:space-between; align-items:center;">
         <div class="tab-filters">
-          <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Bank Applications</button>
+          <button class="tab-btn active" onclick="app.filterAdminLoans('', this)">All Applications</button>
           <button class="tab-btn" onclick="app.filterAdminLoans('pending', this)"><i data-lucide="clock"></i> Pending Review</button>
           <button class="tab-btn" onclick="app.filterAdminLoans('approved', this)"><i data-lucide="check-circle"></i> Approved</button>
           <button class="tab-btn" onclick="app.filterAdminLoans('rejected', this)"><i data-lucide="x-circle"></i> Rejected</button>
         </div>
-        <div class="search-box">
-          <i data-lucide="search" class="search-icon"></i>
-          <input type="text" id="adminSearchInput" class="input-control" placeholder="Search applicant name, email..." oninput="app.handleAdminSearch(this.value)">
+        <div style="display:flex; gap:0.6rem; align-items:center; flex:1; max-width:560px; justify-content:flex-end;">
+          <!-- Bank Filter Dropdown (Visible for System Admin) -->
+          <div id="adminBankFilterWrapper" style="display:none; min-width:200px;">
+            <select id="adminBankFilterSelect" class="input-control" style="font-size:0.85rem; padding:0.5rem 0.8rem; font-weight:600;" onchange="app.handleAdminBankFilterChange(this.value)">
+              <option value="ALL">🏛️ All Partner Banks (11)</option>
+              <option value="State Bank of India">SBI (State Bank of India)</option>
+              <option value="HDFC Bank">HDFC Bank</option>
+              <option value="ICICI Bank">ICICI Bank</option>
+              <option value="Axis Bank">Axis Bank</option>
+              <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+              <option value="Bank of Baroda">Bank of Baroda</option>
+              <option value="Union Bank of India">Union Bank of India</option>
+              <option value="Tata Capital">Tata Capital</option>
+              <option value="Bajaj Finance">Bajaj Finance</option>
+              <option value="Muthoot Finance">Muthoot Finance</option>
+              <option value="LIC Housing Finance">LIC Housing Finance</option>
+            </select>
+          </div>
+          <div class="search-box" style="flex:1;">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="adminSearchInput" class="input-control" placeholder="Search applicant name, email..." oninput="app.handleAdminSearch(this.value)">
+          </div>
         </div>
       </div>
 

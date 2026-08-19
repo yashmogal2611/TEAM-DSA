@@ -78,22 +78,35 @@ def decode_token(token: str) -> dict:
 # ──────────────────────────────────────────────────────────────
 # Bank Admin Context & Scoping
 # ──────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────────────────────
 class BankAdminContext:
     """
-    Encapsulates the authenticated bank administrator and their strictly bound bank institution.
+    Encapsulates the authenticated administrator (Bank-scoped Underwriter or Global System Admin).
     """
-    def __init__(self, user: User, bank: Bank):
+    def __init__(self, user: User, bank: Optional[Bank] = None):
         self.user = user
         self.id = user.id
         self.user_id = user.id
         self.email = user.email
         self.full_name = user.full_name
         self.is_admin = user.is_admin
-        self.role = user.role or "bank_admin"
-        self.bank_id = bank.id
-        self.bank_name = bank.bank_name
-        self.bank_code = bank.bank_code
-        self.bank = bank
+        self.role = user.role or ("super_admin" if user.email == "admin@loanapp.com" or not user.assigned_bank_id else "bank_admin")
+        self.is_system_admin = (
+            self.role in ["super_admin", "system_admin", "admin"]
+            or user.email == "admin@loanapp.com"
+            or not user.assigned_bank_id
+        )
+
+        if bank and not self.is_system_admin:
+            self.bank_id = bank.id
+            self.bank_name = bank.bank_name
+            self.bank_code = bank.bank_code
+            self.bank = bank
+        else:
+            self.bank_id = None
+            self.bank_name = "All Partner Banks (System Portal)"
+            self.bank_code = "SYSTEM"
+            self.bank = None
 
     def __getattr__(self, name):
         return getattr(self.user, name)
@@ -123,9 +136,9 @@ def get_current_bank_admin(
     db: Session = Depends(get_db),
 ) -> BankAdminContext:
     """
-    Validates that the authenticated user is an active administrator,
-    cross-references the token claims against the admin's database-assigned bank,
-    and returns a BankAdminContext enforcing multi-tenant isolation.
+    Validates that the authenticated user is an active administrator.
+    If the user is a super/system admin (unassigned bank or role=super_admin), returns full access.
+    If the user is an institutional bank admin, strictly isolates to their assigned bank.
     """
     payload = decode_token(token)
     user_id = payload.get("sub")
@@ -142,19 +155,29 @@ def get_current_bank_admin(
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    # Resolve assigned bank
+    is_sys_admin = (
+        user.role in ["super_admin", "system_admin", "admin"]
+        or user.email == "admin@loanapp.com"
+        or not user.assigned_bank_id
+    )
+
+    if is_sys_admin and not user.assigned_bank_id:
+        return BankAdminContext(user=user, bank=None)
+
+    # Resolve assigned bank for institutional admin
     bank = None
     if user.assigned_bank_id:
         bank = db.query(Bank).filter(Bank.id == user.assigned_bank_id, Bank.is_active == True).first()
 
     if not bank:
-        # Fallback to first active bank if legacy admin
+        if is_sys_admin:
+            return BankAdminContext(user=user, bank=None)
         bank = db.query(Bank).filter(Bank.is_active == True).first()
         if not bank:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No active bank institution registered.")
 
     # Cross-check token bank_id if present
-    if token_bank_id and int(token_bank_id) != bank.id:
+    if token_bank_id and bank and int(token_bank_id) != bank.id and not is_sys_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Security Violation: Token bank identifier does not match assigned bank organization."

@@ -426,27 +426,54 @@ class ApplicationController {
     }
   }
 
-  async loadAdminDashboard(statusFilter = '') {
+  async loadAdminDashboard(statusFilter = '', bankFilter = undefined) {
     const container = document.getElementById('adminLoansContainer');
     const statsContainer = document.getElementById('adminStatsContainer');
     const schemesContainer = document.getElementById('adminSchemesContainer');
     const headingEl = document.getElementById('adminDashboardHeading');
-    const badgeEl = document.getElementById('adminBankBadge');
+    const bankFilterWrapper = document.getElementById('adminBankFilterWrapper');
+    const bankFilterSelect = document.getElementById('adminBankFilterSelect');
     
-    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading bank underwriting queue...</div></div>`;
+    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading underwriting queue...</div></div>`;
+
+    if (statusFilter !== undefined && statusFilter !== null) {
+      this._currentAdminStatusFilter = statusFilter;
+    }
+    if (bankFilter !== undefined && bankFilter !== null) {
+      this._currentAdminBankFilter = bankFilter;
+    }
+    const activeStatus = this._currentAdminStatusFilter || '';
+    const activeBank = this._currentAdminBankFilter || '';
 
     try {
       const [stats, loans] = await Promise.all([
-        api.getAdminStats(),
-        api.getAdminLoans(statusFilter)
+        api.getAdminStats(activeBank),
+        api.getAdminLoans(activeStatus, activeBank)
       ]);
 
       store.adminStats = stats;
       store.adminLoans = loans;
 
-      // Update bank scoped branding with official bank logo
-      if (stats && stats.bank_name) {
-        const logoContainer = document.getElementById('adminBankLogoContainer');
+      // Check if System Admin / Super Admin
+      const isSystemAdmin = stats.is_system_admin || stats.bank_code === 'SYSTEM' || store.user?.role === 'super_admin' || store.user?.email === 'admin@loanapp.com';
+      
+      if (bankFilterWrapper) {
+        bankFilterWrapper.style.display = isSystemAdmin ? 'block' : 'none';
+        if (bankFilterSelect && activeBank) {
+          bankFilterSelect.value = activeBank;
+        }
+      }
+
+      // Update branding
+      const logoContainer = document.getElementById('adminBankLogoContainer');
+      if (isSystemAdmin && (!activeBank || activeBank === 'ALL')) {
+        if (logoContainer) {
+          logoContainer.innerHTML = `<span style="display:inline-flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:8px; background:var(--accent-primary); color:#fff; font-weight:800; font-size:1.1rem;">🏛️</span>`;
+        }
+        if (headingEl) {
+          headingEl.textContent = 'System Administration Portal (All Partner Banks)';
+        }
+      } else if (stats && stats.bank_name) {
         if (logoContainer) {
           logoContainer.innerHTML = Components.getBankLogoHtml(stats.bank_name, 42);
         }
@@ -467,8 +494,12 @@ class ApplicationController {
       container.innerHTML = Components.renderAdminLoansTable(loans);
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
-      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load bank admin data: ${err.message}</div>`;
+      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load admin data: ${err.message}</div>`;
     }
+  }
+
+  handleAdminBankFilterChange(bankName) {
+    this.loadAdminDashboard(this._currentAdminStatusFilter || '', bankName);
   }
 
   handleAdminSearch(query) {
@@ -1769,7 +1800,7 @@ class ApplicationController {
   filterAdminLoans(status, btnElement) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
-    this.loadAdminDashboard(status);
+    this.loadAdminDashboard(status, this._currentAdminBankFilter || '');
   }
 
   showModal(modalId) {

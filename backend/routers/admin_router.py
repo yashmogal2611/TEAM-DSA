@@ -77,26 +77,61 @@ def get_admin_profile(
 
 
 # ──────────────────────────────────────────────────────────────
-# 1. Applications List & Search (Bank-Scoped)
+def _build_bank_filter(admin: BankAdminContext, bank_id: Optional[int] = None, bank_name: Optional[str] = None):
+    """Build multi-tenant filter: allows System Admin to see all banks or filter, while keeping bank admins strictly isolated."""
+    if admin.is_system_admin:
+        if bank_id:
+            return (LoanApplication.bank_id == bank_id)
+        if bank_name and bank_name.upper() not in ["ALL", "SYSTEM"]:
+            return (LoanApplication.bank_name.ilike(f"%{bank_name}%"))
+        return None  # None means NO bank filter -> System Admin sees all banks!
+    else:
+        return (
+            (LoanApplication.bank_id == admin.bank_id) |
+            ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
+        )
+
+
+def _get_loan_for_admin(db: Session, loan_id: int, admin: BankAdminContext) -> LoanApplication:
+    """Retrieve loan with permissions checking (System Admin can access any loan, bank admin only their bank)."""
+    query = db.query(LoanApplication).filter(LoanApplication.id == loan_id)
+    if not admin.is_system_admin:
+        query = query.filter(
+            (LoanApplication.bank_id == admin.bank_id) |
+            ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
+        )
+    loan = query.first()
+    if not loan:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Loan application #{loan_id} not found or unauthorized for your banking institution."
+        )
+    return loan
+
+
+# ──────────────────────────────────────────────────────────────
+# 1. Applications List & Search (Multi-Tenant & System Overview)
 # ──────────────────────────────────────────────────────────────
 @router.get("/loans", response_model=List[LoanApplicationOut])
 def list_all_applications(
     status_filter: Optional[str] = Query(None, alias="status"),
     product_type: Optional[str] = Query(None, alias="product_type"),
     scheme_name: Optional[str] = Query(None, alias="scheme_name"),
+    bank_name: Optional[str] = Query(None, alias="bank_name"),
+    bank_id: Optional[int] = Query(None, alias="bank_id"),
     search: Optional[str] = Query(None, alias="search"),
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
     """
-    Return loan applications strictly scoped to the authenticated admin's bank institution.
-    Row-level database filtering ensures zero cross-bank data leakage.
+    Return loan applications.
+    If authenticated as System Admin: returns all loans across all 11 partner banks (with optional bank filtering).
+    If authenticated as Bank Underwriter: returns strictly scoped applications for that bank.
     """
-    # Strict multi-tenant row-level filter:
-    query = db.query(LoanApplication).filter(
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    )
+    query = db.query(LoanApplication)
+    b_filter = _build_bank_filter(admin, bank_id=bank_id, bank_name=bank_name)
+    if b_filter is not None:
+        query = query.filter(b_filter)
     
     if status_filter:
         query = query.filter(LoanApplication.status == status_filter)
@@ -125,17 +160,8 @@ def get_loan_details(
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
-    """View full details for a specific loan application (strictly scoped to admin's bank)."""
-    loan = db.query(LoanApplication).filter(
-        LoanApplication.id == loan_id,
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    ).first()
-    if not loan:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Loan application #{loan_id} not found or unauthorized for your banking institution."
-        )
+    """View full details for a specific loan application."""
+    loan = _get_loan_for_admin(db, loan_id, admin)
     return _to_loan_out(loan)
 
 
@@ -156,16 +182,7 @@ def update_loan_status(
     with optional sanctioned amount, interest rate offered, and underwriting note.
     Strictly isolated to the admin's assigned bank.
     """
-    loan = db.query(LoanApplication).filter(
-        LoanApplication.id == loan_id,
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    ).first()
-    if not loan:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Loan application #{loan_id} not found or unauthorized for your banking institution."
-        )
+    loan = _get_loan_for_admin(db, loan_id, admin)
 
     if payload.status:
         loan.status = payload.status
@@ -190,20 +207,11 @@ def approve_loan(
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
-    """Mark a loan application as APPROVED with sanctioned amount and interest rate for this bank."""
-    loan = db.query(LoanApplication).filter(
-        LoanApplication.id == loan_id,
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    ).first()
-    if not loan:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Loan application #{loan_id} not found or unauthorized for your banking institution."
-        )
+    """Mark a loan application as APPROVED with sanctioned amount and interest rate."""
+    loan = _get_loan_for_admin(db, loan_id, admin)
 
     loan.status = "approved"
-    loan.admin_note = payload.admin_note or f"Application approved by {admin.bank_name} underwriting team."
+    loan.admin_note = payload.admin_note or f"Application approved by {loan.bank_name or admin.bank_name} underwriting team."
     loan.sanctioned_amount = payload.sanctioned_amount or loan.requested_amount
     loan.interest_rate_offered = payload.interest_rate_offered
     loan.reviewed_at = datetime.utcnow()
@@ -220,20 +228,11 @@ def reject_loan(
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
-    """Mark a loan application as REJECTED with underwriting note for this bank."""
-    loan = db.query(LoanApplication).filter(
-        LoanApplication.id == loan_id,
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    ).first()
-    if not loan:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Loan application #{loan_id} not found or unauthorized for your banking institution."
-        )
+    """Mark a loan application as REJECTED with underwriting note."""
+    loan = _get_loan_for_admin(db, loan_id, admin)
 
     loan.status = "rejected"
-    loan.admin_note = payload.admin_note or f"Application did not meet {admin.bank_name} underwriting criteria."
+    loan.admin_note = payload.admin_note or f"Application did not meet {loan.bank_name or admin.bank_name} underwriting criteria."
     loan.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(loan)
@@ -241,7 +240,7 @@ def reject_loan(
 
 
 # ──────────────────────────────────────────────────────────────
-# 3. Document Verification & Download (Cross-Tenant Protected)
+# 3. Document Verification & Download (Multi-Tenant Protected)
 # ──────────────────────────────────────────────────────────────
 @router.get("/loans/{loan_id}/documents", response_model=List[DocumentOut])
 def list_application_documents(
@@ -249,14 +248,8 @@ def list_application_documents(
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
-    """Inspect all uploaded documents for a loan application belonging to this bank."""
-    loan = db.query(LoanApplication).filter(
-        LoanApplication.id == loan_id,
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    ).first()
-    if not loan:
-        raise HTTPException(status_code=404, detail=f"Loan application #{loan_id} not found or unauthorized.")
+    """Inspect all uploaded documents for a loan application."""
+    loan = _get_loan_for_admin(db, loan_id, admin)
 
     docs = db.query(LoanDocument).filter(LoanDocument.loan_application_id == loan_id).all()
     return [_to_doc_out(d) for d in docs]
@@ -271,14 +264,8 @@ def verify_loan_document(
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
-    """Bank admin verifies or rejects an uploaded document for their bank's applicant."""
-    loan = db.query(LoanApplication).filter(
-        LoanApplication.id == loan_id,
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    ).first()
-    if not loan:
-        raise HTTPException(status_code=404, detail=f"Loan application #{loan_id} not found or unauthorized.")
+    """Admin verifies or rejects an uploaded document."""
+    loan = _get_loan_for_admin(db, loan_id, admin)
 
     doc = db.query(LoanDocument).filter(
         LoanDocument.id == doc_id,
@@ -433,41 +420,39 @@ def view_loan_document(
 
 
 # ──────────────────────────────────────────────────────────────
-# 4. Bank-Scoped Analytics & Per-Scheme Summaries
+# 4. Multi-Tenant Analytics & Portfolio Summaries
 # ──────────────────────────────────────────────────────────────
 @router.get("/stats", response_model=AdminStats)
 def get_admin_stats(
+    bank_id: Optional[int] = Query(None, alias="bank_id"),
+    bank_name: Optional[str] = Query(None, alias="bank_name"),
     db: Session = Depends(get_db),
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
     """
-    Overview statistics strictly isolated to the admin's bank:
-    - Application counts, status breakdowns
-    - Distribution across 6 loan types
-    - Total sanctioned volume
-    - Per-scheme detailed breakdown
+    Overview statistics:
+    - If authenticated as System Admin: returns aggregate across all partner banks (with optional bank filter).
+    - If authenticated as Bank Underwriter: strictly isolated to the admin's assigned bank.
     """
-    bank_filter = (
-        (LoanApplication.bank_id == admin.bank_id) |
-        ((LoanApplication.bank_id == None) & (LoanApplication.bank_name == admin.bank_name))
-    )
+    bank_filter = _build_bank_filter(admin, bank_id=bank_id, bank_name=bank_name)
 
-    total = db.query(LoanApplication).filter(bank_filter).count()
-    pending = db.query(LoanApplication).filter(bank_filter, LoanApplication.status == "pending").count()
-    under_review = db.query(LoanApplication).filter(bank_filter, LoanApplication.status == "under_review").count()
-    approved = db.query(LoanApplication).filter(bank_filter, LoanApplication.status == "approved").count()
-    rejected = db.query(LoanApplication).filter(bank_filter, LoanApplication.status == "rejected").count()
+    app_query = db.query(LoanApplication)
+    doc_query = db.query(LoanDocument).join(LoanApplication, LoanDocument.loan_application_id == LoanApplication.id)
+
+    if bank_filter is not None:
+        app_query = app_query.filter(bank_filter)
+        doc_query = doc_query.filter(bank_filter)
+
+    total = app_query.count()
+    pending = app_query.filter(LoanApplication.status == "pending").count()
+    under_review = app_query.filter(LoanApplication.status == "under_review").count()
+    approved = app_query.filter(LoanApplication.status == "approved").count()
+    rejected = app_query.filter(LoanApplication.status == "rejected").count()
     
-    # Count documents belonging to this bank's loans
-    docs = (
-        db.query(LoanDocument)
-        .join(LoanApplication, LoanDocument.loan_application_id == LoanApplication.id)
-        .filter(bank_filter)
-        .count()
-    )
+    docs = doc_query.count()
 
     # Loan type distribution
-    all_loans = db.query(LoanApplication).filter(bank_filter).all()
+    all_loans = app_query.all()
     type_counts = {
         "personal_loan": 0,
         "home_loan": 0,
@@ -541,10 +526,29 @@ def get_admin_stats(
             avg_ticket_size=round(s_data["total_sanctioned_volume"] / apprv, 2) if apprv > 0 else 0.0
         ))
 
+    res_bank_name = admin.bank_name
+    res_bank_code = admin.bank_code
+    res_bank_id = admin.bank_id
+    if admin.is_system_admin:
+        if bank_name and bank_name.upper() not in ["ALL", "SYSTEM"]:
+            res_bank_name = bank_name
+            res_bank_code = bank_name[:4].upper()
+        elif bank_id:
+            b_obj = db.query(Bank).filter(Bank.id == bank_id).first()
+            if b_obj:
+                res_bank_name = b_obj.bank_name
+                res_bank_code = b_obj.bank_code
+                res_bank_id = b_obj.id
+        else:
+            res_bank_name = "All Partner Banks (System Overview)"
+            res_bank_code = "SYSTEM"
+            res_bank_id = None
+
     return AdminStats(
-        bank_id=admin.bank_id,
-        bank_name=admin.bank_name,
-        bank_code=admin.bank_code,
+        bank_id=res_bank_id,
+        bank_name=res_bank_name,
+        bank_code=res_bank_code,
+        is_system_admin=admin.is_system_admin,
         total_applications=total,
         pending=pending,
         under_review=under_review,

@@ -95,14 +95,19 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     bank_id = None
     bank_name = None
     bank_code = None
+    is_system_admin = False
 
     # If the user is an admin, resolve their bank scope
     if user.is_admin:
+        is_system_admin = (
+            user.role in ["super_admin", "system_admin", "admin"]
+            or user.email == "admin@loanapp.com"
+            or not user.assigned_bank_id
+        )
+
         assigned_bank = None
         if user.assigned_bank_id:
             assigned_bank = db.query(Bank).filter(Bank.id == user.assigned_bank_id, Bank.is_active == True).first()
-        if not assigned_bank:
-            assigned_bank = db.query(Bank).filter(Bank.is_active == True).first()
 
         # If a bank passkey was supplied, cross-check it
         if payload.bank_passkey and assigned_bank:
@@ -112,15 +117,20 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
                     detail=f"Invalid bank passkey for {assigned_bank.bank_name}.",
                 )
 
-        if assigned_bank:
+        if assigned_bank and not is_system_admin:
             bank_id = assigned_bank.id
             bank_name = assigned_bank.bank_name
             bank_code = assigned_bank.bank_code
+        else:
+            bank_id = None
+            bank_name = "All Partner Banks (System Portal)"
+            bank_code = "SYSTEM"
 
     token_claims = {
         "sub": str(user.id),
         "is_admin": user.is_admin,
-        "role": user.role or ("bank_admin" if user.is_admin else "borrower"),
+        "is_system_admin": is_system_admin,
+        "role": user.role or ("super_admin" if is_system_admin else ("bank_admin" if user.is_admin else "borrower")),
     }
     if bank_id:
         token_claims["bank_id"] = bank_id
@@ -132,13 +142,14 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         access_token=token,
         token_type="bearer",
         is_admin=user.is_admin,
+        is_system_admin=is_system_admin,
         user_id=user.id,
         email=user.email,
         full_name=user.full_name,
         bank_id=bank_id,
         bank_name=bank_name,
         bank_code=bank_code,
-        role=user.role or ("bank_admin" if user.is_admin else "borrower"),
+        role=user.role or ("super_admin" if is_system_admin else ("bank_admin" if user.is_admin else "borrower")),
     )
 
 

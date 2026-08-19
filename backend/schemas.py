@@ -167,6 +167,7 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     is_admin: bool
+    is_system_admin: Optional[bool] = False
     user_id: int
     email: str
     full_name: str
@@ -182,6 +183,7 @@ class UserOut(BaseModel):
     email: str
     phone: Optional[str] = None
     is_admin: bool
+    is_system_admin: Optional[bool] = False
     role: Optional[str] = "borrower"
     assigned_bank_id: Optional[int] = None
     bank_name: Optional[str] = None
@@ -514,6 +516,7 @@ class AdminStats(BaseModel):
     bank_id: Optional[int] = None
     bank_name: Optional[str] = None
     bank_code: Optional[str] = None
+    is_system_admin: bool = False
     total_applications: int
     pending: int
     under_review: int
