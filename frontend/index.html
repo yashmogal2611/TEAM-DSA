@@ -274,47 +274,22 @@
           <!-- Quick Demo Credentials Fill -->
           <div class="demo-credentials-box">
             <h4><i data-lucide="shield-check"></i> Quick Demo Access</h4>
-            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Select role to pre-fill credentials:</div>
-            <div class="demo-btns" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem;">
-              <button type="button" class="btn-demo-fill active" id="btnRoleUser" onclick="app.fillDemoUser()"><i data-lucide="user"></i> Borrower</button>
-              <button type="button" class="btn-demo-fill" id="btnRoleBank" onclick="app.fillDemoBankAdmin('SBI')"><i data-lucide="landmark"></i> Bank Admin</button>
-              <button type="button" class="btn-demo-fill" id="btnRoleSystem" onclick="app.fillDemoSystemAdmin()"><i data-lucide="shield"></i> System Admin</button>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.5rem;">Select role to pre-fill test credentials:</div>
+            <div class="demo-btns" style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem;">
+              <button type="button" class="btn-demo-fill active" id="btnRoleUser" onclick="app.fillDemoUser()"><i data-lucide="user"></i> User Login</button>
+              <button type="button" class="btn-demo-fill" id="btnRoleSystem" onclick="app.fillDemoAdmin()"><i data-lucide="shield"></i> System Login</button>
             </div>
           </div>
 
           <form id="loginForm" onsubmit="app.handleLogin(event)">
-            <!-- Bank Institution Selector (Visible for System Admin Login) -->
-            <div class="form-group" id="loginBankSelectContainer" style="display:none;">
-              <label class="form-label" for="loginBankSelector">Select Bank Institution</label>
-              <select id="loginBankSelector" class="input-control" onchange="app.handleBankSelectChange(this.value)">
-                <option value="SBI">State Bank of India (SBI)</option>
-                <option value="HDFC">HDFC Bank</option>
-                <option value="ICICI">ICICI Bank</option>
-                <option value="AXIS">Axis Bank</option>
-                <option value="KOTAK">Kotak Mahindra Bank</option>
-                <option value="BOB">Bank of Baroda</option>
-                <option value="UNION">Union Bank of India</option>
-                <option value="TATA">Tata Capital</option>
-                <option value="BAJAJ">Bajaj Finance</option>
-                <option value="MUTHOOT">Muthoot Finance</option>
-                <option value="LIC">LIC Housing Finance</option>
-              </select>
-            </div>
-
             <div class="form-group">
               <label class="form-label" for="loginEmail">Email Address</label>
-              <input type="email" id="loginEmail" class="input-control" placeholder="name@example.com" required value="ravi@example.com" oninput="app.checkLoginEmailRole(this.value)">
+              <input type="email" id="loginEmail" class="input-control" placeholder="name@example.com" required value="ravi@example.com">
             </div>
 
             <div class="form-group">
               <label class="form-label" for="loginPassword">Password</label>
-              <input type="password" id="loginPassword" class="input-control" placeholder="••••••••" required value="MyPass@123">
-            </div>
-
-            <!-- Bank Passkey Input (Dynamic for Bank Administrators) -->
-            <div class="form-group" id="loginPasskeyContainer" style="display:none;">
-              <label class="form-label" for="loginBankPasskey">Bank Institutional Passkey (3-Factor Required)</label>
-              <input type="password" id="loginBankPasskey" class="input-control" placeholder="e.g. SBI@Pass#2026" autocomplete="off">
+              <input type="password" id="loginPassword" class="input-control" placeholder="••••••••" required value="Pass@123">
             </div>
 
             <button type="submit" class="btn btn-primary btn-full" style="margin-top: 1rem;">
