@@ -548,10 +548,33 @@ class ApplicationController {
 
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
+    const passkey = (document.getElementById('loginBankPasskey')?.value || '').trim();
+
+    const credentials = { email, password };
+    if (passkey) {
+      credentials.bank_passkey = passkey;
+    }
 
     try {
       store.clearSession();
-      const res = await api.login({ email, password });
+      let res;
+      
+      // If passkey is provided or email indicates an admin account, try 3-factor admin login
+      if (passkey || email.toLowerCase().includes('admin')) {
+        try {
+          res = await api.adminLogin({ email, password, bank_passkey: passkey });
+        } catch (adminErr) {
+          // If admin login failed due to missing passkey or other, fallback to regular login only if not explicitly admin
+          if (!passkey && !email.toLowerCase().includes('.admin@')) {
+            res = await api.login(credentials);
+          } else {
+            throw adminErr;
+          }
+        }
+      } else {
+        res = await api.login(credentials);
+      }
+
       localStorage.setItem(CONFIG.TOKEN_KEY, res.access_token);
 
       const profile = await api.getMe();
@@ -559,7 +582,7 @@ class ApplicationController {
       if (res.bank_code) profile.bank_code = res.bank_code;
       store.setSession(res.access_token, profile);
 
-      const welcomeTitle = res.is_admin ? 'Admin Portal' : 'Login Successful';
+      const welcomeTitle = res.is_admin ? `${res.bank_name || 'Bank'} Underwriter Portal` : 'Login Successful';
       Components.showToast(welcomeTitle, `Welcome back, ${profile.full_name}!`, 'success');
 
       if (res.is_admin) {
@@ -1310,22 +1333,154 @@ class ApplicationController {
 
   fillDemoUser() {
     const userBtn = document.getElementById('btnRoleUser');
+    const bankBtn = document.getElementById('btnRoleBank');
     const sysBtn = document.getElementById('btnRoleSystem');
     if (userBtn) userBtn.classList.add('active');
+    if (bankBtn) bankBtn.classList.remove('active');
     if (sysBtn) sysBtn.classList.remove('active');
 
     document.getElementById('loginEmail').value = 'ravi@example.com';
     document.getElementById('loginPassword').value = 'Pass@123';
+    
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+    if (bankSelectContainer) bankSelectContainer.style.display = 'none';
+
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    if (passkeyContainer) passkeyContainer.style.display = 'none';
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    if (passkeyInput) passkeyInput.value = '';
+  }
+
+  fillDemoBankAdmin(bankCode = 'SBI') {
+    const userBtn = document.getElementById('btnRoleUser');
+    const bankBtn = document.getElementById('btnRoleBank');
+    const sysBtn = document.getElementById('btnRoleSystem');
+    if (userBtn) userBtn.classList.remove('active');
+    if (bankBtn) bankBtn.classList.add('active');
+    if (sysBtn) sysBtn.classList.remove('active');
+
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+    if (bankSelectContainer) bankSelectContainer.style.display = 'block';
+
+    const code = (bankCode || 'SBI').toUpperCase();
+    const bankEmails = {
+      'SBI': 'sbi.admin@loanapp.com',
+      'HDFC': 'hdfc.admin@loanapp.com',
+      'ICICI': 'icici.admin@loanapp.com',
+      'AXIS': 'axis.admin@loanapp.com',
+      'KOTAK': 'kotak.admin@loanapp.com',
+      'BOB': 'bob.admin@loanapp.com',
+      'UNION': 'union.admin@loanapp.com',
+      'TATA': 'tata.admin@loanapp.com',
+      'BAJAJ': 'bajaj.admin@loanapp.com',
+      'MUTHOOT': 'muthoot.admin@loanapp.com',
+      'LIC': 'lic.admin@loanapp.com'
+    };
+    const bankPasskeys = {
+      'SBI': 'SBI@Pass#2026',
+      'HDFC': 'HDFC@Pass#2026',
+      'ICICI': 'ICICI@Pass#2026',
+      'AXIS': 'AXIS@Pass#2026',
+      'KOTAK': 'KOTAK@Pass#2026',
+      'BOB': 'BOB@Pass#2026',
+      'UNION': 'UNION@Pass#2026',
+      'TATA': 'TATA@Pass#2026',
+      'BAJAJ': 'BAJAJ@Pass#2026',
+      'MUTHOOT': 'MUTHOOT@Pass#2026',
+      'LIC': 'LIC@Pass#2026'
+    };
+
+    const emailInput = document.getElementById('loginEmail');
+    const passInput = document.getElementById('loginPassword');
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    const bankSelector = document.getElementById('loginBankSelector');
+
+    if (bankSelector) bankSelector.value = code;
+    if (emailInput) emailInput.value = bankEmails[code] || `${code.toLowerCase()}.admin@loanapp.com`;
+    if (passInput) passInput.value = 'Admin@123';
+    if (passkeyContainer) passkeyContainer.style.display = 'block';
+    if (passkeyInput) passkeyInput.value = bankPasskeys[code] || `${code}@Pass#2026`;
+  }
+
+  fillDemoSystemAdmin() {
+    const userBtn = document.getElementById('btnRoleUser');
+    const bankBtn = document.getElementById('btnRoleBank');
+    const sysBtn = document.getElementById('btnRoleSystem');
+    if (userBtn) userBtn.classList.remove('active');
+    if (bankBtn) bankBtn.classList.remove('active');
+    if (sysBtn) sysBtn.classList.add('active');
+
+    const emailInput = document.getElementById('loginEmail');
+    const passInput = document.getElementById('loginPassword');
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+
+    if (emailInput) emailInput.value = 'admin@loanapp.com';
+    if (passInput) passInput.value = 'Admin@123';
+    if (bankSelectContainer) bankSelectContainer.style.display = 'none';
+    if (passkeyContainer) passkeyContainer.style.display = 'none';
+    if (passkeyInput) passkeyInput.value = '';
   }
 
   fillDemoAdmin() {
-    const userBtn = document.getElementById('btnRoleUser');
-    const sysBtn = document.getElementById('btnRoleSystem');
-    if (userBtn) userBtn.classList.remove('active');
-    if (sysBtn) sysBtn.classList.add('active');
+    this.fillDemoBankAdmin('SBI');
+  }
 
-    document.getElementById('loginEmail').value = 'admin@loanapp.com';
-    document.getElementById('loginPassword').value = 'Admin@123';
+  handleBankSelectChange(bankCode) {
+    this.fillDemoBankAdmin(bankCode);
+  }
+
+  checkLoginEmailRole(email = '') {
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+    const bankSelector = document.getElementById('loginBankSelector');
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    
+    const lower = (email || '').toLowerCase().trim();
+    if (lower.includes('admin') || lower.includes('.admin@')) {
+      if (passkeyContainer) passkeyContainer.style.display = 'block';
+      if (bankSelectContainer) bankSelectContainer.style.display = 'block';
+
+      let matchedBank = 'SBI';
+      if (lower.includes('hdfc')) matchedBank = 'HDFC';
+      else if (lower.includes('icici')) matchedBank = 'ICICI';
+      else if (lower.includes('axis')) matchedBank = 'AXIS';
+      else if (lower.includes('kotak')) matchedBank = 'KOTAK';
+      else if (lower.includes('bob')) matchedBank = 'BOB';
+      else if (lower.includes('union')) matchedBank = 'UNION';
+      else if (lower.includes('tata')) matchedBank = 'TATA';
+      else if (lower.includes('bajaj')) matchedBank = 'BAJAJ';
+      else if (lower.includes('muthoot')) matchedBank = 'MUTHOOT';
+      else if (lower.includes('lic')) matchedBank = 'LIC';
+      else if (lower.includes('sbi') || lower === 'admin@loanapp.com') matchedBank = 'SBI';
+
+      if (bankSelector) bankSelector.value = matchedBank;
+      
+      const bankPasskeys = {
+        'SBI': 'SBI@Pass#2026',
+        'HDFC': 'HDFC@Pass#2026',
+        'ICICI': 'ICICI@Pass#2026',
+        'AXIS': 'AXIS@Pass#2026',
+        'KOTAK': 'KOTAK@Pass#2026',
+        'BOB': 'BOB@Pass#2026',
+        'UNION': 'UNION@Pass#2026',
+        'TATA': 'TATA@Pass#2026',
+        'BAJAJ': 'BAJAJ@Pass#2026',
+        'MUTHOOT': 'MUTHOOT@Pass#2026',
+        'LIC': 'LIC@Pass#2026'
+      };
+      if (passkeyInput) {
+        passkeyInput.value = bankPasskeys[matchedBank] || 'SBI@Pass#2026';
+      }
+      if (hintEl) {
+        hintEl.innerHTML = `🔑 Active Bank: <strong>${matchedBank}</strong> | Passkey: <code style="color:var(--accent-primary);">${bankPasskeys[matchedBank]}</code>`;
+      }
+    } else {
+      if (passkeyContainer) passkeyContainer.style.display = 'none';
+      if (bankSelectContainer) bankSelectContainer.style.display = 'none';
+    }
   }
 
   /* ---------------- ADMIN UNDERWRITING ACTIONS ---------------- */
