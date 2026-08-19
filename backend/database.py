@@ -278,35 +278,32 @@ class LoanDocument(Base):
 # DB Helpers & Seeds
 # ──────────────────────────────────────────────────────────────
 def _migrate_sqlite_columns():
-    """Ensure newly added columns exist in existing SQLite database tables."""
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        # Check users table
-        try:
-            res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-            existing_user_cols = [r[1] for r in res]
-            if "assigned_bank_id" not in existing_user_cols:
-                conn.execute(text("ALTER TABLE users ADD COLUMN assigned_bank_id INTEGER REFERENCES banks(id)"))
-            if "role" not in existing_user_cols:
-                conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(32) DEFAULT 'borrower'"))
-        except Exception as e:
-            print(f"[WARN] User table migration check: {e}")
-
-        # Check loan_applications table
-        try:
-            res = conn.execute(text("PRAGMA table_info(loan_applications)")).fetchall()
-            existing_loan_cols = [r[1] for r in res]
-            if "bank_id" not in existing_loan_cols:
-                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN bank_id INTEGER REFERENCES banks(id)"))
-            if "bank_name" not in existing_loan_cols:
-                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN bank_name VARCHAR(128)"))
-            if "scheme_id" not in existing_loan_cols:
-                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN scheme_id INTEGER"))
-            if "scheme_name" not in existing_loan_cols:
-                conn.execute(text("ALTER TABLE loan_applications ADD COLUMN scheme_name VARCHAR(128)"))
-        except Exception as e:
-            print(f"[WARN] LoanApplication table migration check: {e}")
-        conn.commit()
+    """Ensure all model columns exist in existing SQLite database tables."""
+    from sqlalchemy import text, inspect
+    try:
+        inspector = inspect(engine)
+        with engine.connect() as conn:
+            for table_name, table in Base.metadata.tables.items():
+                if inspector.has_table(table_name):
+                    existing_cols = {col["name"] for col in inspector.get_columns(table_name)}
+                    for col in table.columns:
+                        if col.name not in existing_cols:
+                            col_type = col.type.compile(engine.dialect)
+                            default_clause = ""
+                            if col.default is not None and getattr(col.default, "is_scalar", False):
+                                val = col.default.arg
+                                if isinstance(val, (int, float)):
+                                    default_clause = f" DEFAULT {val}"
+                                elif isinstance(val, str):
+                                    default_clause = f" DEFAULT '{val}'"
+                            try:
+                                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col.name} {col_type}{default_clause}"))
+                                print(f"[DB MIGRATE] Added missing column '{col.name}' to table '{table_name}'")
+                            except Exception as e:
+                                print(f"[WARN] Could not add column '{col.name}' to '{table_name}': {e}")
+            conn.commit()
+    except Exception as e:
+        print(f"[WARN] Database schema migration error: {e}")
 
 
 def init_db():
