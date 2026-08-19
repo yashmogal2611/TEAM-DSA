@@ -83,6 +83,15 @@ def _build_bank_filter(admin: BankAdminContext, override_bank_id: Optional[int] 
         )
 
 
+def _require_bank_admin_action(admin: BankAdminContext):
+    """Restrict underwriting mutations to administrators assigned to a bank."""
+    if admin.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super Admin is read-only for applications. Bank Admin access is required for this action.",
+        )
+
+
 # ── GET /admin/profile ────────────────────────────────────────
 @router.get("/profile")
 def get_admin_profile(
@@ -223,6 +232,7 @@ def update_loan_status(
     with optional sanctioned amount, interest rate offered, and underwriting note.
     Super admin can update any loan; bank admin is strictly isolated to their assigned bank.
     """
+    _require_bank_admin_action(admin)
     query = db.query(LoanApplication).filter(LoanApplication.id == loan_id)
     if not admin.is_super_admin:
         query = query.filter(_build_bank_filter(admin))
@@ -258,6 +268,7 @@ def approve_loan(
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
     """Mark a loan application as APPROVED with sanctioned amount and interest rate."""
+    _require_bank_admin_action(admin)
     query = db.query(LoanApplication).filter(LoanApplication.id == loan_id)
     if not admin.is_super_admin:
         query = query.filter(_build_bank_filter(admin))
@@ -289,6 +300,7 @@ def reject_loan(
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
     """Mark a loan application as REJECTED with underwriting note."""
+    _require_bank_admin_action(admin)
     query = db.query(LoanApplication).filter(LoanApplication.id == loan_id)
     if not admin.is_super_admin:
         query = query.filter(_build_bank_filter(admin))
@@ -341,6 +353,7 @@ def verify_loan_document(
     admin: BankAdminContext = Depends(get_current_bank_admin),
 ):
     """Bank admin verifies or rejects an uploaded document."""
+    _require_bank_admin_action(admin)
     query = db.query(LoanApplication).filter(LoanApplication.id == loan_id)
     if not admin.is_super_admin:
         query = query.filter(_build_bank_filter(admin))

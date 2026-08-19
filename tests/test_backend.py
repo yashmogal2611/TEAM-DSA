@@ -144,7 +144,14 @@ def test_auth_and_application_flow():
     assert len(docs_resp.json()) >= 1
 
     # 6. Admin Login & Review
-    admin_login_resp = client.post("/auth/login", json={"email": "admin@loanapp.com", "password": "Admin@123"})
+    admin_login_resp = client.post(
+        "/auth/admin-login",
+        json={
+            "email": "sbi.admin@loanapp.com",
+            "password": "Admin@123",
+            "bank_passkey": "SBI@Pass#2026",
+        },
+    )
     assert admin_login_resp.status_code == 200
     admin_token = admin_login_resp.json()["access_token"]
     admin_headers = {"Authorization": f"Bearer {admin_token}"}

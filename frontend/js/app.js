@@ -520,7 +520,11 @@ class ApplicationController {
 
       // ── Render Applications Table (pass isSuperAdmin for bank badges) ─────
       if (container) {
-        container.innerHTML = Components.renderAdminLoansTable(loans, isSuperAdmin && !effectiveBankId);
+        container.innerHTML = Components.renderAdminLoansTable(
+          loans,
+          isSuperAdmin && !effectiveBankId,
+          !isSuperAdmin
+        );
       }
 
       if (window.lucide) window.lucide.createIcons();
@@ -540,7 +544,7 @@ class ApplicationController {
     const showBankBadges = isSuperAdmin && !this.selectedBankId;
 
     if (!q) {
-      container.innerHTML = Components.renderAdminLoansTable(store.adminLoans, showBankBadges);
+      container.innerHTML = Components.renderAdminLoansTable(store.adminLoans, showBankBadges, !isSuperAdmin);
       if (window.lucide) window.lucide.createIcons();
       return;
     }
@@ -553,7 +557,7 @@ class ApplicationController {
       String(l.id).includes(q)
     );
 
-    container.innerHTML = Components.renderAdminLoansTable(filtered, showBankBadges);
+    container.innerHTML = Components.renderAdminLoansTable(filtered, showBankBadges, !isSuperAdmin);
     if (window.lucide) window.lucide.createIcons();
   }
 
@@ -1280,7 +1284,10 @@ class ApplicationController {
 
   async openDocumentModal(loanId, schemeName, isAdmin = false) {
     this.currentDocLoanId = loanId;
-    this.isDocAdminMode = isAdmin;
+    const user = store.user;
+    const isSuperAdmin = user && (user.is_super_admin || user.role === 'super_admin' || user.bank_code === 'ALL');
+    const canVerifyDocuments = isAdmin && !isSuperAdmin;
+    this.isDocAdminMode = canVerifyDocuments;
 
     let scheme = schemeName;
     if (!scheme) {

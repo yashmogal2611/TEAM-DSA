@@ -1001,12 +1001,12 @@ const Components = {
     `;
   },
 
-  renderAdminLoansTable(loans, isSuperAdmin = false) {
+  renderAdminLoansTable(loans, showBankBadges = false, canUnderwrite = true) {
     if (!loans || loans.length === 0) {
       return `
         <div class="empty-state">
           <h3>No Applications Match Search / Filter</h3>
-          <p>${isSuperAdmin ? 'No applications found across all financial institutions.' : "No applications found in this bank's scoped underwriting queue."}</p>
+          <p>${showBankBadges ? 'No applications found across all financial institutions.' : "No applications found in this bank's scoped underwriting queue."}</p>
         </div>
       `;
     }
@@ -1028,10 +1028,22 @@ const Components = {
 
     const _getBankBadgeHtml = (loan) => {
       if (!loan.bank_name && !loan.bank_code) return '';
-      // Derive bank code from bank_name if bank_code not present
-      const rawCode = loan.bank_code || '';
+      const bankName = (loan.bank_name || '').toLowerCase();
+      const derivedCode = bankName.includes('state bank') || bankName.includes('sbi') ? 'SBI'
+        : bankName.includes('hdfc') ? 'HDFC'
+        : bankName.includes('icici') ? 'ICICI'
+        : bankName.includes('axis') ? 'AXIS'
+        : bankName.includes('kotak') ? 'KOTAK'
+        : bankName.includes('baroda') || bankName.includes('bob') ? 'BOB'
+        : bankName.includes('union') || bankName.includes('ubi') ? 'UNION'
+        : bankName.includes('tata') ? 'TATA'
+        : bankName.includes('bajaj') ? 'BAJAJ'
+        : bankName.includes('muthoot') ? 'MUTHOOT'
+        : bankName.includes('lic') ? 'LIC'
+        : '';
+      const rawCode = (loan.bank_code || derivedCode).toUpperCase();
       const style = BANK_BADGE_COLORS[rawCode] || { bg: 'rgba(2,132,199,0.1)', color: 'var(--accent-primary)', border: 'rgba(2,132,199,0.2)' };
-      const label = rawCode || (loan.bank_name || '').substring(0, 8);
+      const label = rawCode || 'BANK';
       return `<span style="
         display:inline-block; padding:0.18rem 0.55rem; border-radius:6px; font-size:0.68rem;
         font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
@@ -1051,7 +1063,7 @@ const Components = {
                 <th>Financial Metrics</th>
                 <th>Income & Credit</th>
                 <th>Status & Offer</th>
-                <th>Underwriter Actions</th>
+                ${canUnderwrite ? '<th>Underwriter Actions</th>' : ''}
               </tr>
             </thead>
             <tbody>
@@ -1068,7 +1080,7 @@ const Components = {
                   </td>
                   <td>
                     <div style="display:flex; flex-direction:column; gap:0.2rem;">
-                      ${isSuperAdmin && loan.bank_name ? _getBankBadgeHtml(loan) : (loan.bank_name ? `<span class="badge badge-primary" style="font-size:0.7rem; align-self:flex-start;">${loan.bank_name}</span>` : '')}
+                      ${showBankBadges && loan.bank_name ? _getBankBadgeHtml(loan) : (loan.bank_name ? `<span class="badge badge-primary" style="font-size:0.7rem; align-self:flex-start;">${loan.bank_name}</span>` : '')}
                       <div style="font-weight:600; font-size:0.85rem; color:var(--text-primary);">${loan.scheme_name || this.formatProductType(loan.product_type)}</div>
                       <div style="font-size:0.75rem; color:var(--text-muted);">${this.formatCategoryDetails(loan)}</div>
                     </div>
@@ -1089,16 +1101,18 @@ const Components = {
                       <div style="font-size:0.775rem; color:var(--emerald); font-weight:700; margin-top:0.25rem;">Sanction: ${this.formatCurrency(loan.sanctioned_amount)} (@ ${loan.interest_rate_offered}%)</div>
                     ` : ''}
                   </td>
-                  <td>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                      <button class="btn btn-sm btn-primary" onclick="app.openReviewModal(${loan.id}, '${(loan.applicant_name || '').replace(/'/g, "\\'")}', '${this.formatCurrency(loan.requested_amount)}', ${loan.requested_amount}, ${loan.sanctioned_amount || loan.requested_amount}, ${loan.interest_rate_offered || 10.5})">
-                        Review & Sanction
-                      </button>
-                      <button class="btn btn-sm btn-secondary" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}', true)">
-                        <i data-lucide="folder"></i> Verify Docs
-                      </button>
-                    </div>
-                  </td>
+                  ${canUnderwrite ? `
+                    <td>
+                      <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-primary" onclick="app.openReviewModal(${loan.id}, '${(loan.applicant_name || '').replace(/'/g, "\\'")}', '${this.formatCurrency(loan.requested_amount)}', ${loan.requested_amount}, ${loan.sanctioned_amount || loan.requested_amount}, ${loan.interest_rate_offered || 10.5})">
+                          Review & Sanction
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}', true)">
+                          <i data-lucide="folder"></i> Verify Docs
+                        </button>
+                      </div>
+                    </td>
+                  ` : ''}
                 </tr>
               `).join('')}
             </tbody>
