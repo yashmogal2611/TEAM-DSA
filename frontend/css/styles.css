@@ -765,7 +765,8 @@ button.dropdown-item {
   box-shadow: var(--shadow-sm);
 }
 
-.btn-demo-fill:hover {
+.btn-demo-fill:hover,
+.btn-demo-fill.active {
   background: var(--accent-primary);
   color: #FFFFFF;
   border-color: var(--accent-primary);

@@ -1333,12 +1333,14 @@ class ApplicationController {
 
   fillDemoUser() {
     const userBtn = document.getElementById('btnRoleUser');
+    const bankBtn = document.getElementById('btnRoleBank');
     const sysBtn = document.getElementById('btnRoleSystem');
     if (userBtn) userBtn.classList.add('active');
+    if (bankBtn) bankBtn.classList.remove('active');
     if (sysBtn) sysBtn.classList.remove('active');
 
     document.getElementById('loginEmail').value = 'ravi@example.com';
-    document.getElementById('loginPassword').value = 'MyPass@123';
+    document.getElementById('loginPassword').value = 'Pass@123';
     
     const bankSelectContainer = document.getElementById('loginBankSelectContainer');
     if (bankSelectContainer) bankSelectContainer.style.display = 'none';
@@ -1349,26 +1351,18 @@ class ApplicationController {
     if (passkeyInput) passkeyInput.value = '';
   }
 
-  fillDemoAdmin() {
+  fillDemoBankAdmin(bankCode = 'SBI') {
     const userBtn = document.getElementById('btnRoleUser');
+    const bankBtn = document.getElementById('btnRoleBank');
     const sysBtn = document.getElementById('btnRoleSystem');
     if (userBtn) userBtn.classList.remove('active');
-    if (sysBtn) sysBtn.classList.add('active');
+    if (bankBtn) bankBtn.classList.add('active');
+    if (sysBtn) sysBtn.classList.remove('active');
 
     const bankSelectContainer = document.getElementById('loginBankSelectContainer');
     if (bankSelectContainer) bankSelectContainer.style.display = 'block';
 
-    const bankSelector = document.getElementById('loginBankSelector');
-    const selectedBank = bankSelector ? bankSelector.value : 'SBI';
-    this.fillDemoBankAdmin(selectedBank);
-  }
-
-  handleBankSelectChange(bankCode) {
-    this.fillDemoBankAdmin(bankCode);
-  }
-
-  fillDemoBankAdmin(bankCode = 'SBI') {
-    const code = bankCode.toUpperCase();
+    const code = (bankCode || 'SBI').toUpperCase();
     const bankEmails = {
       'SBI': 'sbi.admin@loanapp.com',
       'HDFC': 'hdfc.admin@loanapp.com',
@@ -1407,6 +1401,35 @@ class ApplicationController {
     if (passInput) passInput.value = 'Admin@123';
     if (passkeyContainer) passkeyContainer.style.display = 'block';
     if (passkeyInput) passkeyInput.value = bankPasskeys[code] || `${code}@Pass#2026`;
+  }
+
+  fillDemoSystemAdmin() {
+    const userBtn = document.getElementById('btnRoleUser');
+    const bankBtn = document.getElementById('btnRoleBank');
+    const sysBtn = document.getElementById('btnRoleSystem');
+    if (userBtn) userBtn.classList.remove('active');
+    if (bankBtn) bankBtn.classList.remove('active');
+    if (sysBtn) sysBtn.classList.add('active');
+
+    const emailInput = document.getElementById('loginEmail');
+    const passInput = document.getElementById('loginPassword');
+    const passkeyContainer = document.getElementById('loginPasskeyContainer');
+    const passkeyInput = document.getElementById('loginBankPasskey');
+    const bankSelectContainer = document.getElementById('loginBankSelectContainer');
+
+    if (emailInput) emailInput.value = 'admin@loanapp.com';
+    if (passInput) passInput.value = 'Admin@123';
+    if (bankSelectContainer) bankSelectContainer.style.display = 'none';
+    if (passkeyContainer) passkeyContainer.style.display = 'none';
+    if (passkeyInput) passkeyInput.value = '';
+  }
+
+  fillDemoAdmin() {
+    this.fillDemoBankAdmin('SBI');
+  }
+
+  handleBankSelectChange(bankCode) {
+    this.fillDemoBankAdmin(bankCode);
   }
 
   checkLoginEmailRole(email = '') {
