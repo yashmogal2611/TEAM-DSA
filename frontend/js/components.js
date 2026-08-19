@@ -1104,9 +1104,16 @@ const Components = {
                   ${canUnderwrite ? `
                     <td>
                       <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <button class="btn btn-sm btn-primary" onclick="app.openReviewModal(${loan.id}, '${(loan.applicant_name || '').replace(/'/g, "\\'")}', '${this.formatCurrency(loan.requested_amount)}', ${loan.requested_amount}, ${loan.sanctioned_amount || loan.requested_amount}, ${loan.interest_rate_offered || 10.5})">
-                          Review & Sanction
-                        </button>
+                        ${(loan.status === 'pending' || loan.status === 'under_review') ? `
+                          <button class="btn btn-sm btn-primary" onclick="app.openReviewModal(${loan.id}, '${(loan.applicant_name || '').replace(/'/g, "\\'")}', '${this.formatCurrency(loan.requested_amount)}', ${loan.requested_amount}, ${loan.sanctioned_amount || loan.requested_amount}, ${loan.interest_rate_offered || 10.5})">
+                            Review & Sanction
+                          </button>
+                        ` : `
+                          <span class="status-badge ${loan.status === 'approved' ? 'approved' : 'rejected'}">
+                            <i data-lucide="${loan.status === 'approved' ? 'check-circle-2' : 'x-circle'}"></i>
+                            ${loan.status === 'approved' ? 'Approved' : 'Rejected'}
+                          </span>
+                        `}
                         <button class="btn btn-sm btn-secondary" onclick="app.openDocumentModal(${loan.id}, '${this.formatProductType(loan.product_type)}', true)">
                           <i data-lucide="folder"></i> Verify Docs
                         </button>

@@ -9,6 +9,7 @@ User and consumer-facing endpoints for:
 import os
 import shutil
 import uuid
+import re
 from datetime import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status, Query
@@ -252,16 +253,29 @@ async def upload_loan_document(
         }
         doc_type = type_defaults.get((doc_category or "").lower(), "document")
 
-    original_filename = file.filename or "document.pdf"
+    # Sanitize inputs to avoid creating unintended subdirectories or unsafe filenames
+    original_filename = (file.filename or "document.pdf").replace("\\", "/")
+    original_filename = os.path.basename(original_filename)
+    # Ensure doc_type and doc_category don't contain path separators or other unsafe chars
+    safe_doc_type = (doc_type or "document").replace("\\", "/")
+    safe_doc_type = os.path.basename(safe_doc_type)
+    safe_doc_type = re.sub(r"[^A-Za-z0-9_\- ().]", "_", safe_doc_type)
+    safe_doc_category = (doc_category or "other").replace("\\", "/")
+    safe_doc_category = os.path.basename(safe_doc_category)
+    safe_doc_category = re.sub(r"[^A-Za-z0-9_\- ().]", "_", safe_doc_category)
+
     file_ext = os.path.splitext(original_filename)[1]
-    unique_name = f"{uuid.uuid4().hex[:12]}_{doc_category}_{doc_type}{file_ext}"
+    unique_name = f"{uuid.uuid4().hex[:12]}_{safe_doc_category}_{safe_doc_type}{file_ext}"
     saved_path = os.path.join(user_loan_dir, unique_name)
+
+    # Ensure parent directory exists (covers any accidental nested parts)
+    os.makedirs(os.path.dirname(saved_path), exist_ok=True)
 
     # Save to disk
     file_size = 0
+    content = await file.read()
+    file_size = len(content)
     with open(saved_path, "wb") as buffer:
-        content = await file.read()
-        file_size = len(content)
         buffer.write(content)
 
     doc_record = LoanDocument(
