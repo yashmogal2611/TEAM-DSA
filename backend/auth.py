@@ -76,13 +76,35 @@ def decode_token(token: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────
+# Synthetic All-Banks sentinel used for Super Admins
+# ──────────────────────────────────────────────────────────────
+class _SuperAdminBankSentinel:
+    """
+    Lightweight object that mimics a Bank ORM row for the Platform Super Admin.
+    All reads return the 'All Financial Institutions' meta-bank values.
+    Super admins are not bound to any real bank entity.
+    """
+    id: Optional[int] = None
+    bank_code: str = "ALL"
+    bank_name: str = "All Financial Institutions"
+    is_active: bool = True
+
+
+_SUPER_ADMIN_BANK = _SuperAdminBankSentinel()
+
+
+# ──────────────────────────────────────────────────────────────
 # Bank Admin Context & Scoping
 # ──────────────────────────────────────────────────────────────
 class BankAdminContext:
     """
     Encapsulates the authenticated bank administrator and their strictly bound bank institution.
+
+    For Platform Super Admins (role == 'super_admin'), bank_id is None, bank_name is
+    'All Financial Institutions', bank_code is 'ALL', and is_super_admin is True.
+    For Bank Admins, is_super_admin is False and the context is scoped to one bank.
     """
-    def __init__(self, user: User, bank: Bank):
+    def __init__(self, user: User, bank):
         self.user = user
         self.id = user.id
         self.user_id = user.id
@@ -90,10 +112,23 @@ class BankAdminContext:
         self.full_name = user.full_name
         self.is_admin = user.is_admin
         self.role = user.role or "bank_admin"
-        self.bank_id = bank.id
-        self.bank_name = bank.bank_name
-        self.bank_code = bank.bank_code
-        self.bank = bank
+
+        # Determine super admin status
+        self.is_super_admin: bool = (
+            user.role == "super_admin" or user.assigned_bank_id is None
+        )
+
+        # Bank scoping — None for super admins, concrete values for bank admins
+        if self.is_super_admin:
+            self.bank_id: Optional[int] = None
+            self.bank_name: str = "All Financial Institutions"
+            self.bank_code: str = "ALL"
+            self.bank = _SUPER_ADMIN_BANK
+        else:
+            self.bank_id = bank.id if bank else None
+            self.bank_name = bank.bank_name if bank else ""
+            self.bank_code = bank.bank_code if bank else ""
+            self.bank = bank
 
     def __getattr__(self, name):
         return getattr(self.user, name)
@@ -123,9 +158,12 @@ def get_current_bank_admin(
     db: Session = Depends(get_db),
 ) -> BankAdminContext:
     """
-    Validates that the authenticated user is an active administrator,
-    cross-references the token claims against the admin's database-assigned bank,
-    and returns a BankAdminContext enforcing multi-tenant isolation.
+    Validates that the authenticated user is an active administrator and returns a
+    BankAdminContext enforcing multi-tenant isolation.
+
+    Platform Super Admins (role == 'super_admin') bypass bank lookup entirely and
+    receive a synthetic all-institutions context.  Individual Bank Admins are
+    cross-referenced against their assigned bank record in the database.
     """
     payload = decode_token(token)
     user_id = payload.get("sub")
@@ -142,18 +180,23 @@ def get_current_bank_admin(
     if not user.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    # Resolve assigned bank
-    bank = None
-    if user.assigned_bank_id:
-        bank = db.query(Bank).filter(Bank.id == user.assigned_bank_id, Bank.is_active == True).first()
+    # ── Super Admin fast-path: no bank binding required ──────
+    if user.role == "super_admin" or user.assigned_bank_id is None:
+        return BankAdminContext(user=user, bank=_SUPER_ADMIN_BANK)
+
+    # ── Bank Admin: resolve assigned bank ────────────────────
+    bank = db.query(Bank).filter(Bank.id == user.assigned_bank_id, Bank.is_active == True).first()
 
     if not bank:
-        # Fallback to first active bank if legacy admin
+        # Fallback to first active bank for legacy admins without an assigned bank
         bank = db.query(Bank).filter(Bank.is_active == True).first()
         if not bank:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No active bank institution registered.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No active bank institution registered."
+            )
 
-    # Cross-check token bank_id if present
+    # Cross-check token bank_id if present to prevent token forgery
     if token_bank_id and int(token_bank_id) != bank.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

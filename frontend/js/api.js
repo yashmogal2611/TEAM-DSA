@@ -239,13 +239,37 @@ class ApiClient {
       const password = body?.password;
       const passkey = (body?.bank_passkey || '').trim();
 
+      // Platform Super Admin — no passkey required
+      if (email === 'admin@loanapp.com') {
+        if (password !== 'Admin@123') throw new Error('Invalid email or password (401)');
+        const mockToken = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.super_admin_mock_token`;
+        return {
+          access_token: mockToken,
+          token_type: 'bearer',
+          is_admin: true,
+          user_id: 1,
+          email: email,
+          full_name: 'Platform Super Admin',
+          role: 'super_admin',
+          bank_id: null,
+          bank_name: 'All Financial Institutions',
+          bank_code: 'ALL',
+          is_super_admin: true
+        };
+      }
+
       const BANK_CREDENTIALS = {
         'sbi.admin@loanapp.com': { bank_code: 'SBI', bank_name: 'State Bank of India', bank_id: 1, passkey: 'SBI@Pass#2026' },
         'hdfc.admin@loanapp.com': { bank_code: 'HDFC', bank_name: 'HDFC Bank', bank_id: 2, passkey: 'HDFC@Pass#2026' },
         'icici.admin@loanapp.com': { bank_code: 'ICICI', bank_name: 'ICICI Bank', bank_id: 3, passkey: 'ICICI@Pass#2026' },
-        'kotak.admin@loanapp.com': { bank_code: 'KOTAK', bank_name: 'Kotak Mahindra Bank', bank_id: 4, passkey: 'KOTAK@Pass#2026' },
-        'bob.admin@loanapp.com': { bank_code: 'BOB', bank_name: 'Bank of Baroda', bank_id: 5, passkey: 'BOB@Pass#2026' },
-        'admin@loanapp.com': { bank_code: 'SBI', bank_name: 'State Bank of India', bank_id: 1, passkey: 'SBI@Pass#2026' }
+        'axis.admin@loanapp.com': { bank_code: 'AXIS', bank_name: 'Axis Bank', bank_id: 4, passkey: 'AXIS@Pass#2026' },
+        'kotak.admin@loanapp.com': { bank_code: 'KOTAK', bank_name: 'Kotak Mahindra Bank', bank_id: 5, passkey: 'KOTAK@Pass#2026' },
+        'bob.admin@loanapp.com': { bank_code: 'BOB', bank_name: 'Bank of Baroda', bank_id: 6, passkey: 'BOB@Pass#2026' },
+        'union.admin@loanapp.com': { bank_code: 'UNION', bank_name: 'Union Bank of India', bank_id: 7, passkey: 'UNION@Pass#2026' },
+        'tata.admin@loanapp.com': { bank_code: 'TATA', bank_name: 'Tata Capital', bank_id: 8, passkey: 'TATA@Pass#2026' },
+        'bajaj.admin@loanapp.com': { bank_code: 'BAJAJ', bank_name: 'Bajaj Finance', bank_id: 9, passkey: 'BAJAJ@Pass#2026' },
+        'muthoot.admin@loanapp.com': { bank_code: 'MUTHOOT', bank_name: 'Muthoot Finance', bank_id: 10, passkey: 'MUTHOOT@Pass#2026' },
+        'lic.admin@loanapp.com': { bank_code: 'LIC', bank_name: 'LIC Housing Finance', bank_id: 11, passkey: 'LIC@Pass#2026' },
       };
 
       const bankInfo = BANK_CREDENTIALS[email];
@@ -267,9 +291,11 @@ class ApiClient {
         role: 'bank_admin',
         bank_id: bankInfo.bank_id,
         bank_name: bankInfo.bank_name,
-        bank_code: bankInfo.bank_code
+        bank_code: bankInfo.bank_code,
+        is_super_admin: false
       };
     }
+
 
     // 3c. Auth: Partner Banks GET /auth/banks
     if (endpoint === '/auth/banks' && method === 'GET') {
@@ -625,11 +651,28 @@ class ApiClient {
       return { success: true, message: 'Document deleted' };
     }
 
-    // 14. Admin: List Loans GET /admin/loans
-    if (endpoint.startsWith('/admin/loans') && method === 'GET') {
+    // 14. Admin: List Loans GET /admin/loans (supports ?status=&bank_id= for super admin)
+    if (endpoint.startsWith('/admin/loans') && !endpoint.match(/\/admin\/loans\/\d+/) && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not authorized as admin (403)');
-      const statusFilter = new URL(`http://dummy${endpoint}`).searchParams.get('status');
-      return statusFilter ? MOCK_DB.loans.filter(l => l.status === statusFilter) : MOCK_DB.loans;
+      const urlParams = new URL(`http://dummy${endpoint}`).searchParams;
+      const statusFilter = urlParams.get('status');
+      const bankIdFilter = urlParams.get('bank_id') ? parseInt(urlParams.get('bank_id')) : null;
+
+      const isSuperAdmin = currentUser.is_super_admin || currentUser.role === 'super_admin' || currentUser.bank_code === 'ALL';
+
+      let loans = MOCK_DB.loans;
+      if (!isSuperAdmin) {
+        // Strict bank-scoped filter for bank admins
+        const bankCode = currentUser.bank_code || '';
+        const bankName = currentUser.bank_name || '';
+        loans = loans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
+      } else if (bankIdFilter !== null) {
+        // Super admin filtering by specific bank
+        loans = loans.filter(l => l.bank_id === bankIdFilter || (l.bank_id == null && bankIdFilter === 1));
+      }
+
+      if (statusFilter) loans = loans.filter(l => l.status === statusFilter);
+      return loans;
     }
 
     // 15. Admin: Approve Loan PATCH /admin/loans/{id}/approve
@@ -677,20 +720,52 @@ class ApiClient {
       return doc;
     }
 
-    // 18. Admin: Stats GET /admin/stats
-    if (endpoint === '/admin/stats' && method === 'GET') {
+    // 18. Admin: Stats GET /admin/stats (supports ?bank_id= for super admin)
+    if (endpoint.startsWith('/admin/stats') && !endpoint.includes('/schemes') && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
-      const bankName = currentUser.bank_name || 'State Bank of India';
-      const bankCode = currentUser.bank_code || 'SBI';
-      const scopedLoans = MOCK_DB.loans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
-      
+      const isSuperAdmin = currentUser.is_super_admin || currentUser.role === 'super_admin' || currentUser.bank_code === 'ALL';
+      const urlParams = new URL(`http://dummy${endpoint}`).searchParams;
+      const bankIdFilter = urlParams.get('bank_id') ? parseInt(urlParams.get('bank_id')) : null;
+
+      let bankName, bankCode, bankId;
+
+      if (isSuperAdmin && bankIdFilter !== null) {
+        // Scoped to a specific bank selected via dropdown
+        const MOCK_BANKS = [
+          { id: 1, bank_code: 'SBI', bank_name: 'State Bank of India' },
+          { id: 2, bank_code: 'HDFC', bank_name: 'HDFC Bank' },
+          { id: 3, bank_code: 'ICICI', bank_name: 'ICICI Bank' },
+          { id: 4, bank_code: 'AXIS', bank_name: 'Axis Bank' },
+          { id: 5, bank_code: 'KOTAK', bank_name: 'Kotak Mahindra Bank' },
+          { id: 6, bank_code: 'BOB', bank_name: 'Bank of Baroda' },
+        ];
+        const foundBank = MOCK_BANKS.find(b => b.id === bankIdFilter);
+        bankName = foundBank ? foundBank.bank_name : 'Unknown Bank';
+        bankCode = foundBank ? foundBank.bank_code : 'UNK';
+        bankId = bankIdFilter;
+      } else if (isSuperAdmin) {
+        bankName = 'All Financial Institutions';
+        bankCode = 'ALL';
+        bankId = null;
+      } else {
+        bankName = currentUser.bank_name || 'State Bank of India';
+        bankCode = currentUser.bank_code || 'SBI';
+        bankId = currentUser.bank_id || 1;
+      }
+
+      let scopedLoans = MOCK_DB.loans;
+      if (!isSuperAdmin) {
+        scopedLoans = scopedLoans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
+      } else if (isSuperAdmin && bankIdFilter !== null) {
+        scopedLoans = scopedLoans.filter(l => l.bank_id === bankIdFilter || (l.bank_id == null && bankIdFilter === 1));
+      }
+
       const schemesBreakdown = [
         {
-          scheme_id: 1,
           scheme_name: `${bankName} Regular Scheme`,
           total_applications: scopedLoans.length || 1,
           pending_count: scopedLoans.filter(l => l.status === 'pending').length,
-          under_review_count: 0,
+          under_review_count: scopedLoans.filter(l => l.status === 'under_review').length,
           approved_count: scopedLoans.filter(l => l.status === 'approved').length,
           rejected_count: scopedLoans.filter(l => l.status === 'rejected').length,
           approval_rate: scopedLoans.length ? Math.round((scopedLoans.filter(l => l.status === 'approved').length / scopedLoans.length) * 100) : 0,
@@ -703,26 +778,31 @@ class ApiClient {
       return {
         total_applications: scopedLoans.length,
         pending: scopedLoans.filter(l => l.status === 'pending').length,
+        under_review: scopedLoans.filter(l => l.status === 'under_review').length,
         approved: scopedLoans.filter(l => l.status === 'approved').length,
         rejected: scopedLoans.filter(l => l.status === 'rejected').length,
         total_users: MOCK_DB.users.filter(u => !u.is_admin).length,
-        bank_id: currentUser.bank_id || 1,
+        total_documents: MOCK_DB.documents ? MOCK_DB.documents.length : 0,
+        bank_id: bankId,
         bank_name: bankName,
         bank_code: bankCode,
+        applications_by_type: { personal_loan: 0, home_loan: 0, vehicle_loan: 0, education_loan: 0, business_loan: 0, gold_loan: 0 },
+        total_requested_volume: scopedLoans.reduce((s, l) => s + (l.requested_amount || 0), 0),
+        total_approved_volume: scopedLoans.reduce((s, l) => s + (l.sanctioned_amount || 0), 0),
         schemes_breakdown: schemesBreakdown
       };
     }
 
     // 18b. Admin: Schemes Breakdown GET /admin/stats/schemes
-    if (endpoint === '/admin/stats/schemes' && method === 'GET') {
+    if (endpoint.startsWith('/admin/stats/schemes') && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
       const bankName = currentUser.bank_name || 'State Bank of India';
       const bankCode = currentUser.bank_code || 'SBI';
-      const scopedLoans = MOCK_DB.loans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
+      const isSuperAdmin = currentUser.is_super_admin || currentUser.role === 'super_admin' || currentUser.bank_code === 'ALL';
+      const scopedLoans = isSuperAdmin ? MOCK_DB.loans : MOCK_DB.loans.filter(l => !l.bank_name || l.bank_name.toLowerCase().includes(bankCode.toLowerCase()) || bankName.toLowerCase().includes((l.bank_name || '').toLowerCase()));
       return [
         {
-          scheme_id: 1,
-          scheme_name: `${bankName} Regular Scheme`,
+          scheme_name: `${isSuperAdmin ? 'All Financial Institutions' : bankName} Regular Scheme`,
           total_applications: scopedLoans.length || 1,
           pending_count: scopedLoans.filter(l => l.status === 'pending').length,
           under_review_count: 0,
@@ -736,11 +816,32 @@ class ApiClient {
       ];
     }
 
+    // 18c. Admin: Banks Directory GET /admin/banks (Super Admin only)
+    if (endpoint === '/admin/banks' && method === 'GET') {
+      if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
+      const isSuperAdmin = currentUser.is_super_admin || currentUser.role === 'super_admin' || currentUser.bank_code === 'ALL';
+      if (!isSuperAdmin) throw new Error('Super Admin access required (403)');
+      return [
+        { id: 1, bank_code: 'SBI', bank_name: 'State Bank of India', is_active: true, total_applications: MOCK_DB.loans.filter(l => !l.bank_name || l.bank_name.includes('SBI') || l.bank_name.includes('State Bank')).length, pending_count: MOCK_DB.loans.filter(l => l.status === 'pending' && (!l.bank_name || l.bank_name.includes('SBI') || l.bank_name.includes('State Bank'))).length },
+        { id: 2, bank_code: 'HDFC', bank_name: 'HDFC Bank', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('HDFC')).length, pending_count: MOCK_DB.loans.filter(l => l.status === 'pending' && l.bank_name && l.bank_name.includes('HDFC')).length },
+        { id: 3, bank_code: 'ICICI', bank_name: 'ICICI Bank', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('ICICI')).length, pending_count: 0 },
+        { id: 4, bank_code: 'AXIS', bank_name: 'Axis Bank', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('Axis')).length, pending_count: 0 },
+        { id: 5, bank_code: 'KOTAK', bank_name: 'Kotak Mahindra Bank', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('Kotak')).length, pending_count: 0 },
+        { id: 6, bank_code: 'BOB', bank_name: 'Bank of Baroda', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('Baroda')).length, pending_count: 0 },
+        { id: 7, bank_code: 'UNION', bank_name: 'Union Bank of India', is_active: true, total_applications: 0, pending_count: 0 },
+        { id: 8, bank_code: 'TATA', bank_name: 'Tata Capital', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('Tata')).length, pending_count: 0 },
+        { id: 9, bank_code: 'BAJAJ', bank_name: 'Bajaj Finance', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('Bajaj')).length, pending_count: 0 },
+        { id: 10, bank_code: 'MUTHOOT', bank_name: 'Muthoot Finance', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('Muthoot')).length, pending_count: 0 },
+        { id: 11, bank_code: 'LIC', bank_name: 'LIC Housing Finance', is_active: true, total_applications: MOCK_DB.loans.filter(l => l.bank_name && l.bank_name.includes('LIC')).length, pending_count: 0 },
+      ];
+    }
+
     // 19. Admin: Users GET /admin/users
     if (endpoint === '/admin/users' && method === 'GET') {
       if (!currentUser || !currentUser.is_admin) throw new Error('Not an admin (403)');
       return MOCK_DB.users.filter(u => !u.is_admin).map(({ password, ...u }) => u);
     }
+
 
     throw new Error(`Endpoint ${endpoint} not found (404)`);
   }
@@ -841,8 +942,11 @@ class ApiClient {
     return this.request(`/loans/${loanId}/documents/${docId}`, { method: 'DELETE' });
   }
 
-  getAdminLoans(status = '') {
-    const query = status ? `?status=${status}` : '';
+  getAdminLoans(status = '', bankId = null) {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (bankId !== null && bankId !== undefined) params.set('bank_id', bankId);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/admin/loans${query}`);
   }
 
@@ -880,12 +984,18 @@ class ApiClient {
     return this.request('/auth/banks', { auth: false });
   }
 
-  getAdminStats() {
-    return this.request('/admin/stats');
+  getAdminStats(bankId = null) {
+    const query = bankId !== null && bankId !== undefined ? `?bank_id=${bankId}` : '';
+    return this.request(`/admin/stats${query}`);
   }
 
-  getAdminSchemeStats() {
-    return this.request('/admin/stats/schemes');
+  getAdminSchemeStats(bankId = null) {
+    const query = bankId !== null && bankId !== undefined ? `?bank_id=${bankId}` : '';
+    return this.request(`/admin/stats/schemes${query}`);
+  }
+
+  getAdminBanks() {
+    return this.request('/admin/banks');
   }
 
   getAdminUsers() {

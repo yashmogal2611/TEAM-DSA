@@ -1,6 +1,7 @@
 /**
  * Main Application Orchestrator & Client-Side Controller
- * Extended to support Schemes, Eligibility Engine, Documents, and Admin Underwriting
+ * Extended to support Schemes, Eligibility Engine, Documents, Admin Underwriting,
+ * and Super Admin Multi-Bank Overview with Bank Filter Dropdown.
  */
 class ApplicationController {
   constructor() {
@@ -10,6 +11,10 @@ class ApplicationController {
     this.currentRecommendationContext = null;
     this.chatHistory = [];
     this.isChatOpen = false;
+    // Super Admin bank filter state
+    this.selectedBankId = null;       // null = All Banks
+    this.availableBanks = [];         // populated once on first super admin dashboard load
+    this.currentStatusFilter = '';    // tracks active status tab filter
     this.init();
   }
 
@@ -308,8 +313,17 @@ class ApplicationController {
       if (popName) popName.textContent = user.full_name;
       if (popEmail) popEmail.textContent = user.email;
       if (popRole) {
-        popRole.textContent = user.is_admin ? (user.bank_name ? `${user.bank_name} Admin` : 'System Administrator') : 'Verified Borrower';
-        popRole.className = `popover-role-badge ${user.is_admin ? 'admin' : 'user'}`;
+        const isSA = user.is_super_admin || user.role === 'super_admin' || user.bank_code === 'ALL';
+        if (isSA) {
+          popRole.textContent = 'Platform Super Admin';
+          popRole.className = 'popover-role-badge admin super-admin';
+        } else if (user.is_admin) {
+          popRole.textContent = user.bank_name ? `${user.bank_name} Admin` : 'System Administrator';
+          popRole.className = 'popover-role-badge admin';
+        } else {
+          popRole.textContent = 'Verified Borrower';
+          popRole.className = 'popover-role-badge user';
+        }
       }
 
       if (user.is_admin) {
@@ -426,72 +440,123 @@ class ApplicationController {
     }
   }
 
-  async loadAdminDashboard(statusFilter = '') {
+  async loadAdminDashboard(statusFilter = '', bankId = null) {
+    const user = store.user;
+    const isSuperAdmin = user && (user.is_super_admin || user.role === 'super_admin' || user.bank_code === 'ALL');
+
+    // Use persisted bank selection if no override passed
+    const effectiveBankId = bankId !== undefined ? bankId : this.selectedBankId;
+    this.currentStatusFilter = statusFilter;
+
     const container = document.getElementById('adminLoansContainer');
     const statsContainer = document.getElementById('adminStatsContainer');
     const schemesContainer = document.getElementById('adminSchemesContainer');
     const headingEl = document.getElementById('adminDashboardHeading');
-    const badgeEl = document.getElementById('adminBankBadge');
-    
-    container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading bank underwriting queue...</div></div>`;
+    const bankSelectorContainer = document.getElementById('adminBankSelectorContainer');
+
+    if (container) container.innerHTML = `<div style="text-align:center; padding:3rem;"><div class="status-badge pending">Loading ${isSuperAdmin ? 'platform-wide' : 'bank'} underwriting queue...</div></div>`;
 
     try {
+      // ── Super Admin: fetch banks list once (cache in this.availableBanks) ──
+      if (isSuperAdmin && this.availableBanks.length === 0) {
+        try {
+          this.availableBanks = await api.getAdminBanks();
+        } catch (e) {
+          console.warn('Could not load banks list:', e);
+          this.availableBanks = [];
+        }
+      }
+
+      // ── Render Bank Selector Dropdown (super admin only) ──────────────────
+      if (bankSelectorContainer) {
+        if (isSuperAdmin && this.availableBanks.length > 0) {
+          bankSelectorContainer.style.display = 'block';
+          bankSelectorContainer.innerHTML = Components.renderBankSelectorDropdown(
+            this.availableBanks, effectiveBankId
+          );
+          if (window.lucide) window.lucide.createIcons();
+        } else {
+          bankSelectorContainer.style.display = 'none';
+          bankSelectorContainer.innerHTML = '';
+        }
+      }
+
+      // ── Fetch stats and loans in parallel ─────────────────────────────────
       const [stats, loans] = await Promise.all([
-        api.getAdminStats(),
-        api.getAdminLoans(statusFilter)
+        api.getAdminStats(isSuperAdmin ? effectiveBankId : null),
+        api.getAdminLoans(statusFilter, isSuperAdmin ? effectiveBankId : null)
       ]);
 
       store.adminStats = stats;
       store.adminLoans = loans;
 
-      // Update bank scoped branding with official bank logo
+      // ── Update portal heading & bank logo ─────────────────────────────────
       if (stats && stats.bank_name) {
         const logoContainer = document.getElementById('adminBankLogoContainer');
         if (logoContainer) {
-          logoContainer.innerHTML = Components.getBankLogoHtml(stats.bank_name, 42);
+          logoContainer.innerHTML = isSuperAdmin && !effectiveBankId
+            ? `<div style="width:42px;height:42px;border-radius:8px;background:linear-gradient(135deg,#0284c7,#0d9488);display:flex;align-items:center;justify-content:center;"><i data-lucide="globe-2" style="width:22px;height:22px;color:#fff;"></i></div>`
+            : Components.getBankLogoHtml(stats.bank_name, 42);
         }
         if (headingEl) {
-          headingEl.textContent = `${stats.bank_name} Underwriting Portal`;
+          if (isSuperAdmin && !effectiveBankId) {
+            headingEl.textContent = 'CrediWise Platform — All Financial Institutions';
+          } else {
+            headingEl.textContent = `${stats.bank_name} Underwriting Portal`;
+          }
         }
       }
 
-      // Render KPIs
-      statsContainer.innerHTML = Components.renderAdminStats(stats);
-      
-      // Render Per-Scheme Breakdown
+      // ── Render KPIs ───────────────────────────────────────────────────────
+      if (statsContainer) statsContainer.innerHTML = Components.renderAdminStats(stats);
+
+      // ── Render Per-Scheme Breakdown ───────────────────────────────────────
       if (schemesContainer && stats.schemes_breakdown) {
-        schemesContainer.innerHTML = Components.renderAdminSchemeStats(stats.schemes_breakdown, stats.bank_name);
+        schemesContainer.innerHTML = Components.renderAdminSchemeStats(
+          stats.schemes_breakdown,
+          isSuperAdmin && !effectiveBankId ? 'All Financial Institutions' : stats.bank_name
+        );
       }
 
-      // Render Applications Table
-      container.innerHTML = Components.renderAdminLoansTable(loans);
+      // ── Render Applications Table (pass isSuperAdmin for bank badges) ─────
+      if (container) {
+        container.innerHTML = Components.renderAdminLoansTable(loans, isSuperAdmin && !effectiveBankId);
+      }
+
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
-      container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load bank admin data: ${err.message}</div>`;
+      if (container) container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load admin data: ${err.message}</div>`;
     }
   }
+
 
   handleAdminSearch(query) {
     const q = (query || '').toLowerCase().trim();
     const container = document.getElementById('adminLoansContainer');
     if (!container || !store.adminLoans) return;
 
+    const user = store.user;
+    const isSuperAdmin = user && (user.is_super_admin || user.role === 'super_admin' || user.bank_code === 'ALL');
+    const showBankBadges = isSuperAdmin && !this.selectedBankId;
+
     if (!q) {
-      container.innerHTML = Components.renderAdminLoansTable(store.adminLoans);
+      container.innerHTML = Components.renderAdminLoansTable(store.adminLoans, showBankBadges);
       if (window.lucide) window.lucide.createIcons();
       return;
     }
 
-    const filtered = store.adminLoans.filter(l => 
+    const filtered = store.adminLoans.filter(l =>
       (l.applicant_name && l.applicant_name.toLowerCase().includes(q)) ||
       (l.applicant_email && l.applicant_email.toLowerCase().includes(q)) ||
       (l.product_type && l.product_type.toLowerCase().includes(q)) ||
+      (l.bank_name && l.bank_name.toLowerCase().includes(q)) ||
       String(l.id).includes(q)
     );
 
-    container.innerHTML = Components.renderAdminLoansTable(filtered);
+    container.innerHTML = Components.renderAdminLoansTable(filtered, showBankBadges);
     if (window.lucide) window.lucide.createIcons();
   }
+
 
   async loadAdminUsers() {
     const container = document.getElementById('adminUsersContainer');
@@ -558,14 +623,24 @@ class ApplicationController {
     try {
       store.clearSession();
       let res;
-      
-      // If passkey is provided or email indicates an admin account, try 3-factor admin login
-      if (passkey || email.toLowerCase().includes('admin')) {
+      const emailLower = email.toLowerCase();
+      const isSuperAdminEmail = emailLower === 'admin@loanapp.com';
+
+      // Super Admin: skip 3-factor admin-login, use regular login path (no passkey required)
+      if (isSuperAdminEmail) {
+        try {
+          // Try admin-login first (backend handles it without passkey for super admin)
+          res = await api.adminLogin({ email, password, bank_passkey: passkey || '' });
+        } catch (adminErr) {
+          // Fallback to regular login if admin-login not available
+          res = await api.login({ email, password });
+        }
+      } else if (passkey || emailLower.includes('.admin@')) {
+        // Bank admin: requires passkey for 3-factor auth
         try {
           res = await api.adminLogin({ email, password, bank_passkey: passkey });
         } catch (adminErr) {
-          // If admin login failed due to missing passkey or other, fallback to regular login only if not explicitly admin
-          if (!passkey && !email.toLowerCase().includes('.admin@')) {
+          if (!passkey && !emailLower.includes('.admin@')) {
             res = await api.login(credentials);
           } else {
             throw adminErr;
@@ -580,9 +655,24 @@ class ApplicationController {
       const profile = await api.getMe();
       if (res.bank_name) profile.bank_name = res.bank_name;
       if (res.bank_code) profile.bank_code = res.bank_code;
+      if (res.role) profile.role = res.role;
+      if (res.is_super_admin) profile.is_super_admin = res.is_super_admin;
       store.setSession(res.access_token, profile);
 
-      const welcomeTitle = res.is_admin ? `${res.bank_name || 'Bank'} Underwriter Portal` : 'Login Successful';
+      // Reset bank filter state on new login
+      this.selectedBankId = null;
+      this.availableBanks = [];
+      this.currentStatusFilter = '';
+
+      let welcomeTitle;
+      if (res.is_super_admin || res.role === 'super_admin') {
+        welcomeTitle = 'CrediWise Platform — Super Admin';
+      } else if (res.is_admin) {
+        welcomeTitle = `${res.bank_name || 'Bank'} Underwriter Portal`;
+      } else {
+        welcomeTitle = 'Login Successful';
+      }
+
       Components.showToast(welcomeTitle, `Welcome back, ${profile.full_name}!`, 'success');
 
       if (res.is_admin) {
@@ -590,6 +680,7 @@ class ApplicationController {
       } else {
         this.navigate('#/home');
       }
+
     } catch (err) {
       Components.showToast('Authentication Failed', err.message, 'error');
     } finally {
@@ -1769,8 +1860,23 @@ class ApplicationController {
   filterAdminLoans(status, btnElement) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     if (btnElement) btnElement.classList.add('active');
-    this.loadAdminDashboard(status);
+    this.currentStatusFilter = status;
+    this.loadAdminDashboard(status, this.selectedBankId);
   }
+
+  /**
+   * Called when the Super Admin selects a bank from the Bank Filter Dropdown.
+   * Reloads KPIs, schemes breakdown, and applications table for the selected bank.
+   * @param {string} value - bank_id as string, or '' for All Banks
+   */
+  handleBankFilterChange(value) {
+    const bankId = value === '' || value === null || value === undefined ? null : parseInt(value);
+    this.selectedBankId = bankId;
+    // Reset the bank cache so the dropdown re-renders with updated selection
+    // (availableBanks stays cached to avoid extra fetches)
+    this.loadAdminDashboard(this.currentStatusFilter, bankId);
+  }
+
 
   showModal(modalId) {
     const modal = document.getElementById(modalId);
@@ -1797,9 +1903,14 @@ class ApplicationController {
 
   logout() {
     store.clearSession();
+    // Reset super admin bank filter state
+    this.selectedBankId = null;
+    this.availableBanks = [];
+    this.currentStatusFilter = '';
     Components.showToast('Logged Out', 'You have been logged out safely.', 'info');
     this.navigate('#/schemes');
   }
+
 
   recalculateEmiPreview() {
     this.setupEmiCalculator();

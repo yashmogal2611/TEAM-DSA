@@ -135,6 +135,19 @@ class BankOut(BaseModel):
         from_attributes = True
 
 
+class BankSummary(BaseModel):
+    """Extended bank info returned by GET /admin/banks for Super Admin use."""
+    id: int
+    bank_code: str
+    bank_name: str
+    is_active: bool
+    total_applications: int = 0
+    pending_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
 class UserLogin(BaseModel):
     email: str = Field(..., min_length=1)
     password: str = Field(..., min_length=1)
@@ -174,6 +187,7 @@ class Token(BaseModel):
     bank_name: Optional[str] = None
     bank_code: Optional[str] = None
     role: Optional[str] = "borrower"
+    is_super_admin: bool = False
 
 
 class UserOut(BaseModel):

@@ -444,25 +444,25 @@ def seed_default_banks_and_admins():
                 )
                 db.add(b_admin)
 
-        # 2. Legacy / Global Default Admin (Assigned to SBI by default)
-        sbi_bank = bank_entities.get("SBI")
+        # 2. Global Platform Super Admin (Unrestricted cross-bank access)
         existing_admin = db.query(User).filter(func.lower(User.email) == "admin@loanapp.com").first()
         if not existing_admin:
             hashed = _bcrypt.hashpw("Admin@123".encode("utf-8"), _bcrypt.gensalt()).decode("utf-8")
             admin = User(
-                full_name="System Admin (SBI)",
+                full_name="Platform Super Admin",
                 email="admin@loanapp.com",
                 phone="9999999999",
                 hashed_password=hashed,
                 is_admin=True,
-                role="bank_admin",
-                assigned_bank_id=sbi_bank.id if sbi_bank else None,
+                role="super_admin",
+                assigned_bank_id=None,
                 is_active=True
             )
             db.add(admin)
-        elif existing_admin and not existing_admin.assigned_bank_id and sbi_bank:
-            existing_admin.assigned_bank_id = sbi_bank.id
-            existing_admin.role = "bank_admin"
+        else:
+            existing_admin.role = "super_admin"
+            existing_admin.assigned_bank_id = None
+            existing_admin.full_name = "Platform Super Admin"
 
         # 3. Demo Borrower (Ravi Kumar)
         existing_ravi = db.query(User).filter(func.lower(User.email) == "ravi@example.com").first()

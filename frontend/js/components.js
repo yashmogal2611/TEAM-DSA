@@ -831,6 +831,79 @@ const Components = {
     `;
   },
 
+  /**
+   * Render the Bank Selector Dropdown for Platform Super Admins.
+   * @param {Array} banks  - Array of BankSummary objects from GET /admin/banks
+   * @param {number|null} selectedBankId - Currently selected bank_id (null = All Banks)
+   */
+  renderBankSelectorDropdown(banks, selectedBankId = null) {
+    if (!banks || banks.length === 0) return '';
+
+    const totalApps = banks.reduce((s, b) => s + (b.total_applications || 0), 0);
+    const totalPending = banks.reduce((s, b) => s + (b.pending_count || 0), 0);
+
+    const bankOptions = banks.map(b => `
+      <option value="${b.id}" ${selectedBankId === b.id ? 'selected' : ''}>
+        ${b.bank_name} (${b.bank_code}) — ${b.total_applications} apps
+      </option>
+    `).join('');
+
+    return `
+      <div id="adminBankSelectorCard" style="
+        display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+        background: linear-gradient(135deg, rgba(2,132,199,0.06) 0%, rgba(16,185,129,0.04) 100%);
+        border: 1px solid rgba(2,132,199,0.18);
+        border-radius: 12px; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem;">
+
+        <!-- Globe icon + label -->
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-shrink:0;">
+          <div style="
+            width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+            background: rgba(2,132,199,0.12); color: var(--accent-primary);">
+            <i data-lucide="globe-2" style="width:18px;height:18px;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); font-weight:600;">Platform View</div>
+            <div style="font-size:0.82rem; font-weight:700; color:var(--text-primary);">Bank Filter</div>
+          </div>
+        </div>
+
+        <!-- Dropdown -->
+        <div style="position:relative; flex:1; min-width:220px; max-width:340px;">
+          <select
+            id="adminBankSelectorDropdown"
+            class="input-control"
+            onchange="app.handleBankFilterChange(this.value)"
+            style="padding-left:0.9rem; padding-right:2rem; font-weight:600; cursor:pointer; border-color:rgba(2,132,199,0.3);">
+            <option value="" ${selectedBankId === null ? 'selected' : ''}>
+              🌐 All Financial Institutions (${totalApps} apps)
+            </option>
+            ${bankOptions}
+          </select>
+        </div>
+
+        <!-- Quick stats pills -->
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-left:auto;">
+          <span style="
+            background:rgba(2,132,199,0.1); color:var(--accent-primary);
+            padding:0.3rem 0.7rem; border-radius:20px; font-size:0.75rem; font-weight:700; white-space:nowrap;">
+            ${banks.length} Active Banks
+          </span>
+          <span style="
+            background:rgba(245,158,11,0.12); color:var(--amber);
+            padding:0.3rem 0.7rem; border-radius:20px; font-size:0.75rem; font-weight:700; white-space:nowrap;">
+            ${totalPending} Pending
+          </span>
+          <span style="
+            background:rgba(16,185,129,0.1); color:var(--emerald);
+            padding:0.3rem 0.7rem; border-radius:20px; font-size:0.75rem; font-weight:700; white-space:nowrap;">
+            ${totalApps} Total
+          </span>
+        </div>
+      </div>
+    `;
+  },
+
   renderAdminStats(stats) {
     if (!stats) return '';
     return `
@@ -928,15 +1001,43 @@ const Components = {
     `;
   },
 
-  renderAdminLoansTable(loans) {
+  renderAdminLoansTable(loans, isSuperAdmin = false) {
     if (!loans || loans.length === 0) {
       return `
         <div class="empty-state">
           <h3>No Applications Match Search / Filter</h3>
-          <p>No applications found in this bank's scoped underwriting queue.</p>
+          <p>${isSuperAdmin ? 'No applications found across all financial institutions.' : "No applications found in this bank's scoped underwriting queue."}</p>
         </div>
       `;
     }
+
+    // Color map for bank code badges shown in super admin multi-bank view
+    const BANK_BADGE_COLORS = {
+      'SBI':    { bg: 'rgba(30,136,229,0.12)', color: '#1e88e5', border: 'rgba(30,136,229,0.25)' },
+      'HDFC':   { bg: 'rgba(239,68,68,0.1)',   color: '#dc2626', border: 'rgba(239,68,68,0.25)' },
+      'ICICI':  { bg: 'rgba(245,158,11,0.12)', color: '#d97706', border: 'rgba(245,158,11,0.25)' },
+      'AXIS':   { bg: 'rgba(124,58,237,0.1)',  color: '#7c3aed', border: 'rgba(124,58,237,0.25)' },
+      'KOTAK':  { bg: 'rgba(16,185,129,0.1)',  color: '#059669', border: 'rgba(16,185,129,0.25)' },
+      'BOB':    { bg: 'rgba(236,72,153,0.1)',  color: '#db2777', border: 'rgba(236,72,153,0.25)' },
+      'UNION':  { bg: 'rgba(20,184,166,0.1)',  color: '#0d9488', border: 'rgba(20,184,166,0.25)' },
+      'TATA':   { bg: 'rgba(249,115,22,0.1)',  color: '#ea580c', border: 'rgba(249,115,22,0.25)' },
+      'BAJAJ':  { bg: 'rgba(234,179,8,0.1)',   color: '#ca8a04', border: 'rgba(234,179,8,0.25)' },
+      'MUTHOOT':{ bg: 'rgba(132,204,22,0.1)',  color: '#65a30d', border: 'rgba(132,204,22,0.25)' },
+      'LIC':    { bg: 'rgba(99,102,241,0.1)',  color: '#4f46e5', border: 'rgba(99,102,241,0.25)' },
+    };
+
+    const _getBankBadgeHtml = (loan) => {
+      if (!loan.bank_name && !loan.bank_code) return '';
+      // Derive bank code from bank_name if bank_code not present
+      const rawCode = loan.bank_code || '';
+      const style = BANK_BADGE_COLORS[rawCode] || { bg: 'rgba(2,132,199,0.1)', color: 'var(--accent-primary)', border: 'rgba(2,132,199,0.2)' };
+      const label = rawCode || (loan.bank_name || '').substring(0, 8);
+      return `<span style="
+        display:inline-block; padding:0.18rem 0.55rem; border-radius:6px; font-size:0.68rem;
+        font-weight:800; letter-spacing:0.04em; text-transform:uppercase;
+        background:${style.bg}; color:${style.color}; border:1px solid ${style.border};
+        margin-bottom:0.2rem; align-self:flex-start; white-space:nowrap;">${label}</span>`;
+    };
 
     return `
       <div class="table-card">
@@ -967,7 +1068,7 @@ const Components = {
                   </td>
                   <td>
                     <div style="display:flex; flex-direction:column; gap:0.2rem;">
-                      ${loan.bank_name ? `<span class="badge badge-primary" style="font-size:0.7rem; align-self:flex-start;">${loan.bank_name}</span>` : ''}
+                      ${isSuperAdmin && loan.bank_name ? _getBankBadgeHtml(loan) : (loan.bank_name ? `<span class="badge badge-primary" style="font-size:0.7rem; align-self:flex-start;">${loan.bank_name}</span>` : '')}
                       <div style="font-weight:600; font-size:0.85rem; color:var(--text-primary);">${loan.scheme_name || this.formatProductType(loan.product_type)}</div>
                       <div style="font-size:0.75rem; color:var(--text-muted);">${this.formatCategoryDetails(loan)}</div>
                     </div>
@@ -1006,6 +1107,8 @@ const Components = {
       </div>
     `;
   },
+
+
 
   renderDocumentsList(documents, isAdmin = false, loanId) {
     if (!documents || documents.length === 0) {

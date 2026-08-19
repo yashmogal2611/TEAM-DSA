@@ -2,8 +2,9 @@
 routers/auth_router.py
 Endpoints:
 - /auth/register     – User registration
-- /auth/login        – Standard login (Borrowers & Dual-mode)
+- /auth/login        – Standard login (Borrowers & Dual-mode; Super Admin uses this path)
 - /auth/admin-login  – 3-Factor Bank Admin Login (email + password + bank passkey)
+                       Super Admin (role=super_admin) is exempt from the passkey requirement.
 - /auth/banks        – Public directory of registered partner banks
 - /auth/me           – Current authenticated profile
 """
@@ -78,6 +79,9 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     """
     Authenticate with email + password (and optional bank passkey).
     Returns a scoped JWT bearer token.
+
+    Platform Super Admins (role=super_admin) receive a global context token
+    without bank scoping; no passkey is required for them on this endpoint.
     """
     clean_email = payload.email.strip().lower() if payload.email else ""
     user = db.query(User).filter(func.lower(func.trim(User.email)) == clean_email).first()
@@ -95,32 +99,41 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     bank_id = None
     bank_name = None
     bank_code = None
+    is_super_admin = False
 
-    # If the user is an admin, resolve their bank scope
     if user.is_admin:
-        assigned_bank = None
-        if user.assigned_bank_id:
-            assigned_bank = db.query(Bank).filter(Bank.id == user.assigned_bank_id, Bank.is_active == True).first()
-        if not assigned_bank:
-            assigned_bank = db.query(Bank).filter(Bank.is_active == True).first()
+        # ── Super Admin fast path ────────────────────────────
+        if user.role == "super_admin" or user.assigned_bank_id is None:
+            is_super_admin = True
+            bank_name = "All Financial Institutions"
+            bank_code = "ALL"
+            # bank_id stays None — super admin has no bank binding
+        else:
+            # ── Bank Admin: resolve assigned bank ────────────
+            assigned_bank = db.query(Bank).filter(
+                Bank.id == user.assigned_bank_id, Bank.is_active == True
+            ).first()
+            if not assigned_bank:
+                assigned_bank = db.query(Bank).filter(Bank.is_active == True).first()
 
-        # If a bank passkey was supplied, cross-check it
-        if payload.bank_passkey and assigned_bank:
-            if not verify_bank_passkey(payload.bank_passkey, assigned_bank.passkey_hash):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Invalid bank passkey for {assigned_bank.bank_name}.",
-                )
+            # If a bank passkey was supplied, cross-check it
+            if payload.bank_passkey and assigned_bank:
+                if not verify_bank_passkey(payload.bank_passkey, assigned_bank.passkey_hash):
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=f"Invalid bank passkey for {assigned_bank.bank_name}.",
+                    )
 
-        if assigned_bank:
-            bank_id = assigned_bank.id
-            bank_name = assigned_bank.bank_name
-            bank_code = assigned_bank.bank_code
+            if assigned_bank:
+                bank_id = assigned_bank.id
+                bank_name = assigned_bank.bank_name
+                bank_code = assigned_bank.bank_code
 
     token_claims = {
         "sub": str(user.id),
         "is_admin": user.is_admin,
         "role": user.role or ("bank_admin" if user.is_admin else "borrower"),
+        "is_super_admin": is_super_admin,
     }
     if bank_id:
         token_claims["bank_id"] = bank_id
@@ -139,6 +152,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         bank_name=bank_name,
         bank_code=bank_code,
         role=user.role or ("bank_admin" if user.is_admin else "borrower"),
+        is_super_admin=is_super_admin,
     )
 
 
@@ -150,7 +164,10 @@ def admin_login(payload: BankAdminLogin, db: Session = Depends(get_db)):
     1. Cross-checks email & password against admin user account.
     2. Validates administrator authorization (is_admin == True).
     3. Cross-checks the supplied bank_passkey strictly against the admin's database-assigned bank.
-       (Rejects if the passkey belongs to a different bank or is invalid).
+       (Rejects if the passkey belongs to a different bank or is invalid.)
+
+    Exception — Platform Super Admins (role=super_admin) are exempt from step 3 (passkey check).
+    They receive a global-scope token with bank_code='ALL'.
     """
     clean_email = payload.email.strip().lower() if payload.email else ""
     user = db.query(User).filter(func.lower(func.trim(User.email)) == clean_email).first()
@@ -172,11 +189,34 @@ def admin_login(payload: BankAdminLogin, db: Session = Depends(get_db)):
             detail="Access Denied: Standard borrower accounts cannot access bank administration.",
         )
 
+    # ── Super Admin fast path: skip passkey entirely ─────────
+    if user.role == "super_admin" or user.assigned_bank_id is None:
+        token_claims = {
+            "sub": str(user.id),
+            "is_admin": True,
+            "role": "super_admin",
+            "is_super_admin": True,
+        }
+        token = create_access_token(token_claims)
+        return Token(
+            access_token=token,
+            token_type="bearer",
+            is_admin=True,
+            user_id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            bank_id=None,
+            bank_name="All Financial Institutions",
+            bank_code="ALL",
+            role="super_admin",
+            is_super_admin=True,
+        )
+
     # Step 3: Resolve Assigned Bank & Cross-Check Passkey
-    assigned_bank = None
-    if user.assigned_bank_id:
-        assigned_bank = db.query(Bank).filter(Bank.id == user.assigned_bank_id, Bank.is_active == True).first()
-    
+    assigned_bank = db.query(Bank).filter(
+        Bank.id == user.assigned_bank_id, Bank.is_active == True
+    ).first()
+
     if not assigned_bank:
         # Fallback to default bank if legacy admin
         assigned_bank = db.query(Bank).filter(Bank.is_active == True).first()
@@ -201,6 +241,7 @@ def admin_login(payload: BankAdminLogin, db: Session = Depends(get_db)):
         "bank_id": assigned_bank.id,
         "bank_name": assigned_bank.bank_name,
         "bank_code": assigned_bank.bank_code,
+        "is_super_admin": False,
     }
     token = create_access_token(token_claims)
 
@@ -215,6 +256,7 @@ def admin_login(payload: BankAdminLogin, db: Session = Depends(get_db)):
         bank_name=assigned_bank.bank_name,
         bank_code=assigned_bank.bank_code,
         role="bank_admin",
+        is_super_admin=False,
     )
 
 
