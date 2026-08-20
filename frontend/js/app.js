@@ -656,11 +656,19 @@ class ApplicationController {
 
       localStorage.setItem(CONFIG.TOKEN_KEY, res.access_token);
 
-      const profile = await api.getMe();
+      let profile = {};
+      try {
+        profile = await api.getMe();
+      } catch (meErr) {
+        console.warn('api.getMe() fallback to login response:', meErr);
+        profile = { ...res };
+      }
+
       if (res.bank_name) profile.bank_name = res.bank_name;
       if (res.bank_code) profile.bank_code = res.bank_code;
       if (res.role) profile.role = res.role;
       if (res.is_super_admin) profile.is_super_admin = res.is_super_admin;
+      if (res.is_admin) profile.is_admin = res.is_admin;
       store.setSession(res.access_token, profile);
 
       // Reset bank filter state on new login
@@ -1438,7 +1446,7 @@ class ApplicationController {
     if (sysBtn) sysBtn.classList.remove('active');
 
     document.getElementById('loginEmail').value = 'ravi@example.com';
-    document.getElementById('loginPassword').value = 'Pass@123';
+    document.getElementById('loginPassword').value = 'MyPass@123';
     
     const bankSelectContainer = document.getElementById('loginBankSelectContainer');
     if (bankSelectContainer) bankSelectContainer.style.display = 'none';

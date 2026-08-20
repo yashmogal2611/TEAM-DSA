@@ -10,13 +10,18 @@ const CONFIG = {
   USER_KEY: 'loan_app_user',
   MOCK_MODE_KEY: 'loan_app_mock_mode',
 
-  // Mock Mode default setting (always false when connected to live backend)
+  // Mock Mode setting (auto-detected fallback when backend server is offline)
   getMockMode() {
+    const stored = sessionStorage.getItem(this.MOCK_MODE_KEY);
+    if (stored !== null) {
+      try {
+        return JSON.parse(stored);
+      } catch (e) {}
+    }
     return false;
   },
 
   setMockMode(enabled) {
-    // Session-only mock toggle
     sessionStorage.setItem(this.MOCK_MODE_KEY, JSON.stringify(enabled));
   }
 };
