@@ -409,7 +409,18 @@ class ApplicationController {
 
     try {
       const schemes = await api.getLoanSchemes();
-      container.innerHTML = Components.renderSchemesGrid(schemes, selectedType);
+      const normalizedSchemes = schemes.map(scheme => ({
+        ...scheme,
+        // The live API returns one base rate; the mock data uses a range.
+        interest_rate_min: scheme.interest_rate_min ?? scheme.base_interest_rate,
+        interest_rate_max: scheme.interest_rate_max ?? scheme.base_interest_rate,
+        description: scheme.description || scheme.purpose_requirement || 'RBI-compliant financing for your planned expenses.',
+        document_checklist: scheme.document_checklist || {
+          kyc_documents: scheme.kyc_documents ? scheme.kyc_documents.split(',').map(item => item.trim()) : [],
+          income_documents: scheme.income_documents ? scheme.income_documents.split(',').map(item => item.trim()) : []
+        }
+      }));
+      container.innerHTML = Components.renderSchemesGrid(normalizedSchemes, selectedType);
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       container.innerHTML = `<div class="empty-state" style="color:var(--rose);">Failed to load schemes: ${err.message}</div>`;
@@ -1763,45 +1774,19 @@ class ApplicationController {
     }
 
     const isImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(fileName) || (fileUrl && fileUrl.startsWith('blob:'));
+    const previewUrl = fileUrl || viewUrl;
 
-    if (fileUrl && isImage) {
+    // The view endpoint carries the auth token in its query string so that
+    // an iframe or image element can display the protected upload directly.
+    if (isImage) {
       container.innerHTML = `
         <div style="width: 100%; height: 100%; min-height: 380px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 1rem; overflow: auto;">
-          <img src="${fileUrl}" alt="${fileName}" style="max-width: 100%; max-height: 480px; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+          <img src="${previewUrl}" alt="${fileName}" style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
         </div>
       `;
     } else {
-      // Clean Document View Certificate Template
       container.innerHTML = `
-        <div style="width: 100%; max-width: 580px; margin: auto; background: #1E293B; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 2rem; color: #F8FAFC; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,0.35);">
-          <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #072AC8 0%, #00A896 100%); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; box-shadow: 0 4px 16px rgba(7, 42, 200, 0.4);">
-            <i data-lucide="file-check-2" style="width:32px; height:32px; color:#FFFFFF;"></i>
-          </div>
-
-          <h3 style="font-family:'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.35rem; margin-bottom: 0.35rem; color: #FFFFFF;">${fileName}</h3>
-          <div style="font-size: 0.85rem; color: #94A3B8; margin-bottom: 1.5rem;">
-            Loan Application #${loanId} • Category: <strong style="color:#00A896;">${category}</strong>
-          </div>
-
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 1.25rem; text-align: left; margin-bottom: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem;">
-              <span style="color: #94A3B8;">Document Type:</span>
-              <strong style="color: #F8FAFC;">${type || 'Official Verification Proof'}</strong>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.85rem;">
-              <span style="color: #94A3B8;">Verification Status:</span>
-              <span>${Components.renderStatusBadge(status)}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-              <span style="color: #94A3B8;">File Size:</span>
-              <span style="color: #F8FAFC;">${docObj?.file_size || '1.8 MB'}</span>
-            </div>
-          </div>
-
-          <div style="font-size: 0.8rem; color: #64748B;">
-            🔐 Encrypted CrediWise Document Store • Verified Underwriter Access
-          </div>
-        </div>
+        <iframe src="${previewUrl}" title="${fileName}" style="width: 100%; height: 100%; min-height: 480px; border: 0; border-radius: 8px; background: #FFFFFF;"></iframe>
       `;
     }
 
